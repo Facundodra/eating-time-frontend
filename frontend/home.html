@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+     <!-- Link to the favicon -->
+      <link rel="icon" type="image/png" href="image/favicon.png">
+
+    <title>Eating Time</title>
+</head>
+
+<body>
+    <nav class="navbar">
+        <div class="navbar-container">
+            
+            <div class="nav-left">
+                <i class="fa fa-cutlery"></i>
+                <span class="logo">Eating Time</span>
+            </div>
+
+            <div class="nav-center">
+                <input type="text" placeholder="Encuentra tu comida favorita..." class="search-input">
+            </div>
+
+            <div class="nav-right">
+                <button id="search-btn" class="button">
+                    <i class="fa fa-search"></i>
+                </button>
+                <button id="bars-btn" class="button bars-btn">
+                    <i class="fa fa-bars"></i>
+                </button>
+            </div>
+
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Bienvenido a Eating Time</h1>
+        <p>Tu plataforma para comerla entera!</p>
+        <h2>Platillos</h2>
+        <div class="carousel">
+            <div class="card">
+                <img src="img/foods/f2.jpg" class="food-image">
+                <p>Pizza</p>
+            </div>
+
+            <div class="card">
+                <img src="img/foods/f3.jpeg" class="food-image">
+                <p>Sushi</p>
+            </div>
+
+            <div class="card">
+                <img src="img/foods/f4.jpg" class="food-image">
+                <p>Pasta</p>
+            </div>
+
+            <div class="card">
+                <img src="img/foods/f5.jpeg" class="food-image">
+                <p>Wraps</p>
+            </div>
+
+            <div class="card">
+                <img src="img/foods/f1.avif" class="food-image">
+                <p>Donas</p>
+            </div>
+
+            <div class="card">
+                <img src="img/foods/f6.jpeg" class="food-image">
+                <p>Hamburguesa</p>
+            </div>
+        </div>
+
+
+        <h2>Restaurantes</h2>
+        <div class="carousel">
+            <div class="card">Pizza Planet</div>
+            <div class="card">Krusty Krab</div>
+            <div class="card">Krusty Burger</div>
+            <div class="card">Ensalada Fit</div>
+            <div class="card">Wrapped</div>
+        </div>
+    </div>
+    <div id="panel">
+        <h2>Panel de Navegación</h2>
+        <ul>
+            <li><a href="home.html">Inicio</a></li>
+            <li><a href="login.html">Iniciar Sesión</a></li>
+            <li><a href="register.html">Registrarse</a></li>
+            <li><a href="calc.html">Calculadora</a></li>
+        </ul>
+    </div>
+
+    <div class="footer" style="text-align:center; padding:20px; margin-top:20px;">
+        <p>&copy; 2026 Eating Time. Todos los derechos reservados.</p>
+    </div>
+
+    <script>
+        const panel = document.getElementById("panel");
+        const btn = document.getElementById("bars-btn");
+
+        btn.addEventListener("click", () => {
+            panel.classList.toggle("active");
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="style.css">
+    <title>Registrarse</title>
+</head>
+<body>
+    <div class="register-container">
+        <div class="register-header">
+            <h1>Crear Cuenta</h1>
+            <p>Registrate para acceder a nuestros servicios</p>
+        </div>
+
+        <form id="registerForm">
+            <div class="form-row">
+                <div class="form-group">
+                    <label for="firstname">Nombre</label>
+                    <input 
+                        type="text" 
+                        id="firstname" 
+                        name="firstname" 
+                        placeholder="Juan" 
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="lastname">Apellido</label>
+                    <input 
+                        type="text" 
+                        id="lastname" 
+                        name="lastname" 
+                        placeholder="Pérez" 
+                        required
+                    >
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Correo Electrónico</label>
+                <input 
+                    type="email" 
+                    id="email" 
+                    name="email" 
+                    placeholder="tu@email.com" 
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Teléfono (Opcional)</label>
+                <input 
+                    type="tel" 
+                    id="phone" 
+                    name="phone" 
+                    placeholder="+598 99 123 456"
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="user-type">Seleccione tipo de usuario</label>
+                <select id="user-type" name="user-type">
+                    <option value="client">Cliente</option>
+                    <option value="provider">Local</option>
+                    <option value="admin">Administrador</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Contraseña</label>
+                <input 
+                    type="password" 
+                    id="password" 
+                    name="password" 
+                    placeholder="••••••••" 
+                    required
+                >
+                <div class="password-requirements">
+                    Min. 8 caracteres, incluir mayúsculas, minúsculas y números
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="confirm-password">Confirmar Contraseña</label>
+                <input 
+                    type="password" 
+                    id="confirm-password" 
+                    name="confirm-password" 
+                    placeholder="••••••••" 
+                    required
+                >
+            </div>
+
+            <div class="terms-agreement">
+                <input type="checkbox" id="terms" name="terms" required>
+                <label for="terms">
+                    Acepto los <a href="#terms">términos y condiciones</a> y la <a href="#privacy">política de privacidad</a>
+                </label>
+            </div>
+
+            <button type="submit">Crear Cuenta</button>
+        </form>
+
+        <p id="registerMessage" style="margin-top: 15px; text-align:center; color:#333;"></p>
+
+        <div class="login-link">
+            ¿Ya tienes cuenta? <a href="login.html">Inicia sesión aquí</a>
+        </div>
+    </div>
+
+    <script>
+        const apiUrl = 'http://localhost:4000/api';
+
+        document.getElementById('registerForm').addEventListener('submit', async (event) => {
+            event.preventDefault();
+
+            const firstname = document.getElementById('firstname').value.trim();
+            const lastname = document.getElementById('lastname').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const password = document.getElementById('password').value;
+            const confirmPassword = document.getElementById('confirm-password').value;
+            const terms = document.getElementById('terms').checked;
+            const messageEl = document.getElementById('registerMessage');
+
+            if (password !== confirmPassword) {
+                messageEl.style.color = 'red';
+                messageEl.textContent = 'Las contraseñas no coinciden';
+                return;
+            }
+
+            if (!terms) {
+                messageEl.style.color = 'red';
+                messageEl.textContent = 'Debes aceptar los términos y condiciones';
+                return;
+            }
+
+            try {
+                const response = await fetch(`${apiUrl}/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ firstname, lastname, email, phone, password })
+                });
+                const result = await response.json();
+
+                if (!response.ok) {
+                    messageEl.style.color = 'red';
+                    messageEl.textContent = result.error || 'Error al registrarse';
+                    return;
+                }
+
+                messageEl.style.color = 'green';
+                messageEl.textContent = 'Registro exitoso. Puedes iniciar sesión ahora.';
+                document.getElementById('registerForm').reset();
+            } catch (err) {
+                messageEl.style.color = 'red';
+                messageEl.textContent = 'No se pudo conectar al servidor. Comprueba backend.';
+                console.error(err);
+            }
+        });
+    </script>
+</body>
+</html>
