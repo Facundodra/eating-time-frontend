@@ -1,4 +1,4 @@
-import profileImg from "@/app/ui/img/profile.png";
+import profileImg from "@/ui/img/profile.png";
 
 export const Usuario ={
     nombre: "Admin",

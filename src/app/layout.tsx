@@ -1,13 +1,13 @@
 import type { Metadata } from "next";
 import { Inter } from 'next/font/google';
-import SideNav from '@/app/ui/sidenav';
-import Topnav from "./ui/topnav";
-import Header from "./ui/header";
-import "./globals.css";
+import SideNav from '@/ui/sidenav';
+import Topnav from "@/ui/topnav";
+import Header from "@/ui/header";
+import "@/css/globals.css";
 
 import clsx from "clsx";
 
-import { Usuario } from "./lib/data";
+import { Usuario } from "../lib/data";
 
 export const metadata: Metadata = {
   title: "Eating Time",
