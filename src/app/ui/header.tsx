@@ -1,6 +1,6 @@
 'use client';
 
-import EatingTimeLogo from "@/app/ui/img/logo.jpg";
+import EatingTimeLogo from "@/app/ui/img/logo.png";
 import { usePathname } from "next/navigation";
 import Form from 'next/form';
 import ProfilePicture from "./widgets/profile_picture";

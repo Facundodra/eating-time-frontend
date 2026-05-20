@@ -2,7 +2,7 @@
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
-import EatingTimeLogo from "@/app/ui/img/logo.jpg";
+import EatingTimeLogo from "@/app/ui/img/logo.png";
 import NavLinksAdmin from "./nav_links/nav_links_admin";
 import NavLinksLocal from "./nav_links/nav_links_local";
 import SessionWidget from "./widgets/session_widget";
