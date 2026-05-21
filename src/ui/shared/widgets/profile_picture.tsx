@@ -1,6 +1,6 @@
 // Agarro el tipo de usuario hardcodeado
 import { clsx } from "clsx";
-import { Usuario } from "../../lib/data";
+import { Usuario } from "../../../lib/data";
 
 import Image from "next/image";
 

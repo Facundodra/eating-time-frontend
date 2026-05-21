@@ -1,13 +1,13 @@
 "use client";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 
-import EatingTimeLogo from "@/ui/img/logo.png";
-import NavLinksAdmin from "./nav_links/nav_links_admin";
-import NavLinksLocal from "./nav_links/nav_links_local";
-import SessionWidget from "./widgets/session_widget";
+import EatingTimeLogo from "@/ui/shared/img/logo.png";
+import NavLinksLocal from "./nav-links-local";
+import SessionWidget from "../shared/widgets/session_widget";
 
-import { Usuario } from "../lib/data";
+import { Usuario } from "../../lib/data";
 
 export default function Sidenav() {
     const tipoUsuario = Usuario.tipo_usuario;
@@ -17,20 +17,14 @@ export default function Sidenav() {
             "mini": pathname !== "/"
         })}>
             {/* Logo */}
-            <a href="/" className="logo flex items-center gap-4 mb-10">
+            <Link href="/" className="logo flex items-center gap-4 mb-10">
                 <img src={EatingTimeLogo.src} alt="Eating Time Logo" className="w-[50px]" />
                 <div className="logo_content">
                     <span className="logo_content_name text-xl font-bold ">Eating Time</span>
                     <span className="logo_content_user-type block  text-sm text-gray-500 ">Panel administrador</span>
                 </div>                
-            </a>
+            </Link>
             {/* Renderizo los enlaces dependiendo del tipo de usuario */}
-            {tipoUsuario === "admin" && (
-                <>
-                    {/* MENUS ADMINISTRADOR */}
-                    <NavLinksAdmin />
-                </>
-            )}
             {tipoUsuario === "local" && (
                 <>
                     {/* MENUS LOCAL */}

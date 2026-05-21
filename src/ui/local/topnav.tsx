@@ -1,8 +1,8 @@
-import LocalCalification from "./widgets/calification";
-import LocalStatus from "./widgets/local_status";
-import ProfilePicture from "./widgets/profile_picture";
-import UserName from "./widgets/user_name";
-import PageTitle from "./widgets/page_title";
+import LocalCalification from "../shared/widgets/calification";
+import LocalStatus from "../shared/widgets/local_status";
+import ProfilePicture from "../shared/widgets/profile_picture";
+import UserName from "../shared/widgets/user_name";
+import PageTitle from "../shared/widgets/page_title";
 
 import Link from "next/link";
 

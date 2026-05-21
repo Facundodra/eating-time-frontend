@@ -1,5 +1,5 @@
 // Agarro el tipo de usuario hardcodeado
-import { Local } from "../../lib/data";
+import { Local } from "@/lib/data";
 
 import { 
   StarIcon

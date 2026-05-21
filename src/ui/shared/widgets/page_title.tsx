@@ -1,6 +1,6 @@
 "use client";
 import { usePathname } from "next/navigation";
-import { pageMetadata } from "../../lib/page_metadata";
+import { pageMetadata } from "../../../lib/page_metadata";
 
 export default function PageTitle() {
     const pathname = usePathname();

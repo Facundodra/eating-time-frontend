@@ -1,5 +1,5 @@
 // Agarro el tipo de usuario hardcodeado
-import { Usuario } from "../../lib/data";
+import { Usuario } from "../../../lib/data";
 
 export default function UserEmail({ className }: { className?: string }) {
     const email = Usuario.email;
