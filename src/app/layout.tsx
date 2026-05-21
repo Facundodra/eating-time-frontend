@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import "typeface-inter";
 import "@/css/globals.css";
 
 export const metadata: Metadata = {
@@ -11,10 +12,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
   return (
     <html lang="en">
-      {children}
+      <body className="min-h-screen bg-gray-50 font-sans antialiased text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+        {children}
+      </body>
     </html>
   );
 }

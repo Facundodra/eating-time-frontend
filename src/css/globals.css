@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Colores */ 
+/* Colors */ 
 :root{
     --color-orange-700: #e96409;
     --color-orange-800: #d85904;
@@ -15,47 +15,46 @@
 }
 
 
-/* Animacion navbar */ 
+/* Navbar animation */ 
 .sidenav{
-    /* LOGO */
     .logo_content{
-        @apply max-w-0 opacity-0 overflow-hidden transition duration-300 delay-0 ease-in-out;
+        @apply max-w-0 opacity-0 overflow-hidden transition-all duration-200 delay-0 ease-in-out;
     }
-    /* ELEMENTO LI DE UL */
     .nav-link{
         a{
             @apply justify-center;
         }
-        span{
-            @apply hidden;
-        }
     }
-    /* TITULOS DE MENU */
     .nav-links-name{
         @apply transition-all duration-300 ease-in-out opacity-0;
     }
-    /* WIDGET DE SESION INFERIOR */
     .session-widget {
         .session-widget-link{
-            @apply opacity-0 transition-opacity delay-0;
+            @apply h-[44px] justify-start px-[22px] transition-all duration-200 delay-0 ease-in-out;
+        }
+        .session-widget-content{
+            @apply max-w-0 opacity-0 overflow-hidden transition-all duration-200 delay-0 ease-in-out;
         }
         .logout-button{
-            @apply border-0 text-[0px];
+            @apply h-[44px] justify-start border-0 px-[22px] py-0 transition-all duration-200 ease-in-out;
+            svg{
+                @apply block h-5 w-5 min-w-5 shrink-0 grow-0 transition-all duration-200 ease-in-out;
+            }
+            .logout-button-label{
+                @apply block max-w-0 overflow-hidden opacity-0 transition-all duration-200 ease-in-out;
+            }
         }
     }
 }
 
-/* ANIMACION EN HOVER */
+/* Hover animation */
 .sidenav:hover{
     .logo_content{
-        @apply max-w-[300px] opacity-100 transition-opacity delay-350;
+        @apply max-w-[300px] opacity-100 delay-0;
     }
     .nav-link{
         a{
             @apply justify-start;
-        }
-        span{
-            @apply block;
         }
     }
     .nav-links-name{
@@ -63,13 +62,52 @@
     }
     .session-widget {
         .session-widget-link{
-            @apply opacity-100 delay-0;
+            @apply delay-0;
+        }
+        .session-widget-content{
+            @apply max-w-[160px] opacity-100;
         }
         .logout-button{
-            @apply border border-gray-300 text-xs;
-            svg{
-                @apply hidden;
+            @apply border border-gray-300;
+            .logout-button-label{
+                @apply max-w-[120px] opacity-100 text-xs;
             }
+        }
+    }
+}
+
+/* Admin sidebar: keeps icons and labels mounted while collapsed. */
+.admin-sidenav,
+.restaurant-sidenav{
+    .nav-links-name{
+        @apply mb-2 h-4 overflow-hidden;
+    }
+    .nav-link{
+        @apply mb-3 h-[44px] w-full px-[22px] py-0;
+        a{
+            @apply h-full justify-start gap-2;
+        }
+        svg{
+            @apply h-5 w-5 shrink-0;
+        }
+        span{
+            @apply block max-w-0 whitespace-nowrap opacity-0 overflow-hidden transition-all duration-200 ease-in-out;
+        }
+    }
+}
+
+.admin-sidenav:hover,
+.restaurant-sidenav:hover{
+    .nav-links-name{
+        @apply mb-2 h-4 overflow-visible;
+    }
+    .nav-link{
+        @apply mb-3 h-[44px] px-[22px] py-0;
+        a{
+            @apply h-full justify-start gap-2;
+        }
+        span{
+            @apply block max-w-[180px] opacity-100;
         }
     }
 }

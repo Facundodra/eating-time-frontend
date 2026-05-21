@@ -1,7 +1,7 @@
-import SideNav from "@/ui/admin/sidenav";
-import Topnav from "@/ui/admin/topnav";
+import SideNav from "@/ui/restaurant/sidenav";
+import Topnav from "@/ui/restaurant/topnav";
 
-export default function AdminLayout({
+export default function RestaurantLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

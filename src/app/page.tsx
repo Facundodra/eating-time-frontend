@@ -1,15 +1,15 @@
 import { redirect } from "next/navigation";
 
-import { Usuario } from "@/lib/data";
+import { User } from "@/lib/data";
 
 export default function Home() {
-  const tipoUsuario = Usuario.tipo_usuario;
+  const userRole = User.role;
 
-  if (tipoUsuario === "admin") {
+  if (userRole === "admin") {
     redirect("/admin");
-  }else if (tipoUsuario === "local") {
-    redirect("/local");
-  }else{
+  } else if (userRole === "restaurant") {
+    redirect("/restaurant");
+  } else {
     redirect("/client");
   }
 }

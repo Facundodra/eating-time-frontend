@@ -1,13 +1,13 @@
-import profileImg from "@/ui/shared/img/profile.png";
+import profileImage from "@/ui/shared/images/profile.png";
 
-export const Usuario ={
-    nombre: "Admin",
-    email: "admin@eatingtime.uy",
-    tipo_usuario: "admin", // local, admin, cliente
-    foto: profileImg.src
-}
+export const User = {
+  name: "Admin",
+  email: "admin@eatingtime.uy",
+  role: "restaurant", // restaurant, admin, client
+  photo: profileImage.src,
+};
 
-export const Local ={
-    calificacion: 4.5,
-    estado: 1, // 0: cerrado, 1: abierto
-}
+export const Restaurant = {
+  rating: 4.5,
+  status: 1, // 0: closed, 1: open
+};

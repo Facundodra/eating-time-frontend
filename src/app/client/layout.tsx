@@ -1,36 +1,14 @@
-import type { Metadata } from "next";
 import Header from "@/ui/client/header";
-import "@/css/globals.css";
 
-import clsx from "clsx";
-
-import { Usuario } from "../../lib/data";
-
-export const metadata: Metadata = {
-  title: "Eating Time",
-  description: "All you can eat, all the time",
-};
-
-export default function RootLayout({
+export default function ClientLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-
-  const tipoUsuario = Usuario.tipo_usuario;
   return (
-    <html
-      lang="en"      
-    >
-      <body className={clsx("font-sans antialiased")}>
-        
-        {tipoUsuario === "cliente" && (
-          <Header />
-        )}
-        <main className={clsx("p-10")}>
-          {children}
-        </main>        
-      </body>
-    </html>
+    <>
+      <Header />
+      <main className="p-10">{children}</main>
+    </>
   );
 }

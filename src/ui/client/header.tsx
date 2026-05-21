@@ -1,49 +1,67 @@
-'use client';
+"use client";
 
-import EatingTimeLogo from "@/ui/shared/img/logo.png";
-import Form from 'next/form';
-import ProfilePicture from "../shared/widgets/profile_picture";
-
+import {
+  MagnifyingGlassIcon,
+  ShoppingCartIcon,
+} from "@heroicons/react/24/outline";
+import Form from "next/form";
+import Image from "next/image";
 import Link from "next/link";
 
-// Defino iconos
-import { 
-  MagnifyingGlassIcon,
-  ShoppingCartIcon
-} from "@heroicons/react/24/outline";
+import EatingTimeLogo from "@/ui/shared/images/logo.png";
+import ProfilePicture from "../shared/widgets/profile-picture";
 
-
-export default function Header(){
-    return(
-        <>
-        <div className="header-cliente flex items-center justify-between px-10 py-5">
-            {/* Logo */}
-            <Link href="/" className="logo flex items-center gap-4">
-                <img src={EatingTimeLogo.src} alt="Eating Time Logo" className="w-[50px]" />
-                <div className="logo_content">
-                    <span className="logo_content_name block text-xl font-bold">Eating Time</span>
-                </div>                
-            </Link>
-            {/* Buscador */}
-            <div className="buscador ml-auto">
-                <Form action="/search" className="bg-gray-100 border border-gray-100 flex align-center py-[8px] px-[15px] rounded-full transition w-fit hover:bg-white ">
-                    <input type="text" placeholder="Buscar..." className="text-sm focus:outline-none pr-2 min-w-xl" />
-                    <button type="submit" className="bg-orange-700 cursor-pointer p-2 rounded-full transition hover:bg-orange-800"><MagnifyingGlassIcon className="w-4 h-4  text-white" /></button>
-                </Form>
-            </div>
-            {/* Carrito */}
-            <div className="carrito ml-auto mr-5">
-                <Link href="/carrito" className="border border-gray-200 inline-block p-2 rounded-full transition hover:bg-orange-800 group">
-                    <ShoppingCartIcon className="w-5 h-5 text-gray-800 group-hover:text-white transition" />
-                </Link>
-            </div>
-            { /* Cuenta */}
-            <div className="cuenta">
-                <Link href="/cuenta" className="relative bottom-[3px]">
-                    <ProfilePicture />
-                </Link>
-            </div>
+export default function Header() {
+  return (
+    <div className="client-header flex items-center justify-between px-10 py-5">
+      <Link href="/" className="logo flex items-center gap-4">
+        <Image
+          src={EatingTimeLogo}
+          alt="Eating Time Logo"
+          width={50}
+          height={50}
+          className="w-[50px]"
+        />
+        <div className="logo_content">
+          <span className="logo_content_name block text-xl font-bold">
+            Eating Time
+          </span>
         </div>
-        </>
-    );
+      </Link>
+
+      <div className="search ml-auto">
+        <Form
+          action="/search"
+          className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white"
+        >
+          <input
+            type="text"
+            placeholder="Buscar..."
+            className="min-w-xl pr-2 text-sm focus:outline-none"
+          />
+          <button
+            type="submit"
+            className="cursor-pointer rounded-full bg-orange-700 p-2 transition hover:bg-orange-800"
+          >
+            <MagnifyingGlassIcon className="h-4 w-4 text-white" />
+          </button>
+        </Form>
+      </div>
+
+      <div className="cart ml-auto mr-5">
+        <Link
+          href="/cart"
+          className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800"
+        >
+          <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition group-hover:text-white" />
+        </Link>
+      </div>
+
+      <div className="account">
+        <Link href="/account" className="relative bottom-[3px]">
+          <ProfilePicture />
+        </Link>
+      </div>
+    </div>
+  );
 }
