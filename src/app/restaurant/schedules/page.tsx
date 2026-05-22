@@ -1,5 +1,8 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import { getLocalSchedule } from "@/services/local-schedule-service";
+import RestaurantSchedulesPage from "@/ui/restaurant/schedules/restaurant-schedules-page";
 
-export default function SchedulesPage() {
-  return <ComingSoonPage backHref="/restaurant" title="Horarios" />;
+export default async function SchedulesPage() {
+  const schedule = await getLocalSchedule("dev-local");
+
+  return <RestaurantSchedulesPage initialSchedule={schedule} />;
 }
