@@ -1,15 +1,14 @@
 import { redirect } from "next/navigation";
 
-import { User } from "@/lib/data";
+import { getRoleHomePath } from "@/lib/auth/routes";
+import { getSession } from "@/lib/auth/session";
 
-export default function Home() {
-  const userRole = User.role;
+export default async function Home() {
+  const session = await getSession();
 
-  if (userRole === "admin") {
-    redirect("/admin");
-  } else if (userRole === "restaurant") {
-    redirect("/restaurant");
-  } else {
-    redirect("/client");
+  if (!session) {
+    redirect("/login");
   }
+
+  redirect(getRoleHomePath(session.user.role));
 }
