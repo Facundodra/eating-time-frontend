@@ -37,6 +37,10 @@
         .session-widget-content{
             @apply max-w-0 opacity-0 overflow-hidden transition-all duration-200 delay-0 ease-in-out;
         }
+        .session-widget-name,
+        .session-widget-email{
+            @apply max-w-full overflow-hidden text-ellipsis whitespace-nowrap;
+        }
         .logout-button{
             @apply h-[44px] justify-start border-0 px-[22px] py-0 transition-all duration-200 ease-in-out;
             svg{
@@ -67,7 +71,7 @@
             @apply delay-0;
         }
         .session-widget-content{
-            @apply max-w-[160px] opacity-100;
+            @apply max-w-[170px] opacity-100;
         }
         .logout-button{
             @apply border border-gray-300;

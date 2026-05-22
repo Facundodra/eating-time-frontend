@@ -18,12 +18,12 @@ export default function SessionWidget({
     <div className="session-widget mt-auto flex flex-col items-center">
       <Link
         href={profileHref}
-        className="session-widget-link flex w-full items-center gap-2 overflow-hidden"
+        className="session-widget-link flex w-full items-center gap-3 overflow-hidden"
       >
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+        <span className="flex h-7 w-7 shrink-0 items-center justify-center">
           <ProfilePicture className="h-7 w-7 max-w-none" />
         </span>
-        <div className="session-widget-content flex flex-col justify-center">
+        <div className="session-widget-content flex min-w-0 flex-col justify-center">
           <UserName className="session-widget-name mb-1 block text-sm font-medium leading-[1em]" />
           <UserEmail className="session-widget-email block text-xs leading-[1em] text-gray-500" />
         </div>

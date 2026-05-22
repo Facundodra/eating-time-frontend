@@ -1,19 +1,16 @@
+import { UserIcon } from "@heroicons/react/24/solid";
 import { clsx } from "clsx";
-import Image from "next/image";
-
-import { User } from "@/lib/data";
 
 export default function ProfilePicture({ className }: { className?: string }) {
-  const photo = User.photo;
-
   return (
-    <Image
-      className={clsx("profile-picture h-10 w-10 rounded-full", className)}
-      src={photo}
-      alt="Profile Picture"
-      width={50}
-      height={50}
-      style={{ clipPath: "circle()" }}
-    />
+    <span
+      aria-label="Foto de perfil"
+      className={clsx(
+        "profile-picture flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm ring-2 ring-white dark:ring-slate-900",
+        className,
+      )}
+    >
+      <UserIcon className="h-[58%] w-[58%]" />
+    </span>
   );
 }
