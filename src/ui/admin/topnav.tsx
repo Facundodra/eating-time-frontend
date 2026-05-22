@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 import UserName from "../shared/widgets/user-name";
 
@@ -40,14 +41,17 @@ export default function Topnav() {
           {pageHeader.title}
         </h1>
       </div>
-      <div className="user">
-        <Link
-          href="/admin/my-data"
-          className="flex w-fit items-center gap-2 rounded-3xl bg-white px-3 py-2 shadow-sm ring-1 ring-gray-100 dark:bg-slate-900 dark:ring-slate-800"
-        >
-          <ProfilePicture className="h-8 w-8" />
-          <UserName className="text-sm font-semibold" />
-        </Link>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
+        <div className="user">
+          <Link
+            href="/admin/my-data"
+            className="flex w-fit items-center gap-2 rounded-3xl bg-white px-3 py-2 shadow-sm ring-1 ring-gray-100 dark:bg-slate-900 dark:ring-slate-800"
+          >
+            <ProfilePicture className="h-8 w-8" />
+            <UserName className="text-sm font-semibold" />
+          </Link>
+        </div>
       </div>
     </div>
   );
