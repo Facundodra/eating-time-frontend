@@ -25,8 +25,8 @@ function Toggle({
       aria-pressed={checked}
       onClick={onChange}
       className={clsx(
-        "relative h-7 w-12 cursor-pointer rounded-full transition focus:outline-none focus:ring-4 focus:ring-orange-100",
-        checked ? "bg-orange-600" : "bg-slate-300",
+        "relative h-7 w-12 cursor-pointer rounded-full transition focus:outline-none focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-500/20",
+        checked ? "bg-orange-600" : "bg-slate-300 dark:bg-slate-700",
       )}
     >
       <span
@@ -52,7 +52,7 @@ function TimeField({
 }) {
   return (
     <label htmlFor={id} className="block">
-      <span className="mb-2 block text-xs font-extrabold text-slate-600">
+      <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
         {label}
       </span>
       <span className="relative block">
@@ -61,7 +61,7 @@ function TimeField({
           type="time"
           value={value}
           onChange={(event) => onChange(event.target.value)}
-          className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pr-11 text-sm font-medium text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100"
+          className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pr-11 text-sm font-medium text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
         />
         <ClockIcon className="pointer-events-none absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-500" />
       </span>
@@ -81,7 +81,7 @@ function CrossesMidnightField({
   return (
     <label
       htmlFor={id}
-      className="flex h-11 cursor-pointer items-center gap-3 self-end rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50"
+      className="flex h-11 cursor-pointer items-center gap-3 self-end rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10"
     >
       <input
         id={id}
@@ -117,19 +117,19 @@ export default function RestaurantSchedulesPage({
       className="space-y-6 pb-4"
       onSubmit={(event) => event.preventDefault()}
     >
-      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm">
-        <div className="border-b border-gray-200 px-5 py-5">
-          <h2 className="text-lg font-extrabold text-slate-950">
+      <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+          <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
             Estado de servicio
           </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500">
+          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
             La pausa manual prevalece sobre el horario automatico.
           </p>
         </div>
 
         <div className="grid gap-4 p-5 md:grid-cols-2">
-          <div className="flex min-h-[64px] items-center justify-between gap-4 rounded-xl border border-gray-200 px-4">
-            <span className="text-sm font-extrabold text-slate-700">
+          <div className="flex min-h-[64px] items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 dark:border-slate-800">
+            <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
               Siempre abierto
             </span>
             <Toggle
@@ -139,8 +139,8 @@ export default function RestaurantSchedulesPage({
             />
           </div>
 
-          <div className="flex min-h-[64px] items-center justify-between gap-4 rounded-xl border border-gray-200 px-4">
-            <span className="text-sm font-extrabold text-slate-700">
+          <div className="flex min-h-[64px] items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 dark:border-slate-800">
+            <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
               Fuera de servicio
             </span>
             <Toggle
@@ -163,15 +163,15 @@ export default function RestaurantSchedulesPage({
       >
         <section
           className={clsx(
-            "min-h-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-transform duration-300 ease-out",
+            "min-h-0 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition-transform duration-300 ease-out dark:border-slate-800 dark:bg-slate-900",
             alwaysOpen ? "pointer-events-none" : "pointer-events-auto",
           )}
         >
-          <div className="border-b border-gray-200 px-5 py-5">
-            <h2 className="text-lg font-extrabold text-slate-950">
+          <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+            <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
               Definicion de horarios
             </h2>
-            <p className="mt-1 text-sm font-medium text-slate-500">
+            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
               Configura la hora de inicio y fin de servicio para cada dia.
             </p>
           </div>
@@ -184,10 +184,10 @@ export default function RestaurantSchedulesPage({
               >
                 <div className="flex items-center justify-between gap-4 xl:justify-start xl:gap-8">
                   <div className="min-w-[86px]">
-                    <h3 className="text-base font-extrabold text-slate-950">
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
                       {day.label}
                     </h3>
-                    <p className="mt-1 text-xs font-medium text-slate-500">
+                    <p className="mt-1 text-xs font-medium text-slate-500 dark:text-slate-400">
                       Jornada de servicio
                     </p>
                   </div>
@@ -235,7 +235,7 @@ export default function RestaurantSchedulesPage({
             ))}
           </div>
 
-          <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-5 sm:flex-row sm:justify-end">
+          <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
             <button
               type="button"
               onClick={() => {
@@ -243,13 +243,13 @@ export default function RestaurantSchedulesPage({
                 setPaused(initialSchedule.paused);
                 setSchedule(initialSchedule.days);
               }}
-              className="h-11 cursor-pointer rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100"
+              className="h-11 cursor-pointer rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
             >
               Cancelar cambios
             </button>
             <button
               type="submit"
-              className="h-11 cursor-pointer rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100"
+              className="h-11 cursor-pointer rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-500/20"
             >
               Guardar horarios
             </button>

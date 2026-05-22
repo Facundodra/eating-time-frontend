@@ -10,6 +10,19 @@ import UserName from "../shared/widgets/user-name";
 
 const pageHeaders = [
   {
+<<<<<<< Updated upstream
+=======
+    path: "/restaurant/discounts",
+    breadcrumb: "Gestion comercial",
+    title: "Descuentos del local",
+  },
+  {
+    path: "/restaurant/schedules",
+    breadcrumb: "Disponibilidad del local",
+    title: "Horarios y estado de servicio",
+  },
+  {
+>>>>>>> Stashed changes
     path: "/restaurant",
     breadcrumb: "Bienvenido/a al sistema",
     title: "Panel del local",
@@ -18,8 +31,13 @@ const pageHeaders = [
 
 function getPageHeader(pathname: string) {
   return (
+<<<<<<< Updated upstream
     pageHeaders.find((header) => pathname.startsWith(header.path)) ??
     pageHeaders[0]
+=======
+    pageHeaders.find((header) => pathname === header.path) ??
+    pageHeaders[pageHeaders.length - 1]
+>>>>>>> Stashed changes
   );
 }
 
