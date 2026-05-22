@@ -1,18 +1,21 @@
-import SideNav from "@/ui/admin/sidenav";
+import Sidenav from "@/ui/admin/sidenav";
 import Topnav from "@/ui/admin/topnav";
 
 export default function AdminLayout({
   children,
-}: Readonly<{
+}: {
   children: React.ReactNode;
-}>) {
+}) {
   return (
-    <div className="flex min-h-screen flex-wrap">
-      <SideNav />
+    <div className="flex min-h-screen bg-gray-50 text-slate-950 dark:bg-slate-950 dark:text-white">
+      <Sidenav />
 
-      <main className="min-w-0 flex-1 p-6 lg:p-10">
+      <main className="flex-1 overflow-x-hidden px-6 py-6">
         <Topnav />
-        {children}
+
+        <div className="mx-auto w-full max-w-7xl">
+          {children}
+        </div>
       </main>
     </div>
   );

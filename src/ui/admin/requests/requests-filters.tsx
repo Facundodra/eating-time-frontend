@@ -1,86 +1,76 @@
-const statusOptions = [
-  { value: "all", label: "Todos" },
-  { value: "pending", label: "Pendientes" },
-  { value: "approved", label: "Aprobadas" },
-  { value: "rejected", label: "Rechazadas" },
-];
+"use client";
 
-const sortOptions = [
-  { value: "newest", label: "Mas recientes" },
-  { value: "oldest", label: "Mas antiguas" },
-];
+type Props = {
+  resultCount: number;
+};
 
-export default function RequestsFilters() {
+export default function RequestsFilters({ resultCount }: Props) {
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-start justify-between gap-4">
-        <h2 className="text-base font-bold text-slate-950 dark:text-white">
-          Filtros de busqueda
-        </h2>
-        <span className="rounded-full bg-orange-50 px-4 py-2 text-xs font-bold text-orange-600 dark:bg-orange-500/10">
-          12 resultados
+    <section className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
+      <div className="mb-5 flex items-center justify-between">
+        <h2 className="text-base font-bold text-white">Filtros de búsqueda</h2>
+
+        <span className="rounded-full bg-orange-500/10 px-4 py-2 text-xs font-bold text-orange-500">
+          {resultCount} resultados
         </span>
       </div>
 
-      <form className="mt-5 grid gap-4 lg:grid-cols-[1.2fr_1.2fr_1.2fr_1.2fr_0.8fr]">
-        <label className="space-y-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Nombre del local
-          </span>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        <FilterField label="Nombre del local">
           <input
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:placeholder:text-slate-500"
-            placeholder="Buscar por nombre"
             type="text"
+            placeholder="Buscar por nombre"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-orange-500"
           />
-        </label>
+        </FilterField>
 
-        <label className="space-y-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Email
-          </span>
+        <FilterField label="Email">
           <input
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition placeholder:text-slate-400 focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:placeholder:text-slate-500"
+            type="text"
             placeholder="Buscar por email"
-            type="email"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-orange-500"
           />
-        </label>
+        </FilterField>
 
-        <label className="space-y-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Estado
-          </span>
-          <select className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950">
-            {statusOptions.map((status) => (
-              <option key={status.value} value={status.value}>
-                {status.label}
-              </option>
-            ))}
+        <FilterField label="Estado">
+          <select className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-orange-500">
+            <option>Todos</option>
+            <option>Pendientes</option>
+            <option>Aprobadas</option>
+            <option>Rechazadas</option>
           </select>
-        </label>
+        </FilterField>
 
-        <label className="space-y-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Fecha solicitud
-          </span>
+        <FilterField label="Fecha solicitud">
           <input
-            className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950"
             type="date"
+            className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-orange-500"
           />
-        </label>
+        </FilterField>
 
-        <label className="space-y-2">
-          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Ordenar por
-          </span>
-          <select className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950">
-            {sortOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+        <FilterField label="Ordenar por">
+          <select className="w-full rounded-xl border border-slate-800 bg-slate-950 px-4 py-3 text-sm text-white outline-none transition focus:border-orange-500">
+            <option>Más recientes</option>
+            <option>Más antiguos</option>
+            <option>Nombre A-Z</option>
           </select>
-        </label>
-      </form>
+        </FilterField>
+      </div>
     </section>
+  );
+}
+
+function FilterField({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label className="space-y-2">
+      <span className="text-xs font-medium text-slate-400">{label}</span>
+      {children}
+    </label>
   );
 }
