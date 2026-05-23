@@ -24,3 +24,12 @@ export type LoginWebResponse = {
 export type AuthSession = {
   user: AuthUser;
 };
+
+export type RegisterCredentials = {
+  name: string;
+  document: string;
+  phone: string;
+  email: string;
+  password: string;
+  profile_pic: File | string;  
+};
