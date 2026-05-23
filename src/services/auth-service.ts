@@ -1,4 +1,4 @@
-import type { AuthUser, LoginCredentials } from "@/lib/auth/types";
+import type { AuthUser, LoginCredentials, RegisterCredentials } from "@/lib/auth/types";
 
 export async function login(credentials: LoginCredentials): Promise<AuthUser> {
   // TODO: Replace this bypass with the real authentication API call.
@@ -42,4 +42,31 @@ export async function loginWithBypass({
       role: "client",
     }
   );
+}
+
+export async function register(credentials: RegisterCredentials): Promise<void> {
+  const body = new FormData();
+  body.append("nombre", credentials.name);
+  body.append("email", credentials.email);
+  body.append("cedula", credentials.document);
+  body.append("password", credentials.password);
+  if (credentials.phone) body.append("telefono", credentials.phone);
+  if (credentials.profile_pic instanceof File && credentials.profile_pic.size > 0)
+    body.append("foto", credentials.profile_pic);
+
+  const response = await fetch(
+    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/registro`,
+    { method: "POST", body }
+  );
+
+  if (!response.ok) {
+    let errorMessage = `Error al registrar (${response.status})`;
+    try {
+      const data = await response.json();
+      errorMessage = data.error ?? data.message ?? errorMessage;
+    } catch {
+      // API didn't return JSON
+    }
+    throw new Error(errorMessage);
+  }
 }
