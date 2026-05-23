@@ -11,10 +11,10 @@ export default function RequestsTable() {
   const { requests } = useRequests();
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-sm">
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="overflow-x-auto">
         <table className="w-full min-w-[850px] text-left text-sm">
-          <thead className="border-b border-slate-800 bg-slate-900 text-xs uppercase tracking-wide text-slate-400">
+          <thead className="border-b border-slate-100 bg-white text-xs uppercase tracking-wide text-slate-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
             <tr>
               <th className="px-5 py-4 font-bold">Local</th>
               <th className="px-5 py-4 font-bold">Email</th>
@@ -25,21 +25,21 @@ export default function RequestsTable() {
             </tr>
           </thead>
 
-          <tbody className="divide-y divide-slate-800 bg-slate-950">
+          <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
             {requests.map((request) => (
               <tr
                 key={request.email}
-                className="transition hover:bg-slate-900/70"
+                className="transition hover:bg-slate-50 dark:hover:bg-slate-900/70"
               >
-                <td className="px-5 py-4 font-bold text-white">
+                <td className="px-5 py-4 font-bold text-slate-900 dark:text-white">
                   {request.restaurant}
                 </td>
 
-                <td className="px-5 py-4 text-slate-300">{request.email}</td>
+                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">{request.email}</td>
 
-                <td className="px-5 py-4 text-slate-300">{request.phone}</td>
+                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">{request.phone}</td>
 
-                <td className="px-5 py-4 text-slate-300">{request.date}</td>
+                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">{request.date}</td>
 
                 <td className="px-5 py-4">
                   <span
