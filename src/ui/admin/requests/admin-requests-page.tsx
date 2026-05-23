@@ -10,11 +10,11 @@ export default function AdminRequestsPage() {
   return (
     <section className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
       <header>
-        <h1 className="text-2xl font-bold text-white">
+        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
           Solicitudes de locales
         </h1>
 
-        <p className="mt-2 text-sm text-slate-400">
+        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
           Gestión y revisión de solicitudes de registro de locales pendientes,
           aprobadas o rechazadas.
         </p>
@@ -35,10 +35,10 @@ export default function AdminRequestsPage() {
 
 function StatusCard({ label, value }: { label: string; value: number }) {
   return (
-    <article className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-sm">
-      <p className="text-sm font-semibold text-slate-400">{label}</p>
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">{label}</p>
 
-      <p className="mt-3 text-3xl font-bold text-white">{value}</p>
+      <p className="mt-3 text-3xl font-bold text-slate-950 dark:text-white">{value}</p>
     </article>
   );
 }

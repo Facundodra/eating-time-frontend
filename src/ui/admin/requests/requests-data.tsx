@@ -40,7 +40,12 @@ export const initialRequests: LocalRequest[] = [
     foodType: "Comida criolla",
     description:
       "Local gastronómico enfocado en platos tradicionales uruguayos, minutas, guisos, carnes y comidas caseras.",
-    images: [],
+    images: [
+      "/images/el_sabor_criollo_1.png",
+      "/images/el_sabor_criollo_2.png",
+      "/images/el_sabor_criollo_3.png",
+      "/images/el_sabor_criollo_4.png",
+    ],
   },
   {
     restaurant: "Wok Express",
@@ -52,6 +57,11 @@ export const initialRequests: LocalRequest[] = [
     foodType: "Comida asiática",
     description:
       "Propuesta gastronómica rápida basada en woks, arroz, noodles y platos de inspiración asiática.",
-    images: [],
+    images: [
+      "/images/wok_express_1.png",
+      "/images/wok_express_2.png",
+      "/images/wok_express_3.png",
+      "/images/wok_express_4.png",
+    ],
   },
 ];
