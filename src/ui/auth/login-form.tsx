@@ -139,7 +139,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
             </p>
           </div>
           <Link
-            href="/register"
+            href="/register/client"
             className="shrink-0 text-sm font-extrabold text-orange-600 transition hover:text-orange-700"
           >
             Crear cuenta
@@ -157,7 +157,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
             </p>
           </div>
           <Link
-            href="/restaurant/register"
+            href="/register/restaurant"
             className="flex h-11 shrink-0 items-center justify-center rounded-xl bg-orange-600 px-4 text-xs font-extrabold text-white transition hover:bg-orange-700"
           >
             Registrar mi local
