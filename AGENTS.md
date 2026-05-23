@@ -61,6 +61,9 @@ If a task requires modifying many files:
 - Shared types/interfaces belong in src/types.
 - Forms should use React Hook Form.
 - Use Axios for API requests.
+- Authentication is session/cookie based (JSESSIONID), not JWT.
+- Axios authenticated requests must use withCredentials: true.
+- Do not implement token persistence unless explicitly requested.
 
 ---
 

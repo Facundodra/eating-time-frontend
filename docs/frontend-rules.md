@@ -89,3 +89,17 @@ Always ask first before:
 - changing architecture
 - renaming many files
 - introducing major patterns
+
+---
+
+## Authentication
+
+Authentication is cookie/session based.
+
+Do not:
+- implement JWT storage
+- use localStorage for auth tokens
+- create refresh-token flows unless explicitly requested
+
+Axios authenticated requests should use:
+- withCredentials: true
