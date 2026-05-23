@@ -12,6 +12,10 @@
     @apply px-4 py-2 border border-gray-300 rounded-xl text-gray-700 text-xs hover:bg-orange-700 hover:border-orange-700 hover:text-white transition-colors duration-300;
 }
 
+.btn-secondary{
+    @apply h-[52px] w-full cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100;
+}
+
 .container{
     @apply max-w-[1440px] w-[85%] mx-auto;
 }
@@ -112,4 +116,11 @@
             @apply block max-w-[180px] opacity-100;
         }
     }
+}
+
+
+
+/* Clases Formulario */
+.field{
+    @apply h-12 w-full rounded-2xl border border-gray-200 px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100;
 }
