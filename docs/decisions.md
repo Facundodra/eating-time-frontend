@@ -69,3 +69,19 @@ Backend deployment target:
 
 Database and storage:
 - Supabase
+
+---
+
+## Authentication Strategy
+
+Authentication is session-based using JSESSIONID cookies handled by the backend.
+
+Reasons:
+- simpler integration with Spring Boot
+- avoids frontend token management
+- simpler security model for the project scope
+
+Frontend communicates with authenticated endpoints using Axios with:
+- withCredentials: true
+
+Frontend should not store authentication tokens in localStorage.
