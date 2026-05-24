@@ -11,6 +11,7 @@ import {
   updateDishAction,
 } from "@/app/restaurant/dishes/actions";
 import type { DishStatus, LocalDish, LocalDishesResponse } from "@/lib/local-dish/types";
+import { getLocalDishes } from "@/services/local-dish-service";
 
 type DishFilter = "all" | DishStatus;
 
@@ -33,6 +34,19 @@ function formatPrice(price: number) {
   return `$${price.toLocaleString("es-UY")}`;
 }
 
+function formatDate(dateStr: string) {
+  try {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString("es-UY", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
 export default function RestaurantDishesPage({
   initialData,
 }: {
@@ -40,9 +54,7 @@ export default function RestaurantDishesPage({
 }) {
   const [filter, setFilter] = useState<DishFilter>("all");
   const [dishes, setDishes] = useState(initialData.dishes);
-  const [selectedDishId, setSelectedDishId] = useState(
-    initialData.dishes[0]?.id ?? "",
-  );
+  const [selectedDishId, setSelectedDishId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -51,10 +63,8 @@ export default function RestaurantDishesPage({
   const createFormRef = useRef<HTMLFormElement>(null);
 
   // Edit form state
-  const [editName, setEditName] = useState(initialData.dishes[0]?.name ?? "");
-  const [editPrice, setEditPrice] = useState(
-    String(initialData.dishes[0]?.price ?? ""),
-  );
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
 
   const filteredDishes = useMemo(() => {
     if (filter === "all") return dishes;
@@ -92,8 +102,9 @@ export default function RestaurantDishesPage({
       } else {
         createFormRef.current?.reset();
         setShowCreateForm(false);
-        // Reload to get fresh data from server
-        window.location.reload();
+        // Refresh dish list without full page reload
+        const freshData = await getLocalDishes(initialData.localId);
+        setDishes(freshData.dishes);
       }
     });
   }
@@ -278,7 +289,7 @@ export default function RestaurantDishesPage({
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        Creado: {dish.createdAt}
+                        Creado: {formatDate(dish.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -446,7 +457,7 @@ export default function RestaurantDishesPage({
                   Fecha de creacion
                 </span>
                 <input
-                  value={selectedDish.createdAt}
+                  value={formatDate(selectedDish.createdAt)}
                   readOnly
                   className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
                 />
