@@ -33,3 +33,4 @@ export type RegisterCredentials = {
   password: string;
   profile_pic: File | string;  
 };
+
