@@ -157,7 +157,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
             </p>
           </div>
           <Link
-            href="/restaurant/register"
+            href="/local/register"
             className="flex h-11 shrink-0 items-center justify-center rounded-xl bg-orange-600 px-4 text-xs font-extrabold text-white transition hover:bg-orange-700"
           >
             Registrar mi local

@@ -2,7 +2,13 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { FRONTEND_SESSION_COOKIE_NAME } from "@/lib/auth/session-cookies";
 
-const publicRoutes = ["/register", "/login", "/forgot-password", "/reset-password"];
+const publicRoutes = [
+  "/register",
+  "/login",
+  "/local/register",
+  "/forgot-password",
+  "/reset-password",
+];
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
