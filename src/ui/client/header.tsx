@@ -9,6 +9,7 @@ import Image from "next/image";
 import Link from "next/link";
 
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
+import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 
 export default function Header() {
@@ -29,7 +30,7 @@ export default function Header() {
         </div>
       </Link>
 
-      <div className="search ml-auto">
+      <div className="search ml-auto hidden md:block">
         <Form
           action="/search"
           className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white"
@@ -37,7 +38,7 @@ export default function Header() {
           <input
             type="text"
             placeholder="Buscar..."
-            className="min-w-xl pr-2 text-sm focus:outline-none"
+            className="min-w-[400px] pr-2 text-sm focus:outline-none"
           />
           <button
             type="submit"
@@ -48,7 +49,11 @@ export default function Header() {
         </Form>
       </div>
 
-      <div className="cart ml-auto mr-5">
+      <div className="theme ml-auto mr-3">
+        <ThemeToggle />
+      </div>
+
+      <div className="cart mr-5">
         <Link
           href="/cart"
           className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800"
@@ -58,7 +63,7 @@ export default function Header() {
       </div>
 
       <div className="account">
-        <Link href="/account" className="relative bottom-[3px]">
+        <Link href="/client/mi-cuenta" className="relative bottom-[3px]">
           <ProfilePicture />
         </Link>
       </div>

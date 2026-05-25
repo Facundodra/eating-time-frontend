@@ -1,5 +1,8 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import { getLocalDiscounts } from "@/services/local-discount-service";
+import RestaurantDiscountsPage from "@/ui/restaurant/discounts/restaurant-discounts-page";
 
-export default function DiscountsPage() {
-  return <ComingSoonPage backHref="/restaurant" title="Descuentos" />;
+export default async function DiscountsPage() {
+  const discounts = await getLocalDiscounts("dev-local");
+
+  return <RestaurantDiscountsPage initialData={discounts} />;
 }
