@@ -94,3 +94,35 @@ Before implementing significant features:
 Important:
 - Documentation represents the current understanding of the project, but implementation details may evolve during development.
 - If documentation conflicts with explicit user instructions, prioritize the user instructions.
+
+---
+
+## Cursor Cloud specific instructions
+
+### Services
+
+This repository is a **frontend-only** Next.js application. The only service to run is the Next.js dev server:
+
+```bash
+npm run dev   # starts on http://localhost:3000
+```
+
+No backend, database, or Docker services are required — all data is currently mocked in `src/lib/data.ts`.
+
+### Key commands
+
+| Task | Command |
+|------|---------|
+| Install deps | `npm install` |
+| Dev server | `npm run dev` |
+| Lint | `npm run lint` (runs ESLint) |
+| Build | `npm run build` |
+| TypeScript check | `npx tsc --noEmit` |
+
+### Notes
+
+- The app uses **Next.js 16** with Turbopack in dev mode; hot-reload is fast and reliable.
+- The landing page redirects to `/restaurant` by default.
+- Several pages are placeholders ("not yet implemented"): `/restaurant/dishes`, `/restaurant/statistics`, `/restaurant/workbench`, `/admin/users`.
+- Despite AGENTS.md listing axios, shadcn/ui, react-hook-form, and MUI X Charts in the stack, these are **not yet installed** in `package.json`. They are planned for future use.
+- No environment variables are required at this time (no `.env` file needed).
