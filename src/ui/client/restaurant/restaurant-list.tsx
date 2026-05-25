@@ -165,7 +165,7 @@ export default function LocalesList() {
       {/* Lista */}
       {visible.length === 0 ? (
         <p className="text-sm text-slate-400">
-          No hay locales que coincidan con los filtros seleccionados.
+          No se encontraron resultados para los filtros aplicados
         </p>
       ) : (
         <div className="locales-list flex flex-wrap max-w-[1440px] mx-auto">
