@@ -88,7 +88,22 @@ Examples:
 
 Frontend communicates with backend through REST APIs using Axios.
 
-Authentication is expected to use JWT-based authentication.
+---
+
+# Authentication
+
+Authentication is session-based using JSESSIONID cookies managed by the backend.
+
+Frontend API requests must use Axios with:
+- withCredentials: true
+
+Authentication flow:
+- Login endpoint returns the authenticated user role.
+- The backend manages the session through cookies.
+- If the session expires or becomes invalid, backend returns 401.
+- Frontend should redirect the user to /login when receiving unauthorized responses.
+
+No JWT or localStorage token persistence is currently used.
 
 ---
 

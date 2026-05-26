@@ -1,5 +1,13 @@
 import LoginPage from "@/ui/auth/login-page";
 
-export default function Page() {
-  return <LoginPage />;
+type PageProps = {
+  searchParams: Promise<{
+    reason?: string;
+  }>;
+};
+
+export default async function Page({ searchParams }: PageProps) {
+  const { reason } = await searchParams;
+
+  return <LoginPage reason={reason} />;
 }

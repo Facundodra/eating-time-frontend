@@ -11,6 +11,11 @@ import UserName from "../shared/widgets/user-name";
 
 const pageHeaders = [
   {
+    path: "/restaurant/discounts",
+    breadcrumb: "Gestion comercial",
+    title: "Descuentos del local",
+  },
+  {
     path: "/restaurant/schedules",
     breadcrumb: "Disponibilidad del local",
     title: "Horarios y estado de servicio",
@@ -25,7 +30,7 @@ const pageHeaders = [
 function getPageHeader(pathname: string) {
   return (
     pageHeaders.find((header) => pathname === header.path) ??
-    pageHeaders[0]
+    pageHeaders[pageHeaders.length - 1]
   );
 }
 

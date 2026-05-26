@@ -5,7 +5,11 @@ import LoginFoodImage from "@/ui/auth/images/login-food.png";
 import LoginForm from "@/ui/auth/login-form";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 
-export default function LoginPage() {
+type LoginPageProps = {
+  reason?: string;
+};
+
+export default function LoginPage({ reason }: LoginPageProps) {
   return (
     <main className="min-h-screen bg-[#fbf8f5] px-6 py-8 text-slate-900 sm:px-10 lg:px-14">
       <div className="mx-auto grid min-h-[calc(100vh-64px)] w-full max-w-[1440px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_420px] xl:gap-24">
@@ -50,7 +54,7 @@ export default function LoginPage() {
         </section>
 
         <div className="flex justify-center lg:justify-end">
-          <LoginForm />
+          <LoginForm reason={reason} />
         </div>
       </div>
     </main>
