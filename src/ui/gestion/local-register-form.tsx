@@ -15,6 +15,7 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
@@ -92,13 +93,11 @@ function PhotoThumb({
   file: File;
   onRemove: () => void;
 }) {
-  const [previewUrl, setPreviewUrl] = useState("");
+  const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
 
   useEffect(() => {
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   return (
     <div className="relative h-[72px] w-[72px] overflow-hidden rounded-[10px] border border-gray-200 dark:border-slate-700">
