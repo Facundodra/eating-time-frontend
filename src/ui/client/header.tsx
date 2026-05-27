@@ -30,7 +30,7 @@ export default function Header() {
         </div>
       </Link>
 
-      <div className="search ml-auto">
+      <div className="search ml-auto hidden md:block">
         <Form
           action="/search"
           className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white"
@@ -38,7 +38,7 @@ export default function Header() {
           <input
             type="text"
             placeholder="Buscar..."
-            className="min-w-xl pr-2 text-sm focus:outline-none"
+            className="min-w-[400px] pr-2 text-sm focus:outline-none"
           />
           <button
             type="submit"
@@ -63,7 +63,7 @@ export default function Header() {
       </div>
 
       <div className="account">
-        <Link href="/account" className="relative bottom-[3px]">
+        <Link href="/client/mi-cuenta" className="relative bottom-[3px]">
           <ProfilePicture />
         </Link>
       </div>

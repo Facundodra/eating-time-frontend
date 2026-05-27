@@ -81,21 +81,14 @@ export async function register(credentials: RegisterCredentials): Promise<void> 
     body.append("foto", credentials.profile_pic);
   }
 
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/registro`,
-    { method: "POST", body },
-  );
-
-  if (!response.ok) {
-    let errorMessage = `Error al registrar (${response.status})`;
-
-    try {
-      const data = await response.json();
-      errorMessage = data.error ?? data.message ?? errorMessage;
-    } catch {
-      // API did not return JSON.
+  try {
+    await publicApi.post("/api/auth/registro", body);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data;
+      const message = data?.error ?? data?.message ?? `Error al registrar (${error.response?.status})`;
+      throw new Error(message);
     }
-
-    throw new Error(errorMessage);
+    throw new Error("No se pudo registrar. Intentalo nuevamente.");
   }
 }
