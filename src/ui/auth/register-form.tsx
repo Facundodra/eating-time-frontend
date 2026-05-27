@@ -214,10 +214,12 @@ export default function RegisterForm() {
           }
         </div>
 
-        {state?.error === "Bad Request" && (
+        {state?.error && (
           <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            El email o la cédula ya están registrados
-          </p>          
+            {state.error === "Bad Request"
+              ? "El email o la cédula ya están registrados"
+              : state.error}
+          </p>
         )}
 
         <button

@@ -139,7 +139,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
             </p>
           </div>
           <Link
-            href="/register"
+            href="/register/client"
             className="shrink-0 text-sm font-extrabold text-orange-600 transition hover:text-orange-700"
           >
             Crear cuenta
