@@ -1,14 +1,40 @@
 "use client";
 
-type Props = {
-  resultCount: number;
-};
+import type { RequestStatusFilter } from "./requests-data";
 
-export default function RequestsFilters({ resultCount }: Props) {
+type Props = Readonly<{
+  resultCount: number;
+  filterRestaurant: string;
+  onFilterRestaurantChange: (value: string) => void;
+  filterEmail: string;
+  onFilterEmailChange: (value: string) => void;
+  filterStatus: RequestStatusFilter;
+  onFilterStatusChange: (value: RequestStatusFilter) => void;
+  filterDate: string;
+  onFilterDateChange: (value: string) => void;
+  sortBy: "recent" | "oldest" | "name-asc";
+  onSortByChange: (value: "recent" | "oldest" | "name-asc") => void;
+}>;
+
+export default function RequestsFilters({
+  resultCount,
+  filterRestaurant,
+  onFilterRestaurantChange,
+  filterEmail,
+  onFilterEmailChange,
+  filterStatus,
+  onFilterStatusChange,
+  filterDate,
+  onFilterDateChange,
+  sortBy,
+  onSortByChange,
+}: Props) {
   return (
     <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-5 flex items-center justify-between">
-        <h2 className="text-base font-bold text-slate-950 dark:text-white">Filtros de búsqueda</h2>
+        <h2 className="text-base font-bold text-slate-950 dark:text-white">
+          Filtros de búsqueda
+        </h2>
 
         <span className="rounded-full bg-orange-500/10 px-4 py-2 text-xs font-bold text-orange-500">
           {resultCount} resultados
@@ -20,6 +46,8 @@ export default function RequestsFilters({ resultCount }: Props) {
           <input
             type="text"
             placeholder="Buscar por nombre"
+            value={filterRestaurant}
+            onChange={(event) => onFilterRestaurantChange(event.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
           />
         </FilterField>
@@ -28,31 +56,49 @@ export default function RequestsFilters({ resultCount }: Props) {
           <input
             type="text"
             placeholder="Buscar por email"
+            value={filterEmail}
+            onChange={(event) => onFilterEmailChange(event.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500"
           />
         </FilterField>
 
         <FilterField label="Estado">
-          <select className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
-            <option>Todos</option>
-            <option>Pendientes</option>
-            <option>Aprobadas</option>
-            <option>Rechazadas</option>
+          <select
+            value={filterStatus}
+            onChange={(event) =>
+              onFilterStatusChange(event.target.value as RequestStatusFilter)
+            }
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+          >
+            <option value="all">Todos</option>
+            <option value="pending">Pendientes</option>
+            <option value="approved">Aceptadas</option>
+            <option value="rejected">Rechazadas</option>
           </select>
         </FilterField>
 
         <FilterField label="Fecha solicitud">
           <input
             type="date"
+            value={filterDate}
+            onChange={(event) => onFilterDateChange(event.target.value)}
             className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
           />
         </FilterField>
 
         <FilterField label="Ordenar por">
-          <select className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
-            <option>Más recientes</option>
-            <option>Más antiguos</option>
-            <option>Nombre A-Z</option>
+          <select
+            value={sortBy}
+            onChange={(event) =>
+              onSortByChange(
+                event.target.value as "recent" | "oldest" | "name-asc",
+              )
+            }
+            className="w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-white"
+          >
+            <option value="recent">Más recientes</option>
+            <option value="oldest">Más antiguos</option>
+            <option value="name-asc">Nombre A-Z</option>
           </select>
         </FilterField>
       </div>
@@ -63,13 +109,15 @@ export default function RequestsFilters({ resultCount }: Props) {
 function FilterField({
   label,
   children,
-}: {
+}: Readonly<{
   label: string;
   children: React.ReactNode;
-}) {
+}>) {
   return (
     <label className="space-y-2">
-      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{label}</span>
+      <span className="text-xs font-medium text-slate-500 dark:text-slate-400">
+        {label}
+      </span>
       {children}
     </label>
   );

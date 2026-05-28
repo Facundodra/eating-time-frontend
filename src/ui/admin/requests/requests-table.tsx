@@ -1,15 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useRequests } from "./use-requests";
+import type { LocalRequest } from "./requests-data";
 import {
   getRequestStatusLabel,
   getRequestStatusStyle,
-} from "./requests-status";;
+} from "./requests-status";
 
-export default function RequestsTable() {
-  const { requests } = useRequests();
+type RequestsTableProps = Readonly<{
+  requests: LocalRequest[];
+}>;
 
+export default function RequestsTable({ requests }: RequestsTableProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="overflow-x-auto">
@@ -28,7 +30,7 @@ export default function RequestsTable() {
           <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
             {requests.map((request) => (
               <tr
-                key={request.email}
+                key={request.id}
                 className="transition hover:bg-slate-50 dark:hover:bg-slate-900/70"
               >
                 <td className="px-5 py-4 font-bold text-slate-900 dark:text-white">
@@ -54,7 +56,7 @@ export default function RequestsTable() {
                 <td className="px-5 py-4">
                   <Link
                     href={`/admin/requests/${encodeURIComponent(
-                      request.email,
+                      request.id.toString(),
                     )}`}
                     className="rounded-xl bg-orange-500/10 px-4 py-2 text-xs font-bold text-orange-500 transition hover:bg-orange-500 hover:text-white"
                   >

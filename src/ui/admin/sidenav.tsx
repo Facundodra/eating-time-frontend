@@ -42,7 +42,7 @@ export default function Sidenav() {
       </Link>
 
       <NavLinksAdmin />
-      <SessionWidget profileHref="/admin/my-data" />
+      <SessionWidget profileHref="/admin/my-data" showProfilePicture={false} />
     </aside>
   );
 }

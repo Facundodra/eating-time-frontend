@@ -10,19 +10,49 @@ function applyTheme(theme: Theme) {
   document.documentElement.style.colorScheme = theme;
 }
 
+function getSystemTheme(): Theme {
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
+}
+
+function getStoredTheme(): Theme | null {
+  const theme = localStorage.getItem(THEME_STORAGE_KEY);
+
+  return theme === "dark" || theme === "light" ? theme : null;
+}
+
 export default function ThemeToggle() {
   useEffect(() => {
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+
+    applyTheme(getStoredTheme() ?? getSystemTheme());
+
     function handleStorageChange(event: StorageEvent) {
       if (event.key !== THEME_STORAGE_KEY) {
         return;
       }
 
-      const nextTheme = event.newValue === "dark" ? "dark" : "light";
+      const nextTheme = event.newValue === "dark" || event.newValue === "light"
+        ? event.newValue
+        : getSystemTheme();
+
       applyTheme(nextTheme);
     }
 
+    function handleSystemThemeChange() {
+      if (!getStoredTheme()) {
+        applyTheme(getSystemTheme());
+      }
+    }
+
     window.addEventListener("storage", handleStorageChange);
-    return () => window.removeEventListener("storage", handleStorageChange);
+    mediaQuery.addEventListener("change", handleSystemThemeChange);
+
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      mediaQuery.removeEventListener("change", handleSystemThemeChange);
+    };
   }, []);
 
   function toggleTheme() {

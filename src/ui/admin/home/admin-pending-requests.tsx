@@ -75,7 +75,7 @@ export default function AdminPendingRequests() {
                       className="rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10"
                       href={`/admin/requests/${encodeURIComponent(request.email)}`}
                     >
-                      Ver solicitud
+                      Ver solicitud 
                     </Link>
                   </td>
                 </tr>

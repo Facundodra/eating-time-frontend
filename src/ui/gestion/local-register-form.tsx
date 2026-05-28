@@ -19,7 +19,6 @@ import {
   useRef,
   useState,
   type DragEvent,
-  type FormEvent,
 } from "react";
 
 import {
@@ -33,11 +32,15 @@ const MAX_PHOTOS = 5;
 const RESIZE_MAX_WIDTH = 1200;
 const RESIZE_QUALITY = 0.82;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 function isAcceptedImage(file: File) {
   return (
-    ACCEPTED_IMAGE_TYPES.includes(file.type) ||
+    ACCEPTED_IMAGE_TYPES.has(file.type) ||
     /\.(jpe?g|png|webp)$/i.test(file.name)
   );
 }
@@ -86,13 +89,15 @@ function resizeImage(file: File): Promise<File> {   // aca comprimimo (en el fro
   });
 }
 
+type PhotoThumbProps = Readonly<{
+  file: File;
+  onRemove: () => void;
+}>;
+
 function PhotoThumb({
   file,
   onRemove,
-}: {
-  file: File;
-  onRemove: () => void;
-}) {
+}: PhotoThumbProps) {
   const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
 
   useEffect(() => {
@@ -190,7 +195,7 @@ export default function LocalRegisterForm() {
     event.target.value = "";
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
+  function handleDrop(event: DragEvent<HTMLElement>) {
     event.preventDefault();
     if (event.dataTransfer.files.length > 0) {
       void addFiles(event.dataTransfer.files);
@@ -202,7 +207,9 @@ export default function LocalRegisterForm() {
     setPhotoError(null);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: { preventDefault(): void; currentTarget: HTMLFormElement },
+  ): Promise<void> {
     event.preventDefault();
     setSubmitError(null);
 
@@ -214,11 +221,11 @@ export default function LocalRegisterForm() {
     setPhotoError(null);
 
     const formData = new FormData(event.currentTarget);
-    const nombre = String(formData.get("nombre") ?? "").trim();
-    const descripcion = String(formData.get("descripcion") ?? "").trim();
-    const email = String(formData.get("email") ?? "").trim();
-    const direccion = String(formData.get("direccion") ?? "").trim();
-    const telefono = String(formData.get("telefono") ?? "").trim();
+    const nombre = ((formData.get("nombre") as string | null) ?? "").trim();
+    const descripcion = ((formData.get("descripcion") as string | null) ?? "").trim();
+    const email = ((formData.get("email") as string | null) ?? "").trim();
+    const direccion = ((formData.get("direccion") as string | null) ?? "").trim();
+    const telefono = ((formData.get("telefono") as string | null) ?? "").trim();
 
     if (!nombre) {
       setSubmitError("El nombre del local es obligatorio");
@@ -390,21 +397,16 @@ export default function LocalRegisterForm() {
             </p>
           </div>
 
-          <div
-            role="button"
-            tabIndex={isProcessingPhotos ? -1 : 0}
-            onKeyDown={(event) => {
-              if (!isProcessingPhotos && (event.key === "Enter" || event.key === " ")) {
-                fileInputRef.current?.click();
-              }
-            }}
+          <button
+            type="button"
+            disabled={isProcessingPhotos}
             onDragOver={(event) => event.preventDefault()}
             onDrop={isProcessingPhotos ? undefined : handleDrop}
             onClick={() => !isProcessingPhotos && fileInputRef.current?.click()}
-            className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-6 text-center transition ${
+            className={`flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-6 text-center transition ${
               isProcessingPhotos
                 ? "cursor-wait border-orange-300 bg-orange-50/40 dark:border-orange-500/30 dark:bg-orange-500/5"
-                : "border-gray-200 bg-gray-50 hover:border-orange-500 hover:bg-orange-50/50 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-500/60 dark:hover:bg-orange-500/5"
+                : "cursor-pointer border-gray-200 bg-gray-50 hover:border-orange-500 hover:bg-orange-50/50 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-500/60 dark:hover:bg-orange-500/5"
             }`}
           >
             {isProcessingPhotos ? (
@@ -431,7 +433,7 @@ export default function LocalRegisterForm() {
                 </span>
               </>
             )}
-          </div>
+          </button>
 
           <input
             ref={fileInputRef}

@@ -1,6 +1,9 @@
 export type RequestStatus = "pending" | "approved" | "rejected";
 
+export type RequestStatusFilter = "all" | RequestStatus;
+
 export type LocalRequest = {
+  id: number;
   restaurant: string;
   email: string;
   phone: string;
@@ -12,8 +15,16 @@ export type LocalRequest = {
   images: string[];
 };
 
+export function matchesRequestStatusFilter(
+  request: LocalRequest,
+  filterStatus: RequestStatusFilter,
+): boolean {
+  return filterStatus === "all" || request.status === filterStatus;
+}
+
 export const initialRequests: LocalRequest[] = [
   {
+    id: 1,
     restaurant: "La Pasta Nostra",
     email: "lapastanostra@email.com",
     phone: "099 123 456",
@@ -31,6 +42,7 @@ export const initialRequests: LocalRequest[] = [
     ],
   },
   {
+    id: 2,
     restaurant: "Sabor Criollo",
     email: "saborcriollo@email.com",
     phone: "098 456 789",
@@ -48,6 +60,7 @@ export const initialRequests: LocalRequest[] = [
     ],
   },
   {
+    id: 3,
     restaurant: "Wok Express",
     email: "wokexpress@email.com",
     phone: "091 852 741",
