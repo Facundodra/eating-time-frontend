@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { TagIcon } from "@heroicons/react/24/outline";
 
 import { getDishes, type DishFilter } from "@/services/client/client-service";
@@ -169,7 +170,7 @@ export default function DishesList() {
           <div className="flex flex-wrap">
             {dishes.map((dish) => (
               <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
-                <div className="rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
+              <Link href={`/client/platos/${dish.id}`} className="block rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
                   <div className="flex items-center justify-center bg-orange-50 h-[150px]">
                     {dish.imageUrl ? (
                       <img
@@ -193,7 +194,7 @@ export default function DishesList() {
                       </span>
                     </div>
                   </div>
-                </div>
+                </Link>
               </div>
             ))}
           </div>

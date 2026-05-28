@@ -128,3 +128,22 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
         throw new Error("No se pudieron cargar los platos.");
     }
 }
+
+export async function getDish(id: string): Promise<ClientDish> {
+    if (typeof window !== 'undefined') {
+        const session = getStoredSession();
+        if (!session) throw new Error("Sesión no encontrada");
+    }
+
+    try {
+        const response = await api.get<PlatoDtoFromApi>(`/api/platos/${id}`);
+        return mapPlatoToClientDish(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener plato (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo cargar el plato.");
+    }
+}

@@ -15,6 +15,7 @@ export function saveSession(session: StoredSession) {
 }
 
 export function getStoredSession(): StoredSession | null {
+  if (typeof window === 'undefined') return null;
   const session = sessionStorage.getItem(SESSION_STORAGE_KEY);
 
   if (!session) {
