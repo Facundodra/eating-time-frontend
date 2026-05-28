@@ -11,17 +11,25 @@ export const metadata: Metadata = {
 
 const themeScript = `
 try {
-  var theme = localStorage.getItem("${THEME_STORAGE_KEY}");
   var root = document.documentElement;
+  var storedTheme = localStorage.getItem("${THEME_STORAGE_KEY}");
+  var prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  var theme = storedTheme === "dark" || storedTheme === "light"
+    ? storedTheme
+    : prefersDark
+      ? "dark"
+      : "light";
+
   if (theme === "dark") {
     root.classList.add("dark");
-    root.style.colorScheme = "dark";
   } else {
     root.classList.remove("dark");
-    root.style.colorScheme = "light";
   }
+
+  root.style.colorScheme = theme;
 } catch (_) {
   document.documentElement.classList.remove("dark");
+  document.documentElement.style.colorScheme = "light";
 }
 `;
 

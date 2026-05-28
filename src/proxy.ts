@@ -5,6 +5,8 @@ import { FRONTEND_SESSION_COOKIE_NAME } from "@/lib/auth/session-cookies";
 const publicRoutes = [
   "/register",
   "/login",
+  "/confirmar-cuenta",
+  "/local/confirmation",
   "/local/register",
   "/forgot-password",
   "/reset-password",
