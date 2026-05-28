@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-
 import type { LocalRequest } from "./requests-data";
 import {
   getRequestStatusLabel,
@@ -21,7 +20,7 @@ export default function RequestsTable({ requests }: RequestsTableProps) {
             <tr>
               <th className="px-5 py-4 font-bold">Local</th>
               <th className="px-5 py-4 font-bold">Email</th>
-              <th className="px-5 py-4 font-bold">Telefono</th>
+              <th className="px-5 py-4 font-bold">Teléfono</th>
               <th className="px-5 py-4 font-bold">Fecha solicitud</th>
               <th className="px-5 py-4 font-bold">Estado</th>
               <th className="px-5 py-4 font-bold">Detalle</th>
@@ -38,17 +37,11 @@ export default function RequestsTable({ requests }: RequestsTableProps) {
                   {request.restaurant}
                 </td>
 
-                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">
-                  {request.email}
-                </td>
+                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">{request.email}</td>
 
-                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">
-                  {request.phone}
-                </td>
+                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">{request.phone}</td>
 
-                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">
-                  {request.date}
-                </td>
+                <td className="px-5 py-4 text-slate-700 dark:text-slate-300">{request.date}</td>
 
                 <td className="px-5 py-4">
                   <span

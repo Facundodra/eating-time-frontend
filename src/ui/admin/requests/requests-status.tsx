@@ -1,4 +1,4 @@
-import type { RequestStatus } from "./requests-data";
+import { type RequestStatus } from "./requests-data";
 
 export const requestStatusLabels: Record<RequestStatus, string> = {
   pending: "Pendiente",
