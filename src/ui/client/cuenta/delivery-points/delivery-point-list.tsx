@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-import { getPuntosEntrega } from "@/services/client/client-service";
-import type { PuntoDeEntrega } from "@/lib/client/types";
+import { getDeliveryPoints } from "@/services/client/client-service";
+import type { DeliveryPoint } from "@/lib/client/types";
 
 import { MapPinIcon } from "@heroicons/react/24/outline";
 
-function PuntoEntregaSkeleton() {
+function DeliveryPointSkeleton() {
   return (
     <ul className="space-y-3">
       {[1, 2, 3].map((i) => (
@@ -23,21 +23,21 @@ function PuntoEntregaSkeleton() {
   );
 }
 
-export default function PuntoEntregaList() {
-  const [puntos, setPuntos] = useState<PuntoDeEntrega[]>([]);
+export default function DeliveryPointList() {
+  const [deliveryPoints, setDeliveryPoints] = useState<DeliveryPoint[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getPuntosEntrega()
-      .then(setPuntos)
+    getDeliveryPoints()
+      .then(setDeliveryPoints)
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Error al cargar"),
       )
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <PuntoEntregaSkeleton />;
+  if (loading) return <DeliveryPointSkeleton />;
 
   if (error) {
     return (
@@ -47,7 +47,7 @@ export default function PuntoEntregaList() {
     );
   }
 
-  if (puntos.length === 0) {
+  if (deliveryPoints.length === 0) {
     return (
       <p className="text-sm text-slate-400">
         No tenés puntos de entrega guardados todavía.
@@ -57,9 +57,9 @@ export default function PuntoEntregaList() {
 
   return (
     <ul className="space-y-3">
-      {puntos.map((punto) => (
+      {deliveryPoints.map((deliveryPoint) => (
         <li
-          key={punto.id}
+          key={deliveryPoint.id}
           className="rounded-xl border border-gray-200 bg-white px-5 py-4 flex align-center"
         >
           <p className="flex align-center justify-center mr-3">
@@ -67,15 +67,15 @@ export default function PuntoEntregaList() {
           </p>
           <div>
             <p className="text-sm font-bold text-slate-900">
-              {punto.calle} {punto.numero}
-              {punto.nroApto ? `, Apto ${punto.nroApto}` : ""}
+              {deliveryPoint.calle} {deliveryPoint.numero}
+              {deliveryPoint.nroApto ? `, Apto ${deliveryPoint.nroApto}` : ""}
             </p>
             <p className="mt-0.5 text-xs font-medium text-slate-400">
-              {punto.localidad}
+              {deliveryPoint.localidad}
             </p>
-            {punto.indicaciones && (
+            {deliveryPoint.indicaciones && (
               <p className="mt-2 text-xs text-slate-500">
-                {punto.indicaciones}
+                {deliveryPoint.indicaciones}
               </p>
             )}
           </div>
