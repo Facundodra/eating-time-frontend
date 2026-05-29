@@ -1,7 +1,7 @@
-import PuntoEntregaPage from "@/ui/client/cuenta/puntos-de-entrega/punto-entrega-page";
+import DeliveryPointPage from "@/ui/client/cuenta/delivery-points/delivery-point-page";
 
 export default function Page() {
   return (
-    <PuntoEntregaPage />
+    <DeliveryPointPage />
   );
 }

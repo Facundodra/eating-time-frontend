@@ -7,9 +7,11 @@ import type {
     PuntoEntregaCredentials,
     PuntoDeEntrega,
     RestaurantList
+    DeliveryPointCredentials,
+    DeliveryPoint,
 } from "@/lib/client/types"
 
-export async function addPuntoEntrega(credentials: PuntoEntregaCredentials): Promise<void>{
+export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = getStoredSession();
     if (!session) throw new Error("Sesión no encontrada");
 
@@ -40,12 +42,12 @@ export async function addPuntoEntrega(credentials: PuntoEntregaCredentials): Pro
 
 }
 
-export async function getPuntosEntrega(): Promise<PuntoDeEntrega[]> {
+export async function getDeliveryPoints(): Promise<DeliveryPoint[]> {
     const session = getStoredSession();
     if (!session) throw new Error("Sesión no encontrada");
 
     try {
-        const response = await api.get<PuntoDeEntrega[]>(
+        const response = await api.get<DeliveryPoint[]>(
             `/api/clientes/${session.idTipoUsuario}/puntos-entrega`
         );
         return response.data;

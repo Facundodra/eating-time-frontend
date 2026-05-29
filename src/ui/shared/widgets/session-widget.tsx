@@ -18,10 +18,12 @@ import UserName from "./user-name";
 
 type SessionWidgetProps = {
   profileHref?: string;
+  showProfilePicture?: boolean;
 };
 
 export default function SessionWidget({
   profileHref = "/restaurant/my-data",
+  showProfilePicture = true,
 }: SessionWidgetProps) {
   const router = useRouter();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
@@ -45,9 +47,11 @@ export default function SessionWidget({
         href={profileHref}
         className="session-widget-link flex w-full items-center gap-3 overflow-hidden"
       >
-        <span className="flex h-7 w-7 shrink-0 items-center justify-center">
-          <ProfilePicture className="h-7 w-7 max-w-none" />
-        </span>
+        {showProfilePicture ? (
+          <span className="flex h-7 w-7 shrink-0 items-center justify-center">
+            <ProfilePicture className="h-7 w-7 max-w-none" />
+          </span>
+        ) : null}
         <div className="session-widget-content flex min-w-0 flex-col justify-center">
           <UserName className="session-widget-name mb-1 block text-sm font-medium leading-[1em]" />
           <UserEmail className="session-widget-email block text-xs leading-[1em] text-gray-500" />

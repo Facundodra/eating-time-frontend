@@ -1,4 +1,4 @@
-export type PuntoEntregaCredentials = {
+export type DeliveryPointCredentials = {
   loc: string;
   street: string;
   number: string;
@@ -6,7 +6,7 @@ export type PuntoEntregaCredentials = {
   indications: string;
 }
 
-export type PuntoDeEntrega = {
+export type DeliveryPoint = {
   id: number;
   localidad: string;
   calle: string;

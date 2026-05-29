@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useState, useTransition } from "react";
 
-import { addPuntoEntrega } from "@/services/client/client-service";
-import PuntoEntregaList from "./punto-entrega-list";
+import { addDeliveryPoint } from "@/services/client/client-service";
+import DeliveryPointList from "./delivery-point-list";
 
 
-export default function PuntoEntregaForm() {
+export default function DeliveryPointForm() {
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -25,7 +25,7 @@ export default function PuntoEntregaForm() {
 
     startTransition(async () => {
       try {
-        await addPuntoEntrega({
+        await addDeliveryPoint({
           loc: String(fd.get("loc") ?? "").trim(),
           street: String(fd.get("street") ?? "").trim(),
           number: String(fd.get("number") ?? "").trim(),
