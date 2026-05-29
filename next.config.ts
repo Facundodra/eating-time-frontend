@@ -14,6 +14,17 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "20mb", // por el temita de que pueden ser varias fotos
     },
   },
+  images: {
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "upload.wikimedia.org",
+        pathname: "/**",
+      },
+    ],
+  },
 };
+
+
 
 export default nextConfig;

@@ -1,6 +1,6 @@
 import { DishStatus } from "../local-dish/types";
 
-export type PuntoEntregaCredentials = {
+export type DeliveryPointCredentials = {
   loc: string;
   street: string;
   number: string;
@@ -8,7 +8,7 @@ export type PuntoEntregaCredentials = {
   indications: string;
 }
 
-export type PuntoDeEntrega = {
+export type DeliveryPoint = {
   id: number;
   localidad: string;
   calle: string;
@@ -28,4 +28,14 @@ export type ClientDish = {
   createdAt: string;
   localId: number;
   categories: number[];
+}
+
+export type RestaurantList = {
+  id: number;
+  name: string;
+  description: string;
+  address: string;
+  url_photo: string;
+  stars: number;
+  state: boolean;
 }

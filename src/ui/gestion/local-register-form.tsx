@@ -15,10 +15,10 @@ import Link from "next/link";
 import {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
   type DragEvent,
-  type FormEvent,
 } from "react";
 
 import {
@@ -27,32 +27,82 @@ import {
 } from "@/services/gestion-service";
 import LoadingButton from "@/ui/shared/buttons/loading-button";
 
-const MAX_FILE_SIZE = 1 * 1024 * 1024;
+const MAX_RAW_FILE_SIZE = 15 * 1024 * 1024;
 const MAX_PHOTOS = 5;
+const RESIZE_MAX_WIDTH = 1200;
+const RESIZE_QUALITY = 0.82;
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
+const ACCEPTED_IMAGE_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/webp",
+]);
 
 function isAcceptedImage(file: File) {
   return (
-    ACCEPTED_IMAGE_TYPES.includes(file.type) ||
+    ACCEPTED_IMAGE_TYPES.has(file.type) ||
     /\.(jpe?g|png|webp)$/i.test(file.name)
   );
 }
 
+function resizeImage(file: File): Promise<File> {   // aca comprimimo (en el front) antes de mandar al back. 
+  return new Promise((resolve) => {
+    const img = new Image();
+    const url = URL.createObjectURL(file);
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+
+      const scale = Math.min(1, RESIZE_MAX_WIDTH / img.width);
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(img.width * scale);
+      canvas.height = Math.round(img.height * scale);
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve(file);
+        return;
+      }
+
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+      canvas.toBlob(
+        (blob) => {
+          if (!blob) {
+            resolve(file);
+            return;
+          }
+          const outputName = file.name.replace(/\.[^.]+$/, ".jpg");
+          resolve(new File([blob], outputName, { type: "image/jpeg" }));
+        },
+        "image/jpeg",
+        RESIZE_QUALITY,
+      );
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(file);
+    };
+
+    img.src = url;
+  });
+}
+
+type PhotoThumbProps = Readonly<{
+  file: File;
+  onRemove: () => void;
+}>;
+
 function PhotoThumb({
   file,
   onRemove,
-}: {
-  file: File;
-  onRemove: () => void;
-}) {
-  const [previewUrl, setPreviewUrl] = useState("");
+}: PhotoThumbProps) {
+  const previewUrl = useMemo(() => URL.createObjectURL(file), [file]);
 
   useEffect(() => {
-    const url = URL.createObjectURL(file);
-    setPreviewUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
+    return () => URL.revokeObjectURL(previewUrl);
+  }, [previewUrl]);
 
   return (
     <div className="relative h-[72px] w-[72px] overflow-hidden rounded-[10px] border border-gray-200 dark:border-slate-700">
@@ -86,64 +136,69 @@ export default function LocalRegisterForm() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isProcessingPhotos, setIsProcessingPhotos] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const addFiles = useCallback((fileList: FileList | File[]) => {
+  const addFiles = useCallback(async (fileList: FileList | File[]) => {
     const incoming = Array.from(fileList);
-    if (incoming.length === 0) {
-      return;
-    }
+    if (incoming.length === 0) return;
 
     let error: string | null = null;
-    const valid: File[] = [];
+    const toProcess: File[] = [];
 
     for (const file of incoming) {
       if (!isAcceptedImage(file)) {
         error = "Solo se permiten imágenes PNG, JPG o WEBP";
         continue;
       }
-      if (file.size > MAX_FILE_SIZE) {
-        error = "Cada imagen no puede superar 1 MB";
+      if (file.size > MAX_RAW_FILE_SIZE) {
+        error = "Cada imagen no puede superar los 15 MB";
         continue;
       }
-      valid.push(file);
+      toProcess.push(file);
     }
 
-    if (valid.length > 0) {
-      setPhotos((current) => {
-        const existingKeys = new Set(
-          current.map((f) => `${f.name}-${f.size}-${f.lastModified}`),
-        );
-        const merged = [...current];
-        for (const file of valid) {
-          const key = `${file.name}-${file.size}-${file.lastModified}`;
-          if (!existingKeys.has(key)) {
-            merged.push(file);
-            existingKeys.add(key);
-          }
-        }
-        if (merged.length > MAX_PHOTOS) {
-          error = `Podés subir hasta ${MAX_PHOTOS} fotos`;
-          return merged.slice(0, MAX_PHOTOS);
-        }
-        return merged;
-      });
+    if (toProcess.length === 0) {
+      setPhotoError(error);
+      return;
     }
 
-    setPhotoError(error);
+    setIsProcessingPhotos(true);
+    setPhotoError(null);
+
+    const compressed = await Promise.all(toProcess.map(resizeImage));
+
+    setPhotos((current) => {
+      const existingNames = new Set(current.map((f) => f.name));
+      const merged = [...current];
+      for (const file of compressed) {
+        if (!existingNames.has(file.name)) {
+          merged.push(file);
+          existingNames.add(file.name);
+        }
+      }
+      if (merged.length > MAX_PHOTOS) {
+        error = `Podés subir hasta ${MAX_PHOTOS} fotos`;
+        return merged.slice(0, MAX_PHOTOS);
+      }
+      return merged;
+    });
+
+    setIsProcessingPhotos(false);
+    if (error) setPhotoError(error);
   }, []);
 
   function handleFileInputChange(event: React.ChangeEvent<HTMLInputElement>) {
     if (event.target.files) {
-      addFiles(event.target.files);
+      void addFiles(event.target.files);
     }
     event.target.value = "";
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
+  function handleDrop(event: DragEvent<HTMLElement>) {
     event.preventDefault();
     if (event.dataTransfer.files.length > 0) {
-      addFiles(event.dataTransfer.files);
+      void addFiles(event.dataTransfer.files);
     }
   }
 
@@ -152,7 +207,9 @@ export default function LocalRegisterForm() {
     setPhotoError(null);
   }
 
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+  async function handleSubmit(
+    event: { preventDefault(): void; currentTarget: HTMLFormElement },
+  ): Promise<void> {
     event.preventDefault();
     setSubmitError(null);
 
@@ -164,11 +221,11 @@ export default function LocalRegisterForm() {
     setPhotoError(null);
 
     const formData = new FormData(event.currentTarget);
-    const nombre = String(formData.get("nombre") ?? "").trim();
-    const descripcion = String(formData.get("descripcion") ?? "").trim();
-    const email = String(formData.get("email") ?? "").trim();
-    const direccion = String(formData.get("direccion") ?? "").trim();
-    const telefono = String(formData.get("telefono") ?? "").trim();
+    const nombre = ((formData.get("nombre") as string | null) ?? "").trim();
+    const descripcion = ((formData.get("descripcion") as string | null) ?? "").trim();
+    const email = ((formData.get("email") as string | null) ?? "").trim();
+    const direccion = ((formData.get("direccion") as string | null) ?? "").trim();
+    const telefono = ((formData.get("telefono") as string | null) ?? "").trim();
 
     if (!nombre) {
       setSubmitError("El nombre del local es obligatorio");
@@ -335,38 +392,48 @@ export default function LocalRegisterForm() {
               aria-hidden
             />
             <p>
-              Subí fotos del local, del frente o de tus platos. Ayudan al equipo
+              Subí fotos de tu local o de tus platos. Ayudan al equipo
               a revisar tu solicitud.
             </p>
           </div>
 
-          <div
-            role="button"
-            tabIndex={0}
-            onKeyDown={(event) => {
-              if (event.key === "Enter" || event.key === " ") {
-                fileInputRef.current?.click();
-              }
-            }}
+          <button
+            type="button"
+            disabled={isProcessingPhotos}
             onDragOver={(event) => event.preventDefault()}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-6 py-6 text-center transition hover:border-orange-500 hover:bg-orange-50/50 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-500/60 dark:hover:bg-orange-500/5"
+            onDrop={isProcessingPhotos ? undefined : handleDrop}
+            onClick={() => !isProcessingPhotos && fileInputRef.current?.click()}
+            className={`flex w-full flex-col items-center justify-center gap-2 rounded-xl border border-dashed px-6 py-6 text-center transition ${
+              isProcessingPhotos
+                ? "cursor-wait border-orange-300 bg-orange-50/40 dark:border-orange-500/30 dark:bg-orange-500/5"
+                : "cursor-pointer border-gray-200 bg-gray-50 hover:border-orange-500 hover:bg-orange-50/50 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-500/60 dark:hover:bg-orange-500/5"
+            }`}
           >
-            <CloudArrowUpIcon
-              className="h-8 w-8 text-slate-300 dark:text-slate-600"
-              aria-hidden
-            />
-            <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
-              Arrastrá tus fotos acá
-            </span>
-            <span className="text-xs text-slate-400">
-              PNG, JPG o WEBP · Máx. 1 MB por imagen · Hasta {MAX_PHOTOS} fotos
-            </span>
-            <span className="mt-1 rounded-full bg-orange-600 px-4 py-1.5 text-xs font-semibold text-white">
-              Seleccionar archivos
-            </span>
-          </div>
+            {isProcessingPhotos ? (
+              <>
+                <span className="h-7 w-7 animate-spin rounded-full border-2 border-orange-300 border-t-orange-600" />
+                <span className="text-sm font-medium text-orange-700 dark:text-orange-300">
+                  Procesando imágenes...
+                </span>
+              </>
+            ) : (
+              <>
+                <CloudArrowUpIcon
+                  className="h-8 w-8 text-slate-300 dark:text-slate-600"
+                  aria-hidden
+                />
+                <span className="text-sm font-medium text-slate-600 dark:text-slate-300">
+                  Arrastrá tus fotos acá
+                </span>
+                <span className="text-xs text-slate-400">
+                  PNG, JPG o WEBP · Se comprimen automáticamente · Hasta {MAX_PHOTOS} fotos
+                </span>
+                <span className="mt-1 rounded-full bg-orange-600 px-4 py-1.5 text-xs font-semibold text-white">
+                  Seleccionar archivos
+                </span>
+              </>
+            )}
+          </button>
 
           <input
             ref={fileInputRef}
@@ -374,6 +441,7 @@ export default function LocalRegisterForm() {
             type="file"
             accept="image/png,image/jpeg,image/webp"
             multiple
+            disabled={isProcessingPhotos}
             className="sr-only"
             onChange={handleFileInputChange}
           />
