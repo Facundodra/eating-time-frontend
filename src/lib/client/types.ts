@@ -1,3 +1,5 @@
+import { DishStatus } from "../local-dish/types";
+
 export type DeliveryPointCredentials = {
   loc: string;
   street: string;
@@ -16,6 +18,17 @@ export type DeliveryPoint = {
   creacion: string;
   clienteId: number;
 };
+
+export type ClientDish = {
+  id: string;
+  name: string;
+  price: number;
+  imageUrl: string | null;
+  status: DishStatus;
+  createdAt: string;
+  localId: number;
+  categories: number[];
+}
 
 export type RestaurantList = {
   id: number;
