@@ -3,12 +3,14 @@ import axios, { AxiosError } from "axios";
 import { api } from "../api-client";
 import { getStoredSession } from "@/lib/auth/session-store";
 
-export async function addPuntoEntrega(credentials: PuntoEntregaCredentials): Promise<void>{
+import type {
     RestaurantList,
     DeliveryPointCredentials,
     DeliveryPoint,
     ClientDish
-} from "@/lib/client/types"
+} from "@/lib/client/types";
+
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = getStoredSession();
