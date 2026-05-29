@@ -30,7 +30,7 @@ function DishSkeleton() {
   );
 }
 
-export default function DishesList() {
+export default function DishesList({ idLocal }: { idLocal?: number }) {
   const [dishes, setDishes] = useState<ClientDish[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -48,7 +48,7 @@ export default function DishesList() {
     else setLoadingMore(true);
     setError(null);
 
-    getDishes({ ...filters, pagina: page, tamano: PAGE_SIZE })
+    getDishes({ ...filters, idLocal, pagina: page, tamano: PAGE_SIZE })
       .then((data) => {
         setDishes((prev) => (isNewSearch ? data : [...prev, ...data]));
         setHasMore(data.length === PAGE_SIZE);
@@ -60,7 +60,7 @@ export default function DishesList() {
         if (isNewSearch) setLoading(false);
         else setLoadingMore(false);
       });
-  }, [filters, page]);
+  }, [filters, page, idLocal]);
 
   function updateFilters(patch: Partial<Filters>) {
     setPage(1);
@@ -94,7 +94,7 @@ export default function DishesList() {
     : "";
 
   return (
-    <div className="max-w-[1440px] mx-auto px-2">
+    <div className="max-w-[1440px] mx-auto">
       {/* Barra de filtros */}
       <div className="flex flex-wrap items-center bg-white p-3 rounded-xl gap-x-6 gap-y-2 mb-6 border-b border-gray-100 text-sm text-gray-500">
         <div className="flex items-center gap-2">

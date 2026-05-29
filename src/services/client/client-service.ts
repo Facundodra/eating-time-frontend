@@ -5,6 +5,7 @@ import { getStoredSession } from "@/lib/auth/session-store";
 
 import type {
     RestaurantList,
+    Restaurant,
     DeliveryPointCredentials,
     DeliveryPoint,
     ClientDish
@@ -167,11 +168,8 @@ interface RestaurantDtoFromApi {
     id: number;
     nombre: string;
     urlFoto: string | null;
-    descripcion: string;
     estadoServicio: boolean;
     calificacion: number | null;
-    creacion: string;
-    direccion: string;
 }
 
 interface RestaurantPageResponse {
@@ -183,8 +181,6 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
     return {
         id: r.id,
         name: r.nombre,
-        description: r.descripcion,
-        address: r.direccion,
         url_photo: r.urlFoto ?? "",
         stars: r.calificacion ?? 0,
         state: r.estadoServicio,
@@ -212,5 +208,54 @@ export async function getRestaurants(
             throw new Error(message);
         }
         throw new Error("No se pudieron cargar los locales.");
+    }
+}
+
+
+
+interface RestaurantSingleDtoFromApi {
+    id: number;
+    nombre: string;
+    urlFoto: string | null;
+    estadoServicio: boolean;
+    calificacion: number | null;
+    direccion: string | null;
+    descripcion: string | null;
+}
+
+function mapRestaurantDtoApiToRestaurant(r: RestaurantSingleDtoFromApi): Restaurant {
+    return {
+        id: r.id,
+        name: r.nombre,
+        url_photo: r.urlFoto ?? "",
+        stars: r.calificacion ?? 0,
+        state: r.estadoServicio,
+        address : r.direccion,
+        description: r.descripcion
+    };
+}
+
+
+export async function getRestaurantName(id: number): Promise<string> {
+    const restaurant = await getRestaurant(String(id));
+    return restaurant.name;
+}
+
+export async function getRestaurant(id: string): Promise<Restaurant> {
+    if (typeof window !== 'undefined') {
+        const session = getStoredSession();
+        if (!session) throw new Error("Sesión no encontrada");
+    }
+
+    try {
+        const response = await api.get<RestaurantSingleDtoFromApi>(`/api/locales/${id}`);
+        return mapRestaurantDtoApiToRestaurant(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener local (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo cargar el local.");
     }
 }

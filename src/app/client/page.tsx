@@ -1,9 +1,5 @@
-import RestaurantListPage from "@/ui/client/restaurant/restaurant-list-page";
+import ClientHomePage from "@/ui/client/home/client-home-page";
 
 export default function ClientPage() {
-  return (
-    <section className="space-y-2">
-      <RestaurantListPage></RestaurantListPage>
-    </section>
-  );
+  return <ClientHomePage />;
 }
