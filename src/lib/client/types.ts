@@ -16,3 +16,13 @@ export type DeliveryPoint = {
   creacion: string;
   clienteId: number;
 };
+
+export type RestaurantList = {
+  id: number;
+  name: string;
+  description: string;
+  address: string;
+  url_photo: string;
+  stars: number;
+  state: boolean;
+}
