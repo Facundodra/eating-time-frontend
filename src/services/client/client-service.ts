@@ -4,9 +4,7 @@ import { api } from "../api-client";
 import { getStoredSession } from "@/lib/auth/session-store";
 
 import type {
-    PuntoEntregaCredentials,
-    PuntoDeEntrega,
-    RestaurantList
+    RestaurantList,
     DeliveryPointCredentials,
     DeliveryPoint,
 } from "@/lib/client/types"

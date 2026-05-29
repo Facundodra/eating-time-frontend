@@ -65,7 +65,10 @@ export default function RestaurantList() {
   const [filterStars, setFilterStars] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
+
     setLoading(true);
+    setError(null);
     getRestaurants({
       ...sortMap[sort],
       ...(filterOpen  && { servicio: 'ACTIVO' as const }),
@@ -74,13 +77,19 @@ export default function RestaurantList() {
       size: PAGE_SIZE,
     })
       .then(({ restaurants, totalPages }) => {
+        if (cancelled) return;
         setRestaurants(restaurants);
         setTotalPages(totalPages);
       })
-      .catch((err) =>
-        setError(err instanceof Error ? err.message : "Error al cargar"),
-      )
-      .finally(() => setLoading(false));
+      .catch((err) => {
+        if (cancelled) return;
+        setError(err instanceof Error ? err.message : "Error al cargar");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => { cancelled = true; };
   }, [sort, filterOpen, filterStars, page]);
 
   if (error) {

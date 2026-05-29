@@ -1,7 +1,6 @@
 "use client";
 
-import type { RestaurantList } from "@/lib/client/types";
-
-export default function RestaurantDetailPage({ restaurant }: {restaurant: RestaurantList}){
-    
-}   
+export default function RestaurantDetailPage({ localId }: { localId: number }) {
+    // TODO: implementar cuando exista el endpoint GET /api/locales/{id}
+    return null;
+}
