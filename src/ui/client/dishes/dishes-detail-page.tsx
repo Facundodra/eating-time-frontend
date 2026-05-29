@@ -1,20 +1,24 @@
 "use client";
 
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeftIcon, ShoppingCartIcon } from "@heroicons/react/24/outline";
 import type { ClientDish } from "@/lib/client/types";
+import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 
 export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
+  const router = useRouter();
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Volver */}
-      <Link
-        href="/client/platos"
+      <button
+        type="button"
+        onClick={() => router.back()}
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
       >
         <ChevronLeftIcon className="h-4 w-4" />
         Volver al listado
-      </Link>
+      </button>
 
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         {/* Imagen */}
@@ -52,6 +56,10 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
           <p className="mt-3 text-3xl font-black text-orange-600">
             ${dish.price}
           </p>
+
+          <div className="mt-2">
+            <LocalNameWidget localId={dish.localId} />
+          </div>
 
           {/* Botón agregar al carrito */}
           <button
