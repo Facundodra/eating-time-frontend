@@ -17,12 +17,12 @@ export type PuntoDeEntrega = {
   clienteId: number;
 };
 
-export type LocalList = {
+export type RestaurantList = {
   id: number;
-  nombre: string;
-  descripcion: string;
-  direccion: string;
-  url_foto: string;
-  califiacion: number;
-  estado_servicio: boolean;
+  name: string;
+  description: string;
+  address: string;
+  url_photo: string;
+  stars: number;
+  state: boolean;
 }

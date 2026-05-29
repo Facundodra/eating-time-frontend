@@ -2,11 +2,12 @@
 
 import { useEffect, useState } from "react";
 
-import { getLocales } from "@/services/client/client-service";
-import type { LocalList } from "@/lib/client/types";
+import { getRestaurants } from "@/services/client/client-service";
+import type { RestaurantList} from "@/lib/client/types";
 
 import Image from "next/image";
 import clsx from "clsx";
+import Link from "next/link";
 
 import {
     CheckCircleIcon,
@@ -46,8 +47,16 @@ const PAGE_SIZE = 12;
 
 type SortKey = "calificacion_desc" | "calificacion_asc" | "nombre_asc" | "nombre_desc";
 
-export default function LocalesList() {
-  const [locales, setLocales] = useState<LocalList[]>([]);
+const sortMap: Record<SortKey, { ordenarPor: 'calificacion' | 'nombre'; direccion: 'asc' | 'desc' }> = {
+  calificacion_desc: { ordenarPor: 'calificacion', direccion: 'desc' },
+  calificacion_asc:  { ordenarPor: 'calificacion', direccion: 'asc'  },
+  nombre_asc:        { ordenarPor: 'nombre',        direccion: 'asc'  },
+  nombre_desc:       { ordenarPor: 'nombre',        direccion: 'desc' },
+};
+
+export default function RestaurantList() {
+  const [restaurant, setRestaurants] = useState<RestaurantList[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -56,13 +65,23 @@ export default function LocalesList() {
   const [filterStars, setFilterStars] = useState(false);
 
   useEffect(() => {
-    getLocales()
-      .then(setLocales)
+    setLoading(true);
+    getRestaurants({
+      ...sortMap[sort],
+      ...(filterOpen  && { servicio: 'ACTIVO' as const }),
+      ...(filterStars && { calificacionMin: 4 }),
+      page: page - 1,
+      size: PAGE_SIZE,
+    })
+      .then(({ restaurants, totalPages }) => {
+        setRestaurants(restaurants);
+        setTotalPages(totalPages);
+      })
       .catch((err) =>
         setError(err instanceof Error ? err.message : "Error al cargar"),
       )
       .finally(() => setLoading(false));
-  }, []);
+  }, [sort, filterOpen, filterStars, page]);
 
   if (error) {
     return (
@@ -76,7 +95,7 @@ export default function LocalesList() {
     return <RestaurantSkeleton />;
   }
 
-  if (locales.length === 0) {
+  if (restaurant.length === 0) {
     return (
       <p className="text-sm text-slate-400">
         No hay locales que coincidan con su busqueda.
@@ -84,30 +103,19 @@ export default function LocalesList() {
     );
   }
 
-  let processed = [...locales];
-  if (filterOpen) processed = processed.filter((l) => l.estado_servicio);
-  if (filterStars) processed = processed.filter((l) => l.califiacion >= 4);
-  const sortFns: Record<SortKey, (a: LocalList, b: LocalList) => number> = {
-    calificacion_desc: (a, b) => b.califiacion - a.califiacion,
-    calificacion_asc:  (a, b) => a.califiacion - b.califiacion,
-    nombre_asc:        (a, b) => a.nombre.localeCompare(b.nombre),
-    nombre_desc:       (a, b) => b.nombre.localeCompare(a.nombre),
-  };
-  processed.sort(sortFns[sort]);
-
-  const totalPages = Math.ceil(processed.length / PAGE_SIZE);
-  const visible = processed.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
-
+  // Orden
   function applySort(value: SortKey) {
     setSort(value);
     setPage(1);
   }
 
+  // Abierto | Cerrado
   function toggleOpen() {
     setFilterOpen((v) => !v);
     setPage(1);
   }
 
+  // Filtro calificacion
   function toggleStars() {
     setFilterStars((v) => !v);
     setPage(1);
@@ -163,76 +171,80 @@ export default function LocalesList() {
       </div>
 
       {/* Lista */}
-      {visible.length === 0 ? (
-        <p className="text-sm text-slate-400">
-          No se encontraron resultados para los filtros aplicados
-        </p>
-      ) : (
-        <div className="locales-list flex flex-wrap max-w-[1440px] mx-auto">
-          {visible.map((local) => (
-            <div
-              key={local.id}
-              className="local px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4"
-            >
-              <div className="local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
-                <div className="local-img bg-gray-50 h-[125px] relative">
+      <div className="locales-list flex flex-wrap max-w-[1440px] mx-auto">
+        {restaurant.map((restaurant) => (
+          <div
+            key={restaurant.id}
+            className="local px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4"
+          >
+            <Link href={`/client/platos/${restaurant.id}`} className="block local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
+              <div className="local-img bg-gray-50 h-[125px] relative">
+                {restaurant.url_photo ? (
                   <Image
-                    alt={local.nombre}
-                    src={local.url_foto}
+                    alt={restaurant.name}
+                    src={restaurant.url_photo}
                     width="100"
                     height="100"
                     className="object-contain mx-auto p-3 w-[120px] h-full"
                   />
-                  <span
-                    className={clsx(
-                      "local-estado absolute top-3 py-1 px-3 rounded-full right-3 text-sm",
-                      {
-                        "bg-green-100 text-green-900": local.estado_servicio,
-                        "bg-gray-200 text-gray-500": !local.estado_servicio,
-                      },
-                    )}
-                  >
-                    {local.estado_servicio ? (
-                      <>
-                        <CheckCircleIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
-                        Abierto
-                      </>
-                    ) : (
-                      <>
-                        <MoonIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
-                        Cerrado
-                      </>
-                    )}
-                  </span>
-                </div>
+                ) : (
+                  <div className="w-[120px] h-full mx-auto flex items-center justify-center text-gray-300 text-4xl">
+                    🍽
+                  </div>
+                )}
+                <span
+                  className={clsx(
+                    "local-estado absolute top-3 py-1 px-3 rounded-full right-3 text-sm",
+                    {
+                      "bg-green-100 text-green-900": restaurant.state,
+                      "bg-gray-200 text-gray-500": !restaurant.state,
+                    },
+                  )}
+                >
+                  {restaurant.state ? (
+                    <>
+                      <CheckCircleIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
+                      Abierto
+                    </>
+                  ) : (
+                    <>
+                      <MoonIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
+                      Cerrado
+                    </>
+                  )}
+                </span>
+              </div>
 
-                <div className="local-info p-4">
-                  <div className="local-nombre">
-                    <div className="img inline-block align-middle mr-2 border border-gray-200 p-2 rounded-full w-[45px] h-[45px]">
+              <div className="local-info p-4">
+                <div className="local-nombre">
+                  <div className="img inline-block align-middle mr-2 border border-gray-200 p-2 rounded-full w-[45px] h-[45px]">
+                    {restaurant.url_photo ? (
                       <Image
-                        alt={local.nombre}
-                        src={local.url_foto}
+                        alt={restaurant.name}
+                        src={restaurant.url_photo}
                         width="45"
                         height="45"
                         className="h-full object-contain"
                       />
-                    </div>
-                    <span className="inline-block align-middle font-bold text-gray-800">
-                      {local.nombre}
-                    </span>
+                    ) : (
+                      <div className="w-full h-full bg-gray-100 rounded-full" />
+                    )}
                   </div>
-                  <div className="local-calificacion flex items-center gap-2 mt-2">
-                    <StarIcon className="text-orange-400 w-4 h-4" />
-                    <span className="text-xs text-gray-400">
-                      {local.califiacion} (384)
-                    </span>
-                  </div>
+                  <span className="inline-block align-middle font-bold text-gray-800">
+                    {restaurant.name}
+                  </span>
+                </div>
+                <div className="local-calificacion flex items-center gap-2 mt-2">
+                  <StarIcon className="text-orange-400 w-4 h-4" />
+                  <span className="text-xs text-gray-400">
+                    {restaurant.stars} (384)
+                  </span>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-      )}
+            </Link>
+          </div>
+        ))}
+      </div>
 
       {/* Paginación */}
       {totalPages > 1 && (

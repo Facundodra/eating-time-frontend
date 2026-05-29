@@ -1,11 +1,11 @@
-import LocalesList from "./restaurant-list";
+import RestaurantList from "./restaurant-list";
 
-export default function LocalesListPage(){
+export default function RestaurantListPage(){
     return(
         <>
             {/* Listado de categorias */}
             {/* Listado locales */}
-            <LocalesList></LocalesList>
+            <RestaurantList></RestaurantList>
         </>
     )
 }
