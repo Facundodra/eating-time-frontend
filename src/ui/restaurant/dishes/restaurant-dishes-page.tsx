@@ -47,40 +47,87 @@ function formatDate(dateStr: string) {
   }
 }
 
+function filterDishes(dishes: LocalDish[], filter: DishFilter) {
+  if (filter === "all") return dishes;
+  return dishes.filter((dish) => dish.status === filter);
+}
+
 export default function RestaurantDishesPage({
   initialData,
 }: {
   initialData: LocalDishesResponse;
 }) {
+  const initialSelectedDish = initialData.dishes[0] ?? null;
   const [filter, setFilter] = useState<DishFilter>("all");
   const [dishes, setDishes] = useState(initialData.dishes);
-  const [selectedDishId, setSelectedDishId] = useState("");
+  const [savedDishes, setSavedDishes] = useState(initialData.dishes);
+  const [selectedDishId, setSelectedDishId] = useState(
+    initialSelectedDish?.id ?? "",
+  );
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   // Create form refs
   const createFormRef = useRef<HTMLFormElement>(null);
+  const editImageInputRef = useRef<HTMLInputElement>(null);
 
   // Edit form state
-  const [editName, setEditName] = useState("");
-  const [editPrice, setEditPrice] = useState("");
+  const [editName, setEditName] = useState(initialSelectedDish?.name ?? "");
+  const [editPrice, setEditPrice] = useState(
+    initialSelectedDish ? String(initialSelectedDish.price) : "",
+  );
+  const [hasEditImageChange, setHasEditImageChange] = useState(false);
 
   const filteredDishes = useMemo(() => {
-    if (filter === "all") return dishes;
-    return dishes.filter((dish) => dish.status === filter);
+    return filterDishes(dishes, filter);
   }, [dishes, filter]);
 
   const selectedDish =
-    dishes.find((dish) => dish.id === selectedDishId) ??
+    filteredDishes.find((dish) => dish.id === selectedDishId) ??
     filteredDishes[0] ??
     null;
+  const savedSelectedDishData = savedDishes.find(
+    (dish) => dish.id === selectedDish?.id,
+  );
+  const hasSelectedDishChanges =
+    Boolean(selectedDish && savedSelectedDishData) &&
+    (editName !== savedSelectedDishData?.name ||
+      editPrice !==
+        (savedSelectedDishData ? String(savedSelectedDishData.price) : "") ||
+      hasEditImageChange);
+
+  function resetEditForm(dish: LocalDish | null) {
+    setSelectedDishId(dish?.id ?? "");
+    setEditName(dish?.name ?? "");
+    setEditPrice(dish ? String(dish.price) : "");
+    setHasEditImageChange(false);
+    if (editImageInputRef.current) {
+      editImageInputRef.current.value = "";
+    }
+  }
 
   function selectDish(dish: LocalDish) {
-    setSelectedDishId(dish.id);
-    setEditName(dish.name);
-    setEditPrice(String(dish.price));
+    resetEditForm(dish);
     setShowCreateForm(false);
+    setError(null);
+  }
+
+  function handleFilterChange(nextFilter: DishFilter) {
+    const nextFilteredDishes = filterDishes(dishes, nextFilter);
+    const selectedDishIsVisible = nextFilteredDishes.some(
+      (dish) => dish.id === selectedDishId,
+    );
+
+    setFilter(nextFilter);
+
+    if (selectedDishIsVisible) {
+      return;
+    }
+
+    const nextDish = nextFilteredDishes[0] ?? null;
+    resetEditForm(nextDish);
+    setShowCreateForm(!nextDish);
     setError(null);
   }
 
@@ -104,7 +151,11 @@ export default function RestaurantDishesPage({
         setShowCreateForm(false);
         // Refresh dish list without full page reload
         const freshData = await getLocalDishes(initialData.localId);
+        const nextDish = filterDishes(freshData.dishes, filter)[0] ?? null;
         setDishes(freshData.dishes);
+        setSavedDishes(freshData.dishes);
+        resetEditForm(nextDish);
+        setShowCreateForm(!nextDish);
       }
     });
   }
@@ -123,9 +174,7 @@ export default function RestaurantDishesPage({
     if (editName.trim()) formData.append("name", editName.trim());
     if (price != null) formData.append("price", String(price));
 
-    const fileInput = document.getElementById(
-      "edit-image-input",
-    ) as HTMLInputElement | null;
+    const fileInput = editImageInputRef.current;
     if (fileInput?.files?.[0]) {
       formData.append("image", fileInput.files[0]);
     }
@@ -136,7 +185,7 @@ export default function RestaurantDishesPage({
       if (result.error) {
         setError(result.error);
       } else {
-        setDishes((current) =>
+        const updateCurrentDishes = (current: LocalDish[]) =>
           current.map((d) =>
             d.id === selectedDish.id
               ? {
@@ -145,8 +194,14 @@ export default function RestaurantDishesPage({
                   price: price ?? d.price,
                 }
               : d,
-          ),
-        );
+          );
+
+        setDishes(updateCurrentDishes);
+        setSavedDishes(updateCurrentDishes);
+        setHasEditImageChange(false);
+        if (editImageInputRef.current) {
+          editImageInputRef.current.value = "";
+        }
         setError(null);
       }
     });
@@ -162,8 +217,13 @@ export default function RestaurantDishesPage({
       if (result.error) {
         setError(result.error);
       } else {
-        setDishes((current) => current.filter((d) => d.id !== selectedDish.id));
-        setSelectedDishId("");
+        const nextDishes = dishes.filter((d) => d.id !== selectedDish.id);
+        const nextDish = filterDishes(nextDishes, filter)[0] ?? null;
+
+        setDishes(nextDishes);
+        setSavedDishes(nextDishes);
+        resetEditForm(nextDish);
+        setShowCreateForm(!nextDish);
       }
     });
   }
@@ -178,19 +238,52 @@ export default function RestaurantDishesPage({
       if (result.error) {
         setError(result.error);
       } else {
-        setDishes((current) =>
-          current.map((d) =>
-            d.id === selectedDish.id
-              ? {
-                  ...d,
-                  status:
-                    d.status === "available" ? "unavailable" : "available",
-                }
-              : d,
-          ),
-        );
+        const updateCurrentDishes = (current: LocalDish[]) =>
+          current.map((d) => {
+            if (d.id !== selectedDish.id) {
+              return d;
+            }
+
+            const nextStatus: DishStatus =
+              d.status === "available" ? "unavailable" : "available";
+
+            return {
+              ...d,
+              status: nextStatus,
+            };
+          });
+        const nextDishes = updateCurrentDishes(dishes);
+        const nextFilteredDishes = filterDishes(nextDishes, filter);
+        const nextDish =
+          nextFilteredDishes.find((dish) => dish.id === selectedDish.id) ??
+          nextFilteredDishes[0] ??
+          null;
+
+        setDishes(nextDishes);
+        setSavedDishes(nextDishes);
+        resetEditForm(nextDish);
+        setShowCreateForm(!nextDish);
       }
     });
+  }
+
+  function handleCancelChanges() {
+    if (!savedSelectedDishData) {
+      return;
+    }
+
+    setDishes((current) =>
+      current.map((dish) =>
+        dish.id === savedSelectedDishData.id ? savedSelectedDishData : dish,
+      ),
+    );
+    setEditName(savedSelectedDishData.name);
+    setEditPrice(String(savedSelectedDishData.price));
+    setHasEditImageChange(false);
+    if (editImageInputRef.current) {
+      editImageInputRef.current.value = "";
+    }
+    setError(null);
   }
 
   return (
@@ -209,7 +302,9 @@ export default function RestaurantDishesPage({
           <select
             id="dish-status-filter"
             value={filter}
-            onChange={(event) => setFilter(event.target.value as DishFilter)}
+            onChange={(event) =>
+              handleFilterChange(event.target.value as DishFilter)
+            }
             className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
           >
             <option value="all">Todos</option>
@@ -437,8 +532,10 @@ export default function RestaurantDishesPage({
                 </span>
                 <input
                   id="edit-image-input"
+                  ref={editImageInputRef}
                   type="file"
                   accept="image/*"
+                  onChange={(e) => setHasEditImageChange(Boolean(e.target.files?.[0]))}
                   className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
               </label>
@@ -456,15 +553,22 @@ export default function RestaurantDishesPage({
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Fecha de creacion
                 </span>
-                <input
-                  value={formatDate(selectedDish.createdAt)}
-                  readOnly
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                />
+                <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 text-sm font-extrabold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+                  {formatDate(selectedDish.createdAt)}
+                </div>
               </div>
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
+              {hasSelectedDishChanges && (
+                <button
+                  type="button"
+                  onClick={handleCancelChanges}
+                  className="h-11 cursor-pointer rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Cancelar
+                </button>
+              )}
               <button
                 type="button"
                 onClick={handleToggleAvailability}

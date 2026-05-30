@@ -1,8 +1,8 @@
 "use client";
 
-import { PlusIcon } from "@heroicons/react/24/outline";
+import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 import type {
   DiscountStatus,
@@ -20,6 +20,31 @@ function getDiscountTitle(discount: LocalDiscount) {
 
 function getDishSummary(discount: LocalDiscount) {
   return discount.dishes.map((dish) => dish.name).join(", ");
+}
+
+function areDishesEqual(
+  currentDishes: LocalDiscount["dishes"],
+  initialDishes: LocalDiscount["dishes"],
+) {
+  if (currentDishes.length !== initialDishes.length) {
+    return false;
+  }
+
+  const currentIds = currentDishes.map((dish) => dish.id).sort();
+  const initialIds = initialDishes.map((dish) => dish.id).sort();
+
+  return currentIds.every((id, index) => id === initialIds[index]);
+}
+
+function filterDiscounts(
+  discounts: LocalDiscount[],
+  filter: DiscountFilter,
+) {
+  if (filter === "all") {
+    return discounts;
+  }
+
+  return discounts.filter((discount) => discount.status === filter);
 }
 
 function StatusBadge({ status }: { status: DiscountStatus }) {
@@ -42,27 +67,50 @@ export default function RestaurantDiscountsPage({
 }: {
   initialData: LocalDiscountsResponse;
 }) {
+  const initialSelectedDiscount = initialData.discounts[0] ?? null;
   const [filter, setFilter] = useState<DiscountFilter>("all");
   const [discounts, setDiscounts] = useState(initialData.discounts);
+  const [savedDiscounts, setSavedDiscounts] = useState(initialData.discounts);
   const [selectedDiscountId, setSelectedDiscountId] = useState(
-    initialData.discounts[0]?.id ?? "",
+    initialSelectedDiscount?.id ?? "",
   );
   const [selectedDishId, setSelectedDishId] = useState(
     initialData.availableDishes[0]?.id ?? "",
   );
+  const [isAddingDish, setIsAddingDish] = useState(false);
+  const [isSavingChanges, setIsSavingChanges] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const filteredDiscounts = useMemo(() => {
-    if (filter === "all") {
-      return discounts;
+  useEffect(() => {
+    if (!formError) {
+      return;
     }
 
-    return discounts.filter((discount) => discount.status === filter);
+    const timeoutId = window.setTimeout(() => setFormError(null), 5000);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [formError]);
+
+  const filteredDiscounts = useMemo(() => {
+    return filterDiscounts(discounts, filter);
   }, [discounts, filter]);
 
   const selectedDiscount =
-    discounts.find((discount) => discount.id === selectedDiscountId) ??
+    filteredDiscounts.find((discount) => discount.id === selectedDiscountId) ??
     filteredDiscounts[0] ??
-    discounts[0];
+    null;
+  const savedSelectedDiscount = savedDiscounts.find(
+    (discount) => discount.id === selectedDiscount?.id,
+  );
+  const hasSelectedDiscountChanges =
+    Boolean(selectedDiscount && savedSelectedDiscount) &&
+    (selectedDiscount.percentage !== savedSelectedDiscount?.percentage ||
+      selectedDiscount.status !== savedSelectedDiscount?.status ||
+      selectedDiscount.expiresAt !== savedSelectedDiscount?.expiresAt ||
+      !areDishesEqual(
+        selectedDiscount.dishes,
+        savedSelectedDiscount?.dishes ?? [],
+      ));
 
   function updateSelectedDiscount(updates: Partial<LocalDiscount>) {
     if (!selectedDiscount) {
@@ -78,8 +126,37 @@ export default function RestaurantDiscountsPage({
     );
   }
 
+  function selectDiscount(discountId: string) {
+    setSelectedDiscountId(discountId);
+    setSelectedDishId(initialData.availableDishes[0]?.id ?? "");
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setFormError(null);
+  }
+
+  function handleFilterChange(nextFilter: DiscountFilter) {
+    const nextFilteredDiscounts = filterDiscounts(discounts, nextFilter);
+    const selectedDiscountIsVisible = nextFilteredDiscounts.some(
+      (discount) => discount.id === selectedDiscountId,
+    );
+
+    setFilter(nextFilter);
+
+    if (selectedDiscountIsVisible) {
+      return;
+    }
+
+    const nextDiscount = nextFilteredDiscounts[0] ?? null;
+    setSelectedDiscountId(nextDiscount?.id ?? "");
+    setSelectedDishId(initialData.availableDishes[0]?.id ?? "");
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setFormError(null);
+  }
+
   function addDishToSelectedDiscount() {
     if (!selectedDiscount) {
+      setFormError("Selecciona un descuento para agregar platos.");
       return;
     }
 
@@ -87,14 +164,90 @@ export default function RestaurantDiscountsPage({
       (availableDish) => availableDish.id === selectedDishId,
     );
 
-    if (
-      !dish ||
-      selectedDiscount.dishes.some((selectedDish) => selectedDish.id === dish.id)
-    ) {
+    if (!dish) {
+      setFormError("Selecciona un plato valido.");
       return;
     }
 
+    if (selectedDiscount.dishes.some((selectedDish) => selectedDish.id === dish.id)) {
+      setFormError("Ese plato ya esta asociado al descuento.");
+      return;
+    }
+
+    setFormError(null);
+    setIsAddingDish(true);
     updateSelectedDiscount({ dishes: [...selectedDiscount.dishes, dish] });
+    window.setTimeout(() => setIsAddingDish(false), 300);
+  }
+
+  function removeDishFromSelectedDiscount(dishId: string) {
+    if (!selectedDiscount) {
+      return;
+    }
+
+    setFormError(null);
+    updateSelectedDiscount({
+      dishes: selectedDiscount.dishes.filter((dish) => dish.id !== dishId),
+    });
+  }
+
+  function handleCancelChanges() {
+    if (!savedSelectedDiscount) {
+      return;
+    }
+
+    setDiscounts((currentDiscounts) =>
+      currentDiscounts.map((discount) =>
+        discount.id === savedSelectedDiscount.id
+          ? savedSelectedDiscount
+          : discount,
+      ),
+    );
+    setSelectedDishId(initialData.availableDishes[0]?.id ?? "");
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setFormError(null);
+  }
+
+  function handleSaveChanges() {
+    if (!selectedDiscount) {
+      setFormError("Selecciona un descuento para guardar cambios.");
+      return;
+    }
+
+    if (
+      !Number.isFinite(selectedDiscount.percentage) ||
+      selectedDiscount.percentage < 1 ||
+      selectedDiscount.percentage > 100
+    ) {
+      setFormError("El porcentaje debe estar entre 1 y 100.");
+      return;
+    }
+
+    if (!selectedDiscount.expiresAt.trim()) {
+      setFormError("La fecha de vencimiento es obligatoria.");
+      return;
+    }
+
+    if (selectedDiscount.dishes.length === 0) {
+      setFormError("El descuento debe tener al menos un plato asociado.");
+      return;
+    }
+
+    try {
+      setIsSavingChanges(true);
+      setSavedDiscounts((currentDiscounts) =>
+        currentDiscounts.map((discount) =>
+          discount.id === selectedDiscount.id ? selectedDiscount : discount,
+        ),
+      );
+      setIsAddingDish(false);
+      setFormError(null);
+    } catch {
+      setFormError("No se pudieron guardar los cambios. Intentalo nuevamente.");
+    } finally {
+      setIsSavingChanges(false);
+    }
   }
 
   return (
@@ -107,7 +260,9 @@ export default function RestaurantDiscountsPage({
           <select
             id="discount-status-filter"
             value={filter}
-            onChange={(event) => setFilter(event.target.value as DiscountFilter)}
+            onChange={(event) =>
+              handleFilterChange(event.target.value as DiscountFilter)
+            }
             className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
           >
             <option value="all">Todos</option>
@@ -145,7 +300,7 @@ export default function RestaurantDiscountsPage({
                 <button
                   type="button"
                   key={discount.id}
-                  onClick={() => setSelectedDiscountId(discount.id)}
+                  onClick={() => selectDiscount(discount.id)}
                   className={clsx(
                     "grid w-full cursor-pointer gap-4 rounded-2xl border p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/40 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-start dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10",
                     isSelected
@@ -229,16 +384,14 @@ export default function RestaurantDiscountsPage({
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
-                <label className="block">
+                <div>
                   <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                     Fecha de creacion
                   </span>
-                  <input
-                    value={selectedDiscount.createdAt}
-                    readOnly
-                    className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-                  />
-                </label>
+                  <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 text-sm font-extrabold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
+                    {selectedDiscount.createdAt}
+                  </div>
+                </div>
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
@@ -273,19 +426,42 @@ export default function RestaurantDiscountsPage({
                   <button
                     type="button"
                     onClick={addDishToSelectedDiscount}
-                    className="h-11 cursor-pointer rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
+                    disabled={isAddingDish}
+                    className="h-11 cursor-pointer rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
                   >
-                    Agregar plato
+                    {isAddingDish ? "Agregando..." : "Agregar plato"}
                   </button>
                 </div>
+
+                {formError && (
+                  <div className="mt-3 flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+                    <p>{formError}</p>
+                    <button
+                      type="button"
+                      onClick={() => setFormError(null)}
+                      aria-label="Cerrar error"
+                      className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-red-500 transition hover:bg-red-100 dark:text-red-400 dark:hover:bg-red-500/20"
+                    >
+                      <XMarkIcon className="h-4 w-4" />
+                    </button>
+                  </div>
+                )}
 
                 <div className="mt-4 overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
                   {selectedDiscount.dishes.map((dish) => (
                     <div
                       key={dish.id}
-                      className="border-b border-gray-100 px-4 py-4 text-sm font-extrabold text-slate-800 last:border-b-0 dark:border-slate-800 dark:text-slate-100"
+                      className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-4 text-sm font-extrabold text-slate-800 last:border-b-0 dark:border-slate-800 dark:text-slate-100"
                     >
-                      {dish.name}
+                      <span className="min-w-0 truncate">{dish.name}</span>
+                      <button
+                        type="button"
+                        onClick={() => removeDishFromSelectedDiscount(dish.id)}
+                        aria-label={`Quitar ${dish.name}`}
+                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+                      >
+                        <TrashIcon className="h-4 w-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -293,6 +469,15 @@ export default function RestaurantDiscountsPage({
             </div>
 
             <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
+              {hasSelectedDiscountChanges && (
+                <button
+                  type="button"
+                  onClick={handleCancelChanges}
+                  className="h-11 cursor-pointer rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                >
+                  Cancelar
+                </button>
+              )}
               <button
                 type="button"
                 onClick={() => updateSelectedDiscount({ status: "inactive" })}
@@ -302,9 +487,11 @@ export default function RestaurantDiscountsPage({
               </button>
               <button
                 type="button"
-                className="h-11 cursor-pointer rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                onClick={handleSaveChanges}
+                disabled={isSavingChanges}
+                className="h-11 cursor-pointer rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Guardar cambios
+                {isSavingChanges ? "Guardando..." : "Guardar cambios"}
               </button>
             </div>
           </section>

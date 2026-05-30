@@ -9,6 +9,7 @@ import type {
   LocalScheduleDay,
 } from "@/lib/local-schedule/types";
 import { updateLocalServiceStatus } from "@/services/local-service-status-service";
+import { notifyLocalAvailabilityRefresh } from "@/services/local-availability-service";
 import {
   saveLocalSchedule,
   updateAlwaysOpen,
@@ -164,6 +165,7 @@ export default function RestaurantSchedulesPage({
         buildCurrentSchedule({ alwaysOpen: nextAlwaysOpen }),
       );
       setScheduleId((currentScheduleId) => currentScheduleId ?? "created");
+      notifyLocalAvailabilityRefresh();
     } catch {
       setAlwaysOpen(alwaysOpen);
       setAlwaysOpenError(
@@ -185,6 +187,7 @@ export default function RestaurantSchedulesPage({
 
     try {
       await updateLocalServiceStatus(initialSchedule.localId, !nextPaused);
+      notifyLocalAvailabilityRefresh();
     } catch {
       setPaused(paused);
       setServiceStatusError(
@@ -205,6 +208,7 @@ export default function RestaurantSchedulesPage({
       await saveLocalSchedule(buildCurrentSchedule());
       setScheduleId((currentScheduleId) => currentScheduleId ?? "created");
       setStatusMessage("Horario guardado correctamente.");
+      notifyLocalAvailabilityRefresh();
     } catch (error) {
       setErrorMessage(
         error instanceof Error
