@@ -2,19 +2,27 @@
 
 import { ClockIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import type {
   LocalSchedule,
   LocalScheduleDay,
 } from "@/lib/local-schedule/types";
+import { updateLocalServiceStatus } from "@/services/local-service-status-service";
+import {
+  saveLocalSchedule,
+  updateAlwaysOpen,
+} from "@/services/local-schedule-service";
+import LoadingButton from "@/ui/shared/buttons/loading-button";
 
 function Toggle({
   checked,
+  disabled = false,
   label,
   onChange,
 }: {
   checked: boolean;
+  disabled?: boolean;
   label: string;
   onChange: () => void;
 }) {
@@ -24,8 +32,9 @@ function Toggle({
       aria-label={label}
       aria-pressed={checked}
       onClick={onChange}
+      disabled={disabled}
       className={clsx(
-        "relative h-7 w-12 cursor-pointer rounded-full transition focus:outline-none focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-500/20",
+        "relative h-7 w-12 cursor-pointer rounded-full transition focus:outline-none focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-orange-500/20",
         checked ? "bg-orange-600" : "bg-slate-300 dark:bg-slate-700",
       )}
     >
@@ -97,12 +106,30 @@ function CrossesMidnightField({
 
 export default function RestaurantSchedulesPage({
   initialSchedule,
+  onReloadSchedule,
 }: {
   initialSchedule: LocalSchedule;
+  onReloadSchedule: () => Promise<void>;
 }) {
   const [alwaysOpen, setAlwaysOpen] = useState(initialSchedule.alwaysOpen);
   const [paused, setPaused] = useState(initialSchedule.paused);
   const [schedule, setSchedule] = useState(initialSchedule.days);
+  const [scheduleId, setScheduleId] = useState(initialSchedule.scheduleId);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isReloading, setIsReloading] = useState(false);
+  const [isUpdatingAlwaysOpen, setIsUpdatingAlwaysOpen] = useState(false);
+  const [isUpdatingServiceStatus, setIsUpdatingServiceStatus] = useState(false);
+  const [statusMessage, setStatusMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
+  const [alwaysOpenError, setAlwaysOpenError] = useState("");
+  const [serviceStatusError, setServiceStatusError] = useState("");
+
+  useEffect(() => {
+    setAlwaysOpen(initialSchedule.alwaysOpen);
+    setPaused(initialSchedule.paused);
+    setSchedule(initialSchedule.days);
+    setScheduleId(initialSchedule.scheduleId);
+  }, [initialSchedule]);
 
   function updateDay(dayId: string, updates: Partial<LocalScheduleDay>) {
     setSchedule((currentSchedule) =>
@@ -112,10 +139,106 @@ export default function RestaurantSchedulesPage({
     );
   }
 
+  function buildCurrentSchedule(updates?: Partial<LocalSchedule>): LocalSchedule {
+    return {
+      scheduleId,
+      localId: initialSchedule.localId,
+      alwaysOpen,
+      paused,
+      days: schedule,
+      ...updates,
+    };
+  }
+
+  async function handleAlwaysOpenChange() {
+    const nextAlwaysOpen = !alwaysOpen;
+
+    setStatusMessage("");
+    setErrorMessage("");
+    setAlwaysOpenError("");
+    setAlwaysOpen(nextAlwaysOpen);
+    setIsUpdatingAlwaysOpen(true);
+
+    try {
+      await updateAlwaysOpen(
+        buildCurrentSchedule({ alwaysOpen: nextAlwaysOpen }),
+      );
+      setScheduleId((currentScheduleId) => currentScheduleId ?? "created");
+    } catch {
+      setAlwaysOpen(alwaysOpen);
+      setAlwaysOpenError(
+        "No se pudo actualizar siempre abierto. Intentalo nuevamente.",
+      );
+    } finally {
+      setIsUpdatingAlwaysOpen(false);
+    }
+  }
+
+  async function handleServiceStatusChange() {
+    const nextPaused = !paused;
+
+    setStatusMessage("");
+    setErrorMessage("");
+    setServiceStatusError("");
+    setPaused(nextPaused);
+    setIsUpdatingServiceStatus(true);
+
+    try {
+      await updateLocalServiceStatus(initialSchedule.localId, !nextPaused);
+    } catch {
+      setPaused(paused);
+      setServiceStatusError(
+        "No se pudo actualizar el estado de servicio. Intentalo nuevamente.",
+      );
+    } finally {
+      setIsUpdatingServiceStatus(false);
+    }
+  }
+
+  async function handleSubmit() {
+    setStatusMessage("");
+    setErrorMessage("");
+
+    setIsSaving(true);
+
+    try {
+      await saveLocalSchedule(buildCurrentSchedule());
+      setScheduleId((currentScheduleId) => currentScheduleId ?? "created");
+      setStatusMessage("Horario guardado correctamente.");
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudo guardar el horario. Intentalo nuevamente.",
+      );
+    } finally {
+      setIsSaving(false);
+    }
+  }
+
+  async function handleCancelChanges() {
+    setStatusMessage("");
+    setErrorMessage("");
+    setAlwaysOpenError("");
+    setServiceStatusError("");
+    setIsReloading(true);
+
+    try {
+      await onReloadSchedule();
+    } catch {
+      setErrorMessage("No se pudo recargar el horario. Intentalo nuevamente.");
+    } finally {
+      setIsReloading(false);
+    }
+  }
+
   return (
     <form
       className="space-y-6 pb-4"
-      onSubmit={(event) => event.preventDefault()}
+      onSubmit={(event) => {
+        event.preventDefault();
+        void handleSubmit();
+      }}
     >
       <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
@@ -129,24 +252,40 @@ export default function RestaurantSchedulesPage({
 
         <div className="grid gap-4 p-5 md:grid-cols-2">
           <div className="flex min-h-[64px] items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 dark:border-slate-800">
-            <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Siempre abierto
-            </span>
+            <div>
+              <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Siempre abierto
+              </span>
+              {alwaysOpenError ? (
+                <p className="mt-1 text-xs font-bold text-red-500">
+                  {alwaysOpenError}
+                </p>
+              ) : null}
+            </div>
             <Toggle
               checked={alwaysOpen}
+              disabled={isUpdatingAlwaysOpen || isSaving}
               label="Cambiar siempre abierto"
-              onChange={() => setAlwaysOpen((value) => !value)}
+              onChange={() => void handleAlwaysOpenChange()}
             />
           </div>
 
           <div className="flex min-h-[64px] items-center justify-between gap-4 rounded-xl border border-gray-200 px-4 dark:border-slate-800">
-            <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Fuera de servicio
-            </span>
+            <div>
+              <span className="text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Fuera de servicio
+              </span>
+              {serviceStatusError ? (
+                <p className="mt-1 text-xs font-bold text-red-500">
+                  {serviceStatusError}
+                </p>
+              ) : null}
+            </div>
             <Toggle
               checked={paused}
+              disabled={isUpdatingServiceStatus}
               label="Cambiar fuera de servicio"
-              onChange={() => setPaused((value) => !value)}
+              onChange={() => void handleServiceStatusChange()}
             />
           </div>
         </div>
@@ -236,23 +375,32 @@ export default function RestaurantSchedulesPage({
           </div>
 
           <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
+            {statusMessage ? (
+              <p className="self-center text-sm font-bold text-green-600">
+                {statusMessage}
+              </p>
+            ) : null}
+            {errorMessage ? (
+              <p className="self-center text-sm font-bold text-red-500">
+                {errorMessage}
+              </p>
+            ) : null}
             <button
               type="button"
-              onClick={() => {
-                setAlwaysOpen(initialSchedule.alwaysOpen);
-                setPaused(initialSchedule.paused);
-                setSchedule(initialSchedule.days);
-              }}
+              onClick={() => void handleCancelChanges()}
+              disabled={isReloading || isSaving}
               className="h-11 cursor-pointer rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
             >
-              Cancelar cambios
+              {isReloading ? "Recargando..." : "Cancelar cambios"}
             </button>
-            <button
+            <LoadingButton
               type="submit"
+              isLoading={isSaving}
+              loadingText="Guardando..."
               className="h-11 cursor-pointer rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-500/20"
             >
               Guardar horarios
-            </button>
+            </LoadingButton>
           </div>
         </section>
       </div>

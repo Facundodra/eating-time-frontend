@@ -8,6 +8,7 @@ export type LocalScheduleDay = {
 };
 
 export type LocalSchedule = {
+  scheduleId?: string;
   localId: string;
   alwaysOpen: boolean;
   paused: boolean;
