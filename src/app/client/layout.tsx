@@ -8,7 +8,7 @@ export default function ClientLayout({
   return (
     <>
       <Header />
-      <main className="min-h-[calc(100vh-90px)] bg-gray-100 px-5 py-10 dark:bg-slate-950 md:px-10">
+      <main className="min-h-[100vh] bg-gray-100 px-5 py-10 text-slate-950 dark:bg-slate-950 dark:text-white md:px-10">
         {children}
       </main>
     </>

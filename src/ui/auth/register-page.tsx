@@ -1,7 +1,7 @@
-import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import LoginFoodImage from "@/ui/auth/images/login-food.png";
 import RegisterForm from "./register-form";
 import ThemeToggle from "@/ui/shared/theme/theme-toggle";
+import EatingTimeBrand from "@/ui/shared/brand/eating-time-brand";
 
 import Image from "next/image";
 import Link from "next/link";
@@ -17,17 +17,12 @@ export default function RegisterPage() {
                     {/* Seccion izqquierda, titulo mas imagen */}
                     <section className="w-[60%] flex h-full flex-col justify-center">
                         <Link href="/" className="flex w-fit items-center gap-4">
-                            <Image
-                            src={EatingTimeLogo}
-                            alt="Eating Time"
-                            width={42}
-                            height={42}
-                            className="h-[42px] w-[42px] rounded-xl shadow-sm"
-                            priority
+                            <EatingTimeBrand
+                                iconSize={42}
+                                iconClassName="h-[42px] w-[42px] shadow-sm"
+                                textClassName="text-2xl"
+                                priority
                             />
-                            <span className="text-2xl font-extrabold tracking-tight">
-                            Eating Time
-                            </span>
                         </Link>
 
                         <div className="mt-12 w-fit rounded-full bg-orange-100 px-4 py-2 text-xs font-extrabold text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">

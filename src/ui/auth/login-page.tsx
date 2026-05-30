@@ -1,10 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import LoginFoodImage from "@/ui/auth/images/login-food.png";
 import LoginForm from "@/ui/auth/login-form";
-import EatingTimeLogo from "@/ui/shared/images/logo.png";
+import EatingTimeBrand from "@/ui/shared/brand/eating-time-brand";
 import ThemeToggle from "@/ui/shared/theme/theme-toggle";
+import Image from "next/image";
 
 type LoginPageProps = {
   reason?: string;
@@ -19,17 +19,12 @@ export default function LoginPage({ reason }: LoginPageProps) {
       <div className="mx-auto grid min-h-[calc(100vh-64px)] w-full max-w-[1440px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_420px] xl:gap-24">
         <section className="flex h-full flex-col justify-center">
           <Link href="/" className="flex w-fit items-center gap-4">
-            <Image
-              src={EatingTimeLogo}
-              alt="Eating Time"
-              width={42}
-              height={42}
-              className="h-[42px] w-[42px] rounded-xl shadow-sm"
+            <EatingTimeBrand
+              iconSize={42}
+              iconClassName="h-[42px] w-[42px] shadow-sm"
+              textClassName="text-2xl"
               priority
             />
-            <span className="text-2xl font-extrabold tracking-tight">
-              Eating Time
-            </span>
           </Link>
 
           <div className="mt-12 w-fit rounded-full bg-orange-100 px-4 py-2 text-xs font-extrabold text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">

@@ -1,5 +1,9 @@
 import DishesPage from "@/ui/client/dishes/dishes-page";
 
-export default function ClientDishesPage() {
-  return <DishesPage />;
+export default function DishesGeneralPage(){
+    return(
+        <>
+        <DishesPage></DishesPage>
+        </>
+    )
 }

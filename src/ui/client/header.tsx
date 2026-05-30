@@ -6,17 +6,13 @@ import {
   ShoppingCartIcon,
 } from "@heroicons/react/24/outline";
 import Form from "next/form";
-import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-import {
-  clearSessionCookies,
-  clearStoredSession,
-} from "@/lib/auth/session-store";
+import { clearSessionCookies, clearStoredSession } from "@/lib/auth/session-store";
 import { logout } from "@/services/auth-service";
-import EatingTimeLogo from "@/ui/shared/images/logo.png";
+import EatingTimeBrand from "@/ui/shared/brand/eating-time-brand";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 
@@ -38,31 +34,24 @@ export default function Header() {
   }
 
   return (
-    <div className="client-header flex items-center justify-between bg-white px-5 py-5 shadow-sm dark:bg-slate-900 dark:text-white md:px-10">
+    <div className="client-header flex items-center justify-between border-b border-gray-200 bg-white px-10 py-5 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
       <Link href="/" className="logo flex items-center gap-4">
-        <Image
-          src={EatingTimeLogo}
-          alt="Eating Time Logo"
-          width={50}
-          height={50}
-          className="w-[50px]"
+        <EatingTimeBrand
+          iconSize={50}
+          iconClassName="h-[50px] w-[50px]"
+          textClassName="text-[28px] drop-shadow-sm"
         />
-        <div className="logo_content">
-          <span className="logo_content_name block text-xl font-bold">
-            Eating Time
-          </span>
-        </div>
       </Link>
 
       <div className="search ml-auto hidden md:block">
         <Form
           action="/search"
-          className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white dark:border-slate-800 dark:bg-slate-950 dark:hover:bg-slate-900"
+          className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
           <input
             type="text"
             placeholder="Buscar..."
-            className="min-w-[400px] bg-transparent pr-2 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white dark:placeholder:text-slate-500"
+            className="min-w-[400px] bg-transparent pr-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
@@ -80,13 +69,13 @@ export default function Header() {
       <div className="cart mr-5">
         <Link
           href="/cart"
-            className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800 dark:border-slate-800"
+          className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800 dark:border-slate-800"
         >
-          <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition group-hover:text-white dark:text-slate-200" />
+          <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition group-hover:text-white dark:text-slate-100" />
         </Link>
       </div>
 
-      <div className="account">
+      <div className="account mr-3">
         <Link href="/client/mi-cuenta" className="relative bottom-[3px]">
           <ProfilePicture />
         </Link>
@@ -94,14 +83,13 @@ export default function Header() {
 
       <button
         type="button"
+        title="Cerrar sesion"
+        aria-label="Cerrar sesion"
         onClick={handleLogout}
         disabled={isLoggingOut}
-        className="ml-3 inline-flex h-10 cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-3 text-sm font-bold text-slate-700 transition hover:border-orange-300 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:text-slate-200 dark:hover:border-orange-500/50 dark:hover:text-orange-300"
+        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-slate-700 transition hover:border-orange-300 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:text-slate-200 dark:hover:border-orange-500/50 dark:hover:text-orange-300"
       >
         <ArrowLeftEndOnRectangleIcon className="h-5 w-5" />
-        <span className="hidden sm:inline">
-          {isLoggingOut ? "Cerrando..." : "Cerrar sesión"}
-        </span>
       </button>
     </div>
   );

@@ -1,208 +1,229 @@
 "use client";
 
 import { TagIcon } from "@heroicons/react/24/outline";
-import clsx from "clsx";
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import useDebounce from "@/hooks/use-debounce";
 
-import type { ClientDish, DishFilter } from "@/lib/client/types";
-import { getDishes } from "@/services/client/client-service";
+import type { ClientDish } from "@/lib/client/types";
+import { getDishes, type DishFilter } from "@/services/client/client-service";
 
-type DishesListProps = {
-  compact?: boolean;
-};
+const PAGE_SIZE = 20;
 
 type OrdenValue = "" | "precio-asc" | "precio-desc";
+type Filters = Omit<DishFilter, "pagina" | "tamano">;
 
-const PAGE_SIZE = 12;
+function DishSkeleton() {
+  return (
+    <div className="flex flex-wrap">
+      {Array.from({ length: PAGE_SIZE }).map((_, i) => (
+        <div key={i} className="w-1/2 px-2 py-2 md:w-1/3 lg:w-1/4">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white animate-pulse dark:border-slate-800 dark:bg-slate-900">
+            <div className="h-[150px] bg-gray-100 dark:bg-slate-800" />
+            <div className="space-y-3 p-4">
+              <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
+              <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
+            </div>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
 
-export default function DishesList({ compact = false }: DishesListProps) {
+export default function DishesList({ idLocal }: { idLocal?: number }) {
   const [dishes, setDishes] = useState<ClientDish[]>([]);
-  const [filters, setFilters] = useState<Omit<DishFilter, "pagina" | "tamano">>({});
-  const [search, setSearch] = useState("");
-  const debouncedSearch = useDebounce(search, 350);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [filters, setFilters] = useState<Filters>({});
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [precioMin, setPrecioMin] = useState("");
+  const [precioMax, setPrecioMax] = useState("");
 
   useEffect(() => {
-    const isFirstPage = page === 1;
+    const isNewSearch = page === 1;
 
-    getDishes({ ...filters, pagina: page, tamano: compact ? 6 : PAGE_SIZE })
+    getDishes({ ...filters, idLocal, pagina: page, tamano: PAGE_SIZE })
       .then((data) => {
-        setDishes((current) => (isFirstPage ? data : [...current, ...data]));
-        setHasMore(!compact && data.length === PAGE_SIZE);
+        setDishes((prev) => (isNewSearch ? data : [...prev, ...data]));
+        setHasMore(data.length === PAGE_SIZE);
       })
-      .catch((error) =>
-        setErrorMessage(
-          error instanceof Error ? error.message : "No se pudieron cargar los platos.",
-        ),
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "Error al cargar"),
       )
       .finally(() => {
-        if (isFirstPage) setIsLoading(false);
-        else setIsLoadingMore(false);
+        if (isNewSearch) setLoading(false);
+        else setLoadingMore(false);
       });
-  }, [compact, filters, page]);
+  }, [filters, page, idLocal]);
 
-  useEffect(() => {
-    // when debounced search changes, update filters.q
-    updateFilters({ q: debouncedSearch || undefined });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedSearch]);
-
-  function updateFilters(patch: Partial<DishFilter>) {
-    setIsLoading(true);
-    setErrorMessage("");
+  function updateFilters(patch: Partial<Filters>) {
+    setLoading(true);
+    setError(null);
     setPage(1);
-    setFilters((current) => ({ ...current, ...patch }));
+    setFilters((f) => ({ ...f, ...patch }));
   }
 
-  function handleOrden(value: OrdenValue) {
-    if (!value) {
+  function handleOrden(val: OrdenValue) {
+    if (val === "") {
       updateFilters({ orden: undefined, sentido: undefined });
       return;
     }
 
-    const [, sentido] = value.split("-") as ["precio", "asc" | "desc"];
-    updateFilters({ orden: "precio", sentido });
+    const [orden, sentido] = val.split("-") as ["precio", "asc" | "desc"];
+    updateFilters({ orden, sentido });
   }
 
-  if (isLoading) {
-    return <DishSkeleton compact={compact} />;
+  function toggleDescuento() {
+    updateFilters({ conDescuento: filters.conDescuento ? undefined : true });
   }
 
-  if (errorMessage) {
-    return (
-      <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
-        {errorMessage}
-      </p>
-    );
+  function applyPrecio() {
+    const min = Number(precioMin);
+    const max = Number(precioMax);
+    updateFilters({
+      precioMin: precioMin !== "" && !isNaN(min) ? min : undefined,
+      precioMax: precioMax !== "" && !isNaN(max) ? max : undefined,
+    });
   }
+
+  const ordenValue: OrdenValue = filters.orden
+    ? `${filters.orden}-${filters.sentido ?? "asc"}`
+    : "";
 
   return (
-    <section className="space-y-4">
-      {!compact ? (
-        <div className="flex flex-col gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between dark:border-slate-800 dark:bg-slate-900">
+    <div className="mx-auto max-w-[1440px]">
+      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border-b border-gray-100 bg-white p-3 text-sm text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-600 dark:text-slate-300">Ordenar:</span>
+          <select
+            value={ordenValue}
+            onChange={(e) => handleOrden(e.target.value as OrdenValue)}
+            className="cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+          >
+            <option value="">Por defecto</option>
+            <option value="precio-asc">Precio: menor a mayor</option>
+            <option value="precio-desc">Precio: mayor a menor</option>
+          </select>
+        </div>
+
+        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-800 sm:block" />
+
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-600 dark:text-slate-300">Filtrar:</span>
           <button
             type="button"
-            onClick={() =>
-              updateFilters({
-                conDescuento: filters.conDescuento ? undefined : true,
-              })
-            }
-            className={clsx(
-              "inline-flex h-10 w-fit items-center gap-2 rounded-xl border px-3 text-sm font-bold transition",
+            onClick={toggleDescuento}
+            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
               filters.conDescuento
                 ? "border-orange-600 bg-orange-600 text-white"
-                : "border-slate-200 bg-white text-slate-600 hover:border-orange-300 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300",
-            )}
+                : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+            }`}
           >
-            <TagIcon className="h-4 w-4" />
+            <TagIcon className="h-3.5 w-3.5" />
             Con descuento
           </button>
-          <label className="flex items-center gap-2 text-sm font-semibold text-slate-600 dark:text-slate-300">
-            Ordenar
-            <select
-              value={
-                filters.orden
-                  ? (`precio-${filters.sentido ?? "asc"}` as OrdenValue)
-                  : ""
-              }
-              onChange={(event) => handleOrden(event.target.value as OrdenValue)}
-              className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-            >
-              <option value="">Por defecto</option>
-              <option value="precio-asc">Precio: menor a mayor</option>
-              <option value="precio-desc">Precio: mayor a menor</option>
-            </select>
-          </label>
-          <div className="mt-2 w-full sm:mt-0 sm:w-64">
-            <input
-              placeholder="Buscar platos..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
-            />
-          </div>
         </div>
-      ) : null}
 
-      {dishes.length === 0 ? (
-        <p className="rounded-2xl border border-slate-200 bg-white p-6 text-sm font-semibold text-slate-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-          No se encontraron platos disponibles.
+        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-800 sm:block" />
+
+        <div className="flex items-center gap-1.5">
+          <span className="font-medium text-gray-600 dark:text-slate-300">Precio:</span>
+          <input
+            type="number"
+            min={0}
+            placeholder="min"
+            value={precioMin}
+            onChange={(e) => setPrecioMin(e.target.value)}
+            onBlur={applyPrecio}
+            onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
+            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+          />
+          <span className="text-gray-400 dark:text-slate-500">-</span>
+          <input
+            type="number"
+            min={0}
+            placeholder="max"
+            value={precioMax}
+            onChange={(e) => setPrecioMax(e.target.value)}
+            onBlur={applyPrecio}
+            onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
+            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+          />
+        </div>
+      </div>
+
+      {loading ? (
+        <DishSkeleton />
+      ) : error ? (
+        <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+      ) : dishes.length === 0 ? (
+        <p className="text-sm text-slate-400 dark:text-slate-500">
+          No se encontraron resultados para los filtros aplicados.
         </p>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {dishes.map((dish) => (
-            <Link
-              key={dish.id}
-              href={`/client/platos/${dish.id}`}
-              className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:border-orange-300 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500/50"
-            >
-              <div className="flex h-40 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
-                {dish.imageUrl ? (
-                  <img
-                    alt={dish.name}
-                    src={dish.imageUrl}
-                    className="h-full w-full object-cover"
-                  />
-                ) : (
-                  <span className="text-5xl font-black text-orange-600 dark:text-orange-300">
-                    {dish.name.charAt(0).toUpperCase()}
-                  </span>
-                )}
+        <>
+          <div className="flex flex-wrap">
+            {dishes.map((dish) => (
+              <div key={dish.id} className="w-1/2 px-2 py-2 md:w-1/3 lg:w-1/4">
+                <Link
+                  href={`/client/platos/${dish.id}`}
+                  className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+                >
+                  <div className="flex h-[150px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+                    {dish.imageUrl ? (
+                      <img
+                        alt={dish.name}
+                        src={dish.imageUrl}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <span className="text-4xl font-black text-orange-600 dark:text-orange-300">
+                        {dish.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <span className="inline-block font-bold text-gray-800 dark:text-white">
+                      {dish.name}
+                    </span>
+                    <div className="mt-2">
+                      <span className="text-md font-bold text-orange-700 dark:text-orange-300">
+                        ${dish.price}
+                      </span>
+                    </div>
+                  </div>
+                </Link>
               </div>
-              <div className="p-4">
-                <h3 className="text-base font-bold text-slate-950 dark:text-white">
-                  {dish.name}
-                </h3>
-                <p className="mt-2 text-lg font-black text-orange-600 dark:text-orange-300">
-                  ${dish.price}
-                </p>
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {hasMore ? (
-        <div className="flex justify-center pt-3">
-          <button
-            type="button"
-            onClick={() => {
-              setIsLoadingMore(true);
-              setErrorMessage("");
-              setPage((current) => current + 1);
-            }}
-            disabled={isLoadingMore}
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-slate-200 bg-white px-5 text-sm font-bold text-slate-700 transition hover:border-orange-300 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
-          >
-            {isLoadingMore ? "Cargando..." : "Cargar mas"}
-          </button>
-        </div>
-      ) : null}
-    </section>
-  );
-}
-
-function DishSkeleton({ compact }: { compact: boolean }) {
-  return (
-    <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: compact ? 3 : 6 }).map((_, index) => (
-        <div
-          key={index}
-          className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
-        >
-          <div className="h-40 animate-pulse bg-slate-100 dark:bg-slate-800" />
-          <div className="space-y-3 p-4">
-            <div className="h-4 w-2/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
-            <div className="h-4 w-1/3 animate-pulse rounded bg-slate-100 dark:bg-slate-800" />
+            ))}
           </div>
-        </div>
-      ))}
+
+          {hasMore && (
+            <div className="mb-4 mt-8 flex justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setLoadingMore(true);
+                  setError(null);
+                  setPage((p) => p + 1);
+                }}
+                disabled={loadingMore}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900"
+              >
+                {loadingMore ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-orange-600" />
+                    Cargando...
+                  </>
+                ) : (
+                  "Cargar mas"
+                )}
+              </button>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

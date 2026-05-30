@@ -18,13 +18,8 @@ export default function SearchPage() {
 
   useEffect(() => {
     if (!debouncedQ) {
-      setLocals([]);
-      setDishes([]);
       return;
     }
-
-    setIsLoading(true);
-    setError(null);
 
     Promise.all([
       getLocales().catch(() => {
@@ -45,13 +40,28 @@ export default function SearchPage() {
       .finally(() => setIsLoading(false));
   }, [debouncedQ]);
 
+  function handleSearchChange(value: string) {
+    setQ(value);
+
+    if (!value.trim()) {
+      setLocals([]);
+      setDishes([]);
+      setError(null);
+      setIsLoading(false);
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+  }
+
   return (
     <main className="space-y-6">
       <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <input
           placeholder="Buscar restaurantes o platos..."
           value={q}
-          onChange={(e) => setQ(e.target.value)}
+          onChange={(e) => handleSearchChange(e.target.value)}
           className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-orange-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
         />
       </div>
@@ -75,7 +85,7 @@ export default function SearchPage() {
             ) : (
               <div className="space-y-3">
                 {locals.map((l) => (
-                  <Link key={l.id} href={`/restaurant/${l.id}`} className="block rounded-xl border p-3">
+                  <Link key={l.id} href={`/client/local/${l.id}`} className="block rounded-xl border p-3">
                     <div className="font-bold">{l.nombre}</div>
                     <div className="text-sm text-slate-500">{l.direccion}</div>
                   </Link>

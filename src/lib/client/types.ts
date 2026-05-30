@@ -1,3 +1,5 @@
+import { DishStatus } from "../local-dish/types";
+
 export type DeliveryPointCredentials = {
   loc: string;
   street: string;
@@ -17,30 +19,24 @@ export type DeliveryPoint = {
   clienteId: number;
 };
 
-export type ClientDishStatus = "available" | "unavailable";
-
 export type ClientDish = {
   id: string;
   name: string;
   price: number;
   imageUrl: string | null;
-  status: ClientDishStatus;
+  status: DishStatus;
   createdAt: string;
   localId: number;
   categories: number[];
-};
+}
 
-export type DishFilter = {
-  idLocal?: number;
-  precioMin?: number;
-  precioMax?: number;
-  q?: string;
-  conDescuento?: boolean;
-  orden?: "precio";
-  sentido?: "asc" | "desc";
-  pagina?: number;
-  tamano?: number;
-};
+export type RestaurantList = {
+  id: number;
+  name: string;
+  url_photo: string;
+  stars: number;
+  state: boolean;
+}
 
 export type LocalList = {
   id: number;
@@ -51,3 +47,13 @@ export type LocalList = {
   calificacion: number;
   estado_servicio: boolean;
 };
+
+export type Restaurant ={
+  id: number;
+  name: string;
+  url_photo: string;
+  stars: number;
+  state: boolean;
+  address: string | null;
+  description: string | null;
+}
