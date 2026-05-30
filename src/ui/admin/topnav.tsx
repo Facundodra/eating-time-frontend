@@ -46,10 +46,10 @@ export default function Topnav() {
         <div className="user">
           <Link
             href="/admin/my-data"
-            className="flex w-fit items-center gap-2 rounded-3xl bg-white px-3 py-2 shadow-sm ring-1 ring-gray-100 dark:bg-slate-900 dark:ring-slate-800"
+            className="flex min-h-11 w-fit items-center gap-2 rounded-3xl bg-white px-3 py-1.5 shadow-sm ring-1 ring-gray-100 dark:bg-slate-900 dark:ring-slate-800"
           >
             <ProfilePicture className="h-8 w-8" />
-            <UserName className="text-sm font-semibold" />
+            <UserName className="leading-none text-sm font-semibold" />
           </Link>
         </div>
       </div>

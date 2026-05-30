@@ -41,17 +41,17 @@ export default function RegisterForm() {
 
   if (state && "success" in state) {
     return (
-      <div className="w-full rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
+      <div className="w-full rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900">
         <div className="flex flex-col items-center text-center py-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6">
             <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
             </svg>
           </div>
-          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900">
+          <h2 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
             ¡Cuenta creada exitosamente!
           </h2>
-          <p className="mt-4 text-sm font-medium text-slate-400 leading-6 max-w-xs">
+          <p className="mt-4 text-sm font-medium text-slate-400 leading-6 max-w-xs dark:text-slate-400">
             Te enviamos un correo de confirmación.
           </p>
           <Link
@@ -66,12 +66,12 @@ export default function RegisterForm() {
   }
 
   return (
-    <div className="w-full rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)]">
+    <div className="w-full rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900">
       <div>
-        <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900">
+        <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 dark:text-white">
           Crear cuenta cliente
         </h1>
-        <p className="mt-3 text-sm font-medium text-slate-400 leading-4">
+        <p className="mt-3 text-sm font-medium text-slate-400 leading-4 dark:text-slate-400">
           Completa tus datos para registrarte y comenzar a hacer pedidos en Eating Time.
         </p>
       </div>
@@ -79,7 +79,7 @@ export default function RegisterForm() {
       <form action={formAction} className="mt-8 space-y-5">
         {/* Nombre */}
         <div>
-          <label htmlFor="name" className="mb-2 block text-xs font-bold text-slate-600">
+          <label htmlFor="name" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
             Nombre y apellido
           </label>
           <input
@@ -96,7 +96,7 @@ export default function RegisterForm() {
         {/* Cedula y telefono */}
         <div className="flex align-center flex-wrap">
           <div className="w-1/2 pr-2">
-            <label htmlFor="document" className="mb-2 block text-xs font-bold text-slate-600">
+            <label htmlFor="document" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
               Documento de identidad
             </label>
             <input
@@ -110,7 +110,7 @@ export default function RegisterForm() {
             />
           </div>
           <div className="w-1/2 pl-2">
-            <label htmlFor="phone" className="mb-2 block text-xs font-bold text-slate-600">
+            <label htmlFor="phone" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
               Teléfono
             </label>
             <input
@@ -126,7 +126,7 @@ export default function RegisterForm() {
 
         {/* Email */}
         <div>
-          <label htmlFor="email" className="mb-2 block text-xs font-bold text-slate-600">
+          <label htmlFor="email" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
             Correo electrónico
           </label>
           <input
@@ -144,7 +144,7 @@ export default function RegisterForm() {
         <div>
           <div className="flex align-center flex-wrap">
             <div className="w-1/2 pr-2 relative">
-              <label htmlFor="password" className="mb-2 block text-xs font-bold text-slate-600">
+              <label htmlFor="password" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
                 Contraseña
               </label>
               <input
@@ -161,13 +161,13 @@ export default function RegisterForm() {
                 type="button"
                 onClick={() => setShowPsw(v => !v)}
                 tabIndex={-1}
-                className="absolute bottom-[13px] right-[20px] text-slate-400 hover:text-slate-600"
+                className="absolute bottom-[13px] right-[20px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 {showPsw ? <EyeSlashIcon className="w-[20px]" /> : <EyeIcon className="w-[20px]" />}
               </button>
             </div>
             <div className="w-1/2 pl-2 relative">
-              <label htmlFor="confirm_password" className="mb-2 block text-xs font-bold text-slate-600">
+              <label htmlFor="confirm_password" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
                 Confirmar contraseña
               </label>
               <input
@@ -184,7 +184,7 @@ export default function RegisterForm() {
                 type="button"
                 onClick={() => setShowConfirmPsw(v => !v)}
                 tabIndex={-1}
-                className="absolute bottom-[13px] right-[20px] text-slate-400 hover:text-slate-600"
+                className="absolute bottom-[13px] right-[20px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 {showConfirmPsw ? <EyeSlashIcon className="w-[20px]" /> : <EyeIcon className="w-[20px]" />}
               </button>
@@ -197,7 +197,7 @@ export default function RegisterForm() {
 
         {/* Foto */}
         <div>
-          <label htmlFor="profile_pic" className="mb-2 block text-xs font-bold text-slate-600">
+          <label htmlFor="profile_pic" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
             Foto de perfil
           </label>
           <input
@@ -206,7 +206,7 @@ export default function RegisterForm() {
             type="file"
             accept="image/*"
             onChange={handleFileChange}
-            className="field bg-orange-50 !border-orange-700 border-dashed !py-3 !text-xs file:text-orange-700 file:font-bold file:mr-4 file:cursor-pointer file:text-sm"
+            className="field bg-orange-50 !border-orange-700 border-dashed !py-3 !text-xs file:text-orange-700 file:font-bold file:mr-4 file:cursor-pointer file:text-sm dark:bg-orange-500/10 dark:file:text-orange-300"
           />
           {fileError
             ? <span className="text-red-500 text-xs">{fileError}</span>
@@ -214,10 +214,12 @@ export default function RegisterForm() {
           }
         </div>
 
-        {state?.error === "Bad Request" && (
-          <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-            El email o la cédula ya están registrados
-          </p>          
+        {state?.error && (
+          <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-300">
+            {state.error === "Bad Request"
+              ? "El email o la cédula ya están registrados"
+              : state.error}
+          </p>
         )}
 
         <button
@@ -229,8 +231,8 @@ export default function RegisterForm() {
         </button>
       </form>
 
-      <div className="my-8 h-px bg-gray-200" />
-      <p className="text-center text-gray-500 text-sm">
+      <div className="my-8 h-px bg-gray-200 dark:bg-slate-800" />
+      <p className="text-center text-gray-500 text-sm dark:text-slate-400">
         ¿Ya tienes una cuenta?{" "}
         <Link href="/login" className="text-orange-600 hover:underline">Inicia sesión</Link>
       </p>

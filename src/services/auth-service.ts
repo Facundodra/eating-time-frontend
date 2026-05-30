@@ -9,7 +9,20 @@ import type {
 
 type LoginErrorResponse = {
   error?: string;
+  message?: string;
+  detail?: string;
 };
+
+type LocalConfirmationErrorResponse = {
+  error?: string;
+  message?: string;
+  detail?: string;
+};
+
+const LOCAL_CONFIRMATION_ENDPOINTS = [
+  "/api/auth/activar-cuenta-local",
+  "/api/auth/confirmar-cuenta",
+];
 
 export class LoginError extends Error {
   constructor(
@@ -20,6 +33,22 @@ export class LoginError extends Error {
     this.name = "LoginError";
   }
 }
+
+export class LocalConfirmationError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+  ) {
+    super(message);
+    this.name = "LocalConfirmationError";
+  }
+}
+
+export type LocalConfirmationCredentials = {
+  email?: string;
+  codigo: string;
+  password: string;
+};
 
 export async function login(
   credentials: LoginCredentials,
@@ -44,9 +73,42 @@ export async function logout(): Promise<void> {
   await publicApi.post("/api/auth/logout", { isMobile: false });
 }
 
+export async function confirmLocalAccount(
+  credentials: LocalConfirmationCredentials,
+): Promise<void> {
+  if (!publicApi.defaults.baseURL) {
+    throw new LocalConfirmationError(
+      "No está configurada la URL del backend. Revisá NEXT_PUBLIC_API_URL o NEXT_PUBLIC_API_BASE_URL.",
+    );
+  }
+
+  let lastError: AxiosError<LocalConfirmationErrorResponse> | null = null;
+
+  for (const endpoint of LOCAL_CONFIRMATION_ENDPOINTS) {
+    try {
+      await publicApi.post(endpoint, credentials);
+      return;
+    } catch (error) {
+      if (!axios.isAxiosError<LocalConfirmationErrorResponse>(error)) {
+        throw new LocalConfirmationError(
+          "No se pudo confirmar la cuenta. Intentalo nuevamente.",
+        );
+      }
+
+      lastError = error;
+
+      if (!isEndpointNotFound(error)) {
+        break;
+      }
+    }
+  }
+
+  throw mapLocalConfirmationError(lastError);
+}
+
 function mapLoginError(error: AxiosError<LoginErrorResponse>) {
   const status = error.response?.status;
-  const responseMessage = error.response?.data?.error;
+  const responseMessage = getErrorMessage(error.response?.data);
 
   if (status === 400) {
     return new LoginError(responseMessage ?? "Revisa los datos ingresados.", 400);
@@ -61,6 +123,60 @@ function mapLoginError(error: AxiosError<LoginErrorResponse>) {
   }
 
   return new LoginError("No se pudo iniciar sesion. Intentalo nuevamente.", status);
+}
+
+function mapLocalConfirmationError(
+  error: AxiosError<LocalConfirmationErrorResponse> | null,
+) {
+  const status = error?.response?.status;
+  const responseMessage = getErrorMessage(error?.response?.data);
+
+  if (!error?.response) {
+    return new LocalConfirmationError(
+      "Error de red: no se pudo conectar con el backend para confirmar la cuenta.",
+    );
+  }
+
+  if (status === 400) {
+    return new LocalConfirmationError(
+      responseMessage ?? "El código ingresado no es válido.",
+      400,
+    );
+  }
+
+  if (status === 404) {
+    return new LocalConfirmationError(
+      responseMessage ?? "No encontramos una solicitud aprobada con ese código.",
+      404,
+    );
+  }
+
+  if (status === 409) {
+    return new LocalConfirmationError(
+      responseMessage ?? "La cuenta ya fue confirmada o el código ya fue usado.",
+      409,
+    );
+  }
+
+  return new LocalConfirmationError(
+    responseMessage ?? `No se pudo confirmar la cuenta (${status})`,
+    status,
+  );
+}
+
+function isEndpointNotFound(error: AxiosError<LocalConfirmationErrorResponse>) {
+  const responseMessage = getErrorMessage(error.response?.data);
+
+  return (
+    error.response?.status === 404 &&
+    (!responseMessage || responseMessage.toLowerCase() === "not found")
+  );
+}
+
+function getErrorMessage(
+  data?: LoginErrorResponse | LocalConfirmationErrorResponse,
+) {
+  return data?.message ?? data?.error ?? data?.detail;
 }
 
 export async function register(credentials: RegisterCredentials): Promise<void> {
@@ -81,21 +197,14 @@ export async function register(credentials: RegisterCredentials): Promise<void> 
     body.append("foto", credentials.profile_pic);
   }
 
-  const response = await fetch(
-    `${process.env.NEXT_PUBLIC_API_URL}/api/auth/registro`,
-    { method: "POST", body },
-  );
-
-  if (!response.ok) {
-    let errorMessage = `Error al registrar (${response.status})`;
-
-    try {
-      const data = await response.json();
-      errorMessage = data.error ?? data.message ?? errorMessage;
-    } catch {
-      // API did not return JSON.
+  try {
+    await publicApi.post("/api/auth/registro", body);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data;
+      const message = data?.error ?? data?.message ?? `Error al registrar (${error.response?.status})`;
+      throw new Error(message);
     }
-
-    throw new Error(errorMessage);
+    throw new Error("No se pudo registrar. Intentalo nuevamente.");
   }
 }

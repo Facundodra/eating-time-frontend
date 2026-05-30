@@ -2,6 +2,8 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+
+
 /* Colors */ 
 :root{
     --color-orange-700: #e96409;
@@ -9,7 +11,7 @@
 }
 
 .btn-primary{
-    @apply px-4 py-2 border border-gray-300 rounded-xl text-gray-700 text-xs hover:bg-orange-700 hover:border-orange-700 hover:text-white transition-colors duration-300;
+    @apply px-4 py-2 border border-gray-300 rounded-xl text-gray-700 text-xs hover:bg-orange-700 hover:border-orange-700 hover:text-white transition-colors duration-300 dark:border-slate-700 dark:text-slate-200 dark:hover:border-orange-700;
 }
 
 .btn-secondary{
@@ -126,5 +128,5 @@
 
 /* Clases Formulario */
 .field{
-    @apply h-12 w-full rounded-2xl border border-gray-200 px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100;
+    @apply h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20;
 }
