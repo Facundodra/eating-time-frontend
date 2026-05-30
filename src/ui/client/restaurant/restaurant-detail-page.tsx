@@ -2,10 +2,11 @@
 
 import { useEffect, useState } from "react";
 
-import { getRestaurant } from "@/services/client/client-service";
-import type { Restaurant } from "@/lib/client/types";
+import { getRestaurant, getCart } from "@/services/client/client-service";
+import type { Cart, Restaurant } from "@/lib/client/types";
 import {
   ChevronLeftIcon,
+  ShoppingCartIcon,
   StarIcon,
   MapPinIcon,
 } from "@heroicons/react/24/outline";
@@ -19,6 +20,8 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  const [cart, setCart] = useState<Cart | null>(null);
+
   useEffect(() => {
     getRestaurant(id)
       .then(setRestaurant)
@@ -26,8 +29,13 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
         setError(err instanceof Error ? err.message : "Error al cargar"),
       )
       .finally(() => setLoading(false));
+
+    // Carga el carrito existente para este local (null si no hay)
+    getCart(Number(id)).then(setCart).catch(() => setCart(null));
   }, [id]);
 
+  const cartItemCount =
+    cart?.items.filter((i) => i.eliminacion == null).reduce((sum, i) => sum + i.cantidad, 0) ?? 0;
 
   if (error) {
     return (
@@ -43,7 +51,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
 
   return (
     <>
-      <div className="max-w-[1440px] mx-auto px-4 py-6">
+      <div className="max-w-[1440px] mx-auto px-4 py-6 pb-28">
         {/* Volver */}
         <Link
           href="/client"
@@ -52,7 +60,6 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
           <ChevronLeftIcon className="h-4 w-4" />
           Volver al listado
         </Link>
-        
 
         {/* Ficha local */}
         <div className="restaurant-card flex align-center overflow-hidden mb-7">
@@ -106,9 +113,38 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
 
         {/* Listado de platos */}
         <h2 className="text-xl font-bold text-gray-700 mb-5">Platos disponibles</h2>
-        <DishesList idLocal={Number(id)} />
-
+        <DishesList
+          idLocal={Number(id)}
+          cart={cart}
+          onCartUpdate={setCart}
+        />
       </div>
+
+      {/* Barra fija de carrito — aparece cuando hay ítems */}
+      {cartItemCount > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 pb-4 pointer-events-none">
+          <div className="pointer-events-auto w-full max-w-lg bg-orange-700 text-white rounded-2xl shadow-xl px-6 py-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <ShoppingCartIcon className="w-6 h-6" />
+                <span className="absolute -top-2 -right-2 bg-white text-orange-700 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                  {cartItemCount}
+                </span>
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Tu pedido</p>
+                <p className="text-xs opacity-80">${cart?.total.toFixed(2)}</p>
+              </div>
+            </div>
+            <Link
+              href={`/client/local/${id}/cart`}
+              className="bg-white text-orange-700 font-bold text-sm px-5 py-2 rounded-xl hover:bg-orange-50 transition-colors"
+            >
+              Ver carrito
+            </Link>
+          </div>
+        </div>
+      )}
     </>
   );
 }

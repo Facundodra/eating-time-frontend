@@ -2,10 +2,10 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { TagIcon } from "@heroicons/react/24/outline";
+import { MinusIcon, PlusIcon, TagIcon } from "@heroicons/react/24/outline";
 
-import { getDishes, type DishFilter } from "@/services/client/client-service";
-import type { ClientDish } from "@/lib/client/types";
+import { getDishes, updateCartItem, type DishFilter } from "@/services/client/client-service";
+import type { Cart, ClientDish } from "@/lib/client/types";
 
 const PAGE_SIZE = 20;
 
@@ -30,7 +30,13 @@ function DishSkeleton() {
   );
 }
 
-export default function DishesList({ idLocal }: { idLocal?: number }) {
+type Props = {
+  idLocal?: number;
+  cart?: Cart | null;
+  onCartUpdate?: (cart: Cart | null) => void;
+};
+
+export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   const [dishes, setDishes] = useState<ClientDish[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
@@ -41,6 +47,9 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
 
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
+
+  // ID del plato que está siendo actualizado en el carrito (para mostrar spinner)
+  const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
 
   useEffect(() => {
     const isNewSearch = page === 1;
@@ -92,6 +101,34 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
   const ordenValue: OrdenValue = filters.orden
     ? `${filters.orden}-${filters.sentido ?? "asc"}`
     : "";
+
+  // Devuelve la cantidad del plato en el carrito actual (0 si no está)
+  function getCartQty(dishId: string): number {
+    if (!cart) return 0;
+    const item = cart.items.find(
+      // Usamos != null para cubrir tanto null como undefined (Jackson puede omitir el campo)
+      (i) => i.platoId === Number(dishId) && i.eliminacion == null
+    );
+    return item?.cantidad ?? 0;
+  }
+
+  async function handleCartUpdate(dishId: string, delta: number) {
+    if (!idLocal || !onCartUpdate) return;
+    const platoId = Number(dishId);
+    setUpdatingDishId(platoId);
+    try {
+      const updated = await updateCartItem(idLocal, platoId, delta);
+      // El carrito está activo si tiene al menos un ítem sin eliminar.
+      // No usamos `eliminacion` del cart porque el backend puede devolverlo
+      // con timestamp aunque el carrito siga activo (registro reutilizado).
+      const hasActiveItems = (updated.items ?? []).some((i) => i.eliminacion == null);
+      onCartUpdate(hasActiveItems ? updated : null);
+    } catch (err) {
+      console.error("[carrito] error en updateCartItem:", err);
+    } finally {
+      setUpdatingDishId(null);
+    }
+  }
 
   return (
     <div className="max-w-[1440px] mx-auto">
@@ -168,35 +205,92 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
       ) : (
         <>
           <div className="flex flex-wrap">
-            {dishes.map((dish) => (
-              <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
-              <Link href={`/client/platos/${dish.id}`} className="block rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
-                  <div className="flex items-center justify-center bg-orange-50 h-[150px]">
-                    {dish.imageUrl ? (
-                      <img
-                        alt={dish.name}
-                        src={dish.imageUrl}
-                        className="object-cover w-full h-full"
-                      />
-                    ) : (
-                      <span className="text-4xl font-black text-orange-600">
-                        {dish.name.charAt(0).toUpperCase()}
-                      </span>
+            {dishes.map((dish) => {
+              const qty = getCartQty(dish.id);
+              const isUpdating = updatingDishId === Number(dish.id);
+              return (
+                <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
+                  <div className="rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden flex flex-col">
+                    <Link href={`/client/platos/${dish.id}`} className="block">
+                      <div className="flex items-center justify-center bg-orange-50 h-[150px]">
+                        {dish.imageUrl ? (
+                          <img
+                            alt={dish.name}
+                            src={dish.imageUrl}
+                            className="object-cover w-full h-full"
+                          />
+                        ) : (
+                          <span className="text-4xl font-black text-orange-600">
+                            {dish.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="px-4 pt-4 pb-2">
+                        <span className="inline-block font-bold text-gray-800">
+                          {dish.name}
+                        </span>
+                        <div className="mt-1">
+                          <span className="text-md text-orange-700 font-bold">
+                            ${dish.price}
+                          </span>
+                        </div>
+                      </div>
+                    </Link>
+
+                    {/* Contador de carrito — solo visible dentro de un local */}
+                    {idLocal && onCartUpdate && (
+                      <div className="px-4 pb-4 mt-auto">
+                        {qty === 0 ? (
+                          <button
+                            type="button"
+                            disabled={isUpdating}
+                            onClick={() => handleCartUpdate(dish.id, 1)}
+                            className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-orange-700 hover:bg-orange-800 text-white text-sm font-semibold py-2 transition-colors disabled:opacity-60"
+                          >
+                            {isUpdating ? (
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                            ) : (
+                              <>
+                                <PlusIcon className="w-4 h-4" />
+                                Agregar
+                              </>
+                            )}
+                          </button>
+                        ) : (
+                          <div className="flex items-center justify-between border border-orange-200 rounded-lg px-2 py-1">
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleCartUpdate(dish.id, -1)}
+                              className="p-1 rounded-md hover:bg-orange-50 transition-colors disabled:opacity-60"
+                            >
+                              <MinusIcon className="w-4 h-4 text-orange-700" />
+                            </button>
+
+                            {isUpdating ? (
+                              <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-300 border-t-orange-700" />
+                            ) : (
+                              <span className="font-bold text-orange-700 text-sm min-w-[20px] text-center">
+                                {qty}
+                              </span>
+                            )}
+
+                            <button
+                              type="button"
+                              disabled={isUpdating}
+                              onClick={() => handleCartUpdate(dish.id, 1)}
+                              className="p-1 rounded-md hover:bg-orange-50 transition-colors disabled:opacity-60"
+                            >
+                              <PlusIcon className="w-4 h-4 text-orange-700" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
-                  <div className="p-4">
-                    <span className="inline-block font-bold text-gray-800">
-                      {dish.name}
-                    </span>
-                    <div className="mt-2">
-                      <span className="text-md text-orange-700 font-bold">
-                        ${dish.price}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              </div>
-            ))}
+                </div>
+              );
+            })}
           </div>
 
           {/* Cargar más */}
