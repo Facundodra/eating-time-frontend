@@ -1,22 +1,48 @@
-import type { WorkbenchFilters, WorkbenchOrder } from "@/lib/local-workbench/types";
+import type {
+  WorkbenchFilters,
+  WorkbenchOrder,
+  WorkbenchOrderApiResponse,
+} from "@/lib/local-workbench/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+const apiBaseUrl =
+  process.env.NEXT_PUBLIC_API_BASE_URL ??
+  process.env.NEXT_PUBLIC_API_URL ??
+  "http://localhost:8080";
 
-export async function getWorkbenchOrders(
+function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
+  return {
+    id: order.id,
+    localId: order.localId,
+    customerId: order.clienteId,
+    couponId: order.cuponId,
+    status: order.estado,
+    total: order.total,
+    discount: order.descuento,
+    estimatedTime: order.tiempoEstimado,
+    invoiceUrl: order.urlFactura,
+    comment: order.comentario,
+    address: order.direccion,
+    instructions: order.indicaciones,
+    createdAt: order.creacion,
+    deletedAt: order.eliminacion,
+  };
+}
+
+export async function fetchWorkbenchOrders(
   localId: string,
   filters?: WorkbenchFilters,
 ): Promise<WorkbenchOrder[]> {
   const params = new URLSearchParams();
 
-  if (filters?.orden) params.set("orden", filters.orden);
-  if (filters?.sentido) params.set("sentido", filters.sentido);
-  if (filters?.identificador) params.set("identificador", filters.identificador);
-  if (filters?.rangoInicio) params.set("rangoInicio", filters.rangoInicio);
-  if (filters?.rangoFin) params.set("rangoFin", filters.rangoFin);
+  if (filters?.sortBy) params.set("orden", filters.sortBy);
+  if (filters?.direction) params.set("sentido", filters.direction);
+  if (filters?.orderId) params.set("identificador", filters.orderId);
+  if (filters?.startDateTime) params.set("rangoInicio", filters.startDateTime);
+  if (filters?.endDateTime) params.set("rangoFin", filters.endDateTime);
 
   const query = params.toString() ? `?${params.toString()}` : "";
   const response = await fetch(
-    `${API_URL}/api/local/${localId}/mesa-trabajo${query}`,
+    `${apiBaseUrl}/api/local/${localId}/mesa-trabajo${query}`,
     { cache: "no-store" },
   );
 
@@ -24,5 +50,6 @@ export async function getWorkbenchOrders(
     throw new Error(`Error al obtener pedidos (${response.status})`);
   }
 
-  return response.json();
+  const orders = (await response.json()) as WorkbenchOrderApiResponse[];
+  return orders.map(mapWorkbenchOrder);
 }

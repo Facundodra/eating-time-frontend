@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^cd \"c:\\\\Users\\\\LTFBB\\\\Desktop\\\\UTU TEC INF\\\\2026\\\\Proyecto\\\\eating-time-frontend\"; Get-Item -LiteralPath \"src\\\\app\\\\admin\\\\requests\\\\\\[id\\]\\\\page\\.tsx\" \\| Select-Object FullName; Get-Content -LiteralPath \"src\\\\app\\\\admin\\\\requests\\\\\\[id\\]\\\\page\\.tsx\" -TotalCount 30$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}

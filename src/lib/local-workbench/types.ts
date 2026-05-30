@@ -6,7 +6,7 @@ export type OrderStatus =
   | "FINALIZADO"
   | "RECHAZADO_LOCAL";
 
-export type WorkbenchOrder = {
+export type WorkbenchOrderApiResponse = {
   id: number;
   localId: number;
   clienteId: number;
@@ -23,10 +23,27 @@ export type WorkbenchOrder = {
   eliminacion: string | null;
 };
 
+export type WorkbenchOrder = {
+  id: number;
+  localId: number;
+  customerId: number;
+  couponId: number | null;
+  status: OrderStatus;
+  total: number;
+  discount: number | null;
+  estimatedTime: string | null;
+  invoiceUrl: string | null;
+  comment: string | null;
+  address: string | null;
+  instructions: string | null;
+  createdAt: string;
+  deletedAt: string | null;
+};
+
 export type WorkbenchFilters = {
-  orden?: "antiguedad" | "items";
-  sentido?: "asc" | "desc";
-  identificador?: string;
-  rangoInicio?: string;
-  rangoFin?: string;
+  sortBy?: "antiguedad" | "items";
+  direction?: "asc" | "desc";
+  orderId?: string;
+  startDateTime?: string;
+  endDateTime?: string;
 };

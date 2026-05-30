@@ -4,6 +4,7 @@ import Link from "next/link";
 import LoginFoodImage from "@/ui/auth/images/login-food.png";
 import LoginForm from "@/ui/auth/login-form";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
+import ThemeToggle from "@/ui/shared/theme/theme-toggle";
 
 type LoginPageProps = {
   reason?: string;
@@ -11,7 +12,10 @@ type LoginPageProps = {
 
 export default function LoginPage({ reason }: LoginPageProps) {
   return (
-    <main className="min-h-screen bg-[#fbf8f5] px-6 py-8 text-slate-900 sm:px-10 lg:px-14">
+    <main className="min-h-screen bg-[#fbf8f5] px-6 py-8 text-slate-900 dark:bg-slate-950 dark:text-white sm:px-10 lg:px-14">
+      <div className="fixed right-6 top-6 z-10">
+        <ThemeToggle />
+      </div>
       <div className="mx-auto grid min-h-[calc(100vh-64px)] w-full max-w-[1440px] items-center gap-12 lg:grid-cols-[minmax(0,1fr)_420px] xl:gap-24">
         <section className="flex h-full flex-col justify-center">
           <Link href="/" className="flex w-fit items-center gap-4">
@@ -28,15 +32,15 @@ export default function LoginPage({ reason }: LoginPageProps) {
             </span>
           </Link>
 
-          <div className="mt-12 w-fit rounded-full bg-orange-100 px-4 py-2 text-xs font-extrabold text-orange-600">
+          <div className="mt-12 w-fit rounded-full bg-orange-100 px-4 py-2 text-xs font-extrabold text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
             Plataforma de pedidos y delivery
           </div>
 
-          <h1 className="mt-7 max-w-[620px] text-[42px] leading-[0.98] font-black tracking-tight text-slate-900 sm:text-[56px] lg:text-[64px]">
+          <h1 className="mt-7 max-w-[620px] text-[42px] leading-[0.98] font-black tracking-tight text-slate-900 dark:text-white sm:text-[56px] lg:text-[64px]">
             Conectando clientes y locales en una única plataforma.
           </h1>
 
-          <p className="mt-7 max-w-[520px] text-base leading-8 font-medium text-slate-400">
+          <p className="mt-7 max-w-[520px] text-base leading-8 font-medium text-slate-400 dark:text-slate-300">
             Gestioná pedidos, descubrí nuevos locales y accedé a tu cuenta
             desde cualquier dispositivo.
           </p>

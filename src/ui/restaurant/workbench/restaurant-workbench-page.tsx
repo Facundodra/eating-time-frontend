@@ -1,11 +1,11 @@
 "use client";
 
 import clsx from "clsx";
-import { useCallback, useEffect, useState, useTransition } from "react";
+import { useEffect, useState } from "react";
 
 import { getStoredSession } from "@/lib/auth/session-store";
 import type { OrderStatus, WorkbenchFilters, WorkbenchOrder } from "@/lib/local-workbench/types";
-import { getWorkbenchOrders } from "@/services/local-workbench-service";
+import { fetchWorkbenchOrders } from "@/services/local-workbench-service";
 
 const statusLabels: Record<OrderStatus, string> = {
   PENDIENTE_CONFIRMACION_LOCAL: "Pendiente",
@@ -53,51 +53,60 @@ function formatPrice(price: number) {
 }
 
 export default function RestaurantWorkbenchPage() {
-  const [orders, setOrders] = useState<WorkbenchOrder[]>([]);
+  const [orders, setOrders] = useState<WorkbenchOrder[] | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
   // Filters
-  const [orden, setOrden] = useState<"antiguedad" | "items">("antiguedad");
-  const [sentido, setSentido] = useState<"asc" | "desc">("desc");
-  const [identificador, setIdentificador] = useState("");
-  const [rangoInicio, setRangoInicio] = useState("");
-  const [rangoFin, setRangoFin] = useState("");
+  const [sortBy, setSortBy] = useState<"antiguedad" | "items">("antiguedad");
+  const [direction, setDirection] = useState<"asc" | "desc">("desc");
+  const [orderId, setOrderId] = useState("");
+  const [startDateTime, setStartDateTime] = useState("");
+  const [endDateTime, setEndDateTime] = useState("");
 
-  const loadOrders = useCallback(() => {
-    const session = getStoredSession();
-    const localId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
+  useEffect(() => {
+    let ignore = false;
 
-    if (!localId) {
-      setError("No se pudo obtener el ID del local.");
-      return;
-    }
+    async function fetchOrders() {
+      const session = getStoredSession();
+      const localId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
 
-    const filters: WorkbenchFilters = {
-      orden,
-      sentido,
-      identificador: identificador || undefined,
-      rangoInicio: rangoInicio || undefined,
-      rangoFin: rangoFin || undefined,
-    };
+      if (!localId) {
+        if (!ignore) {
+          setError("No se pudo obtener el ID del local.");
+          setOrders([]);
+        }
+        return;
+      }
 
-    startTransition(async () => {
+      const workbenchFilters: WorkbenchFilters = {
+        sortBy,
+        direction,
+        orderId: orderId || undefined,
+        startDateTime: startDateTime || undefined,
+        endDateTime: endDateTime || undefined,
+      };
+
       try {
-        const data = await getWorkbenchOrders(localId, filters);
+        const data = await fetchWorkbenchOrders(localId, workbenchFilters);
+        if (ignore) return;
         setOrders(data);
         setError(null);
       } catch {
+        if (ignore) return;
         setError("Error al cargar los pedidos.");
+        setOrders([]);
       }
-    });
-  }, [orden, sentido, identificador, rangoInicio, rangoFin]);
+    }
 
-  useEffect(() => {
-    loadOrders();
-  }, [loadOrders]);
+    void fetchOrders();
 
-  const selectedOrder = orders.find((o) => o.id === selectedOrderId) ?? null;
+    return () => {
+      ignore = true;
+    };
+  }, [sortBy, direction, orderId, startDateTime, endDateTime]);
+
+  const selectedOrder = orders?.find((o) => o.id === selectedOrderId) ?? null;
 
   return (
     <section className="space-y-6">
@@ -115,8 +124,8 @@ export default function RestaurantWorkbenchPage() {
               Ordenar por
             </span>
             <select
-              value={orden}
-              onChange={(e) => setOrden(e.target.value as "antiguedad" | "items")}
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as "antiguedad" | "items")}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
               <option value="antiguedad">Antigüedad</option>
@@ -129,8 +138,8 @@ export default function RestaurantWorkbenchPage() {
               Sentido
             </span>
             <select
-              value={sentido}
-              onChange={(e) => setSentido(e.target.value as "asc" | "desc")}
+              value={direction}
+              onChange={(e) => setDirection(e.target.value as "asc" | "desc")}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
               <option value="desc">Más recientes</option>
@@ -144,8 +153,8 @@ export default function RestaurantWorkbenchPage() {
             </span>
             <input
               type="number"
-              value={identificador}
-              onChange={(e) => setIdentificador(e.target.value)}
+              value={orderId}
+              onChange={(e) => setOrderId(e.target.value)}
               placeholder="Ej: 5"
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             />
@@ -157,8 +166,8 @@ export default function RestaurantWorkbenchPage() {
             </span>
             <input
               type="datetime-local"
-              value={rangoInicio}
-              onChange={(e) => setRangoInicio(e.target.value)}
+              value={startDateTime}
+              onChange={(e) => setStartDateTime(e.target.value)}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             />
           </label>
@@ -169,8 +178,8 @@ export default function RestaurantWorkbenchPage() {
             </span>
             <input
               type="datetime-local"
-              value={rangoFin}
-              onChange={(e) => setRangoFin(e.target.value)}
+              value={endDateTime}
+              onChange={(e) => setEndDateTime(e.target.value)}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             />
           </label>
@@ -190,17 +199,17 @@ export default function RestaurantWorkbenchPage() {
           </div>
 
           <div className="space-y-4 p-3">
-            {isPending && orders.length === 0 && (
+            {orders === null && (
               <p className="px-4 py-8 text-center text-sm font-medium text-slate-400">
                 Cargando...
               </p>
             )}
-            {!isPending && orders.length === 0 && (
+            {orders !== null && orders.length === 0 && (
               <p className="px-4 py-8 text-center text-sm font-medium text-slate-400 dark:text-slate-500">
                 No hay pedidos para mostrar.
               </p>
             )}
-            {orders.map((order) => {
+            {orders?.map((order) => {
               const isSelected = order.id === selectedOrderId;
 
               return (
@@ -220,10 +229,10 @@ export default function RestaurantWorkbenchPage() {
                       Pedido #{order.id}
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {formatDate(order.creacion)} — {formatPrice(order.total)}
+                      {formatDate(order.createdAt)} — {formatPrice(order.total)}
                     </p>
                   </div>
-                  <StatusBadge status={order.estado} />
+                  <StatusBadge status={order.status} />
                 </button>
               );
             })}
@@ -245,7 +254,7 @@ export default function RestaurantWorkbenchPage() {
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                     Estado
                   </span>
-                  <StatusBadge status={selectedOrder.estado} />
+                  <StatusBadge status={selectedOrder.status} />
                 </div>
                 <div>
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
@@ -263,7 +272,7 @@ export default function RestaurantWorkbenchPage() {
                     Creado
                   </span>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {formatDate(selectedOrder.creacion)}
+                    {formatDate(selectedOrder.createdAt)}
                   </p>
                 </div>
                 <div>
@@ -271,62 +280,62 @@ export default function RestaurantWorkbenchPage() {
                     Cliente ID
                   </span>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {selectedOrder.clienteId}
+                    {selectedOrder.customerId}
                   </p>
                 </div>
               </div>
 
-              {selectedOrder.descuento != null && (
+              {selectedOrder.discount != null && (
                 <div>
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                     Descuento
                   </span>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {selectedOrder.descuento}%
+                    {selectedOrder.discount}%
                   </p>
                 </div>
               )}
 
-              {selectedOrder.tiempoEstimado && (
+              {selectedOrder.estimatedTime && (
                 <div>
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                     Tiempo estimado
                   </span>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {selectedOrder.tiempoEstimado}
+                    {selectedOrder.estimatedTime}
                   </p>
                 </div>
               )}
 
-              {selectedOrder.comentario && (
+              {selectedOrder.comment && (
                 <div>
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                     Comentario
                   </span>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {selectedOrder.comentario}
+                    {selectedOrder.comment}
                   </p>
                 </div>
               )}
 
-              {selectedOrder.direccion && (
+              {selectedOrder.address && (
                 <div>
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                     Dirección
                   </span>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {selectedOrder.direccion}
+                    {selectedOrder.address}
                   </p>
                 </div>
               )}
 
-              {selectedOrder.indicaciones && (
+              {selectedOrder.instructions && (
                 <div>
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                     Indicaciones
                   </span>
                   <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    {selectedOrder.indicaciones}
+                    {selectedOrder.instructions}
                   </p>
                 </div>
               )}

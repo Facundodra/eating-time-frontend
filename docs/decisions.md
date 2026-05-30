@@ -1,7 +1,9 @@
 # Technical Decisions
 
 ## Frontend Framework
+
 Next.js was selected for:
+
 - React ecosystem
 - routing system
 - scalability
@@ -10,7 +12,9 @@ Next.js was selected for:
 ---
 
 ## Language
+
 TypeScript was selected to:
+
 - improve maintainability
 - reduce runtime errors
 - improve developer experience
@@ -18,19 +22,24 @@ TypeScript was selected to:
 ---
 
 ## Styling
+
 Tailwind CSS was selected for:
+
 - fast UI development
 - consistency
 - responsive design
 
 shadcn/ui was selected for:
+
 - reusable accessible components
 - integration with Tailwind
 
 ---
 
 ## API Communication
+
 Axios was selected for:
+
 - cleaner HTTP handling
 - interceptors
 - better request organization
@@ -38,7 +47,9 @@ Axios was selected for:
 ---
 
 ## Forms
+
 React Hook Form was selected for:
+
 - performance
 - simplicity
 - scalable form handling
@@ -46,7 +57,9 @@ React Hook Form was selected for:
 ---
 
 ## Charts
+
 MUI X Charts was selected for:
+
 - statistics dashboards
 - interactive charts
 - visual consistency
@@ -54,6 +67,7 @@ MUI X Charts was selected for:
 ---
 
 ## Backend Integration
+
 Frontend communicates with backend through REST APIs.
 
 Backend is treated as an external service.
@@ -61,13 +75,17 @@ Backend is treated as an external service.
 ---
 
 ## Deployment
+
 Frontend deployment target:
+
 - Vercel
 
 Backend deployment target:
+
 - Railway
 
 Database and storage:
+
 - Supabase
 
 ---
@@ -77,11 +95,13 @@ Database and storage:
 Authentication is session-based using JSESSIONID cookies handled by the backend.
 
 Reasons:
+
 - simpler integration with Spring Boot
 - avoids frontend token management
 - simpler security model for the project scope
 
 Frontend communicates with authenticated endpoints using Axios with:
+
 - withCredentials: true
 
 Frontend should not store authentication tokens in localStorage.

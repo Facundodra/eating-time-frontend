@@ -1,8 +1,8 @@
 import Link from "next/link";
-import PuntoEntregaForm from "./punto-entrega-form";
-import PuntoEntregaList from "./punto-entrega-list";
+import DeliveryPointForm from "./delivery-point-form";
+import DeliveryPointList from "./delivery-point-list";
 
-export default function PuntoEntregaPage() {
+export default function DeliveryPointPage() {
   return (
     <>
       {/* Seccion titular */}
@@ -29,7 +29,7 @@ export default function PuntoEntregaPage() {
             </p>
             <hr className="text-gray-200 my-4"></hr>
             <div className="lista p-5">
-              <PuntoEntregaList></PuntoEntregaList>
+              <DeliveryPointList></DeliveryPointList>
             </div>
         </div>
         <div className="col w-[100%] lg:w-[48%] bg-white rounded-2xl shadow-lg">
@@ -41,7 +41,7 @@ export default function PuntoEntregaPage() {
                 Ingresa los datos de una direccion de entrega.
             </p>
             <hr className="text-gray-200 my-4"></hr>
-            <PuntoEntregaForm></PuntoEntregaForm>
+            <DeliveryPointForm></DeliveryPointForm>
         </div>
       </section>
       
