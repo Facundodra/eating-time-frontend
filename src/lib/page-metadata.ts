@@ -43,4 +43,24 @@ export const pageMetadata: Record<string, { title: string; description: string }
     title: "Mis datos",
     description: "Informacion y configuracion de la cuenta",
   },
+  "/my-data": {
+    title: "Mis datos",
+    description: "Informacion y configuracion de la cuenta",
+  },
+  "/change-password": {
+    title: "Cambiar contraseña",
+    description: "Actualizacion de contraseña de la cuenta",
+  },
+  "/restaurant/change-password": {
+    title: "Cambiar contraseña",
+    description: "Actualizacion de contraseña de la cuenta",
+  },
+  "/admin/my-data": {
+    title: "Mis datos",
+    description: "Informacion y configuracion de la cuenta",
+  },
+  "/admin/change-password": {
+    title: "Cambiar contraseña",
+    description: "Actualizacion de contraseña de la cuenta",
+  },
 };

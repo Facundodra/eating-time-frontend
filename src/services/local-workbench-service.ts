@@ -1,4 +1,5 @@
 import type {
+  OrderStatus,
   WorkbenchFilters,
   WorkbenchOrder,
   WorkbenchOrderApiResponse,
@@ -28,6 +29,30 @@ function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
   };
 }
 
+async function getBackendErrorMessage(
+  response: Response,
+  fallback: string,
+): Promise<string> {
+  const contentType = response.headers.get("content-type") ?? "";
+
+  try {
+    if (contentType.includes("application/json")) {
+      const data = (await response.json()) as {
+        message?: string;
+        error?: string;
+        detail?: string;
+      };
+
+      return data.message ?? data.error ?? data.detail ?? fallback;
+    }
+
+    const text = await response.text();
+    return text.trim() || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 export async function fetchWorkbenchOrders(
   localId: string,
   filters?: WorkbenchFilters,
@@ -52,4 +77,52 @@ export async function fetchWorkbenchOrders(
 
   const orders = (await response.json()) as WorkbenchOrderApiResponse[];
   return orders.map(mapWorkbenchOrder);
+}
+
+type WorkbenchOrderAction = "confirmar" | "rechazar";
+
+const orderActionStatus: Record<WorkbenchOrderAction, OrderStatus> = {
+  confirmar: "ACEPTADO_LOCAL",
+  rechazar: "RECHAZADO_LOCAL",
+};
+
+export async function updateWorkbenchOrderStatus(
+  localId: string,
+  orderId: number,
+  action: WorkbenchOrderAction,
+): Promise<OrderStatus> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/local/${encodeURIComponent(
+      localId,
+    )}/pedido/${encodeURIComponent(orderId.toString())}/${action}`,
+    {
+      method: "PATCH",
+      credentials: "include",
+    },
+  );
+
+  if (!response.ok) {
+    const errorMessage = await getBackendErrorMessage(
+      response,
+      `Error al ${action} el pedido (${response.status})`,
+    );
+
+    throw new Error(errorMessage);
+  }
+
+  return orderActionStatus[action];
+}
+
+export async function confirmWorkbenchOrder(
+  localId: string,
+  orderId: number,
+): Promise<OrderStatus> {
+  return updateWorkbenchOrderStatus(localId, orderId, "confirmar");
+}
+
+export async function rejectWorkbenchOrder(
+  localId: string,
+  orderId: number,
+): Promise<OrderStatus> {
+  return updateWorkbenchOrderStatus(localId, orderId, "rechazar");
 }

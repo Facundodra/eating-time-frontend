@@ -25,7 +25,7 @@ const mainNavLinks = [
 
 const accountNavLinks = [
   { name: "Mis datos", href: "/admin/my-data", icon: UserIcon },
-  { name: "Cambiar contrasena", href: "/admin/change-password", icon: KeyIcon },
+  { name: "Cambiar contraseña", href: "/admin/change-password", icon: KeyIcon },
 ];
 
 export default function NavLinksAdmin() {

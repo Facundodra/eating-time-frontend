@@ -8,7 +8,9 @@ export default function ClientLayout({
   return (
     <>
       <Header />
-      <main className="px-5 md:px-10 py-10  bg-gray-100">{children}</main>
+      <main className="min-h-[calc(100vh-90px)] bg-gray-100 px-5 py-10 dark:bg-slate-950 md:px-10">
+        {children}
+      </main>
     </>
   );
 }

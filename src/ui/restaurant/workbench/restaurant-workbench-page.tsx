@@ -5,7 +5,11 @@ import { useEffect, useState } from "react";
 
 import { getStoredSession } from "@/lib/auth/session-store";
 import type { OrderStatus, WorkbenchFilters, WorkbenchOrder } from "@/lib/local-workbench/types";
-import { fetchWorkbenchOrders } from "@/services/local-workbench-service";
+import {
+  confirmWorkbenchOrder,
+  fetchWorkbenchOrders,
+  rejectWorkbenchOrder,
+} from "@/services/local-workbench-service";
 
 const statusLabels: Record<OrderStatus, string> = {
   PENDIENTE_CONFIRMACION_LOCAL: "Pendiente",
@@ -56,6 +60,9 @@ export default function RestaurantWorkbenchPage() {
   const [orders, setOrders] = useState<WorkbenchOrder[] | null>(null);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [actionMessage, setActionMessage] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [processingAction, setProcessingAction] = useState<"confirm" | "reject" | null>(null);
 
   // Filters
   const [sortBy, setSortBy] = useState<"antiguedad" | "items">("antiguedad");
@@ -107,6 +114,59 @@ export default function RestaurantWorkbenchPage() {
   }, [sortBy, direction, orderId, startDateTime, endDateTime]);
 
   const selectedOrder = orders?.find((o) => o.id === selectedOrderId) ?? null;
+  const canProcessSelectedOrder =
+    selectedOrder?.status === "PENDIENTE_CONFIRMACION_LOCAL";
+
+  async function handleOrderAction(action: "confirm" | "reject") {
+    if (!selectedOrder || processingAction) return;
+
+    const session = getStoredSession();
+    const localId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
+
+    if (!localId) {
+      setActionError("No se pudo obtener el ID del local.");
+      return;
+    }
+
+    setProcessingAction(action);
+    setActionMessage(null);
+    setActionError(null);
+
+    try {
+      const nextStatus =
+        action === "confirm"
+          ? await confirmWorkbenchOrder(localId, selectedOrder.id)
+          : await rejectWorkbenchOrder(localId, selectedOrder.id);
+
+      setOrders((currentOrders) =>
+        currentOrders?.map((order) =>
+          order.id === selectedOrder.id
+            ? { ...order, status: nextStatus }
+            : order,
+        ) ?? null,
+      );
+
+      setActionMessage(
+        action === "confirm"
+          ? "El pedido fue confirmado correctamente."
+          : "El pedido fue rechazado correctamente.",
+      );
+    } catch (err) {
+      setActionError(
+        err instanceof Error
+          ? err.message
+          : "No se pudo actualizar el pedido. Intentalo nuevamente.",
+      );
+    } finally {
+      setProcessingAction(null);
+    }
+  }
+
+  function handleSelectOrder(orderId: number) {
+    setSelectedOrderId(orderId);
+    setActionMessage(null);
+    setActionError(null);
+  }
 
   return (
     <section className="space-y-6">
@@ -216,7 +276,7 @@ export default function RestaurantWorkbenchPage() {
                 <button
                   type="button"
                   key={order.id}
-                  onClick={() => setSelectedOrderId(order.id)}
+                  onClick={() => handleSelectOrder(order.id)}
                   className={clsx(
                     "grid w-full cursor-pointer gap-4 rounded-2xl border p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/40 md:grid-cols-[minmax(0,1fr)_auto] md:items-center dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10",
                     isSelected
@@ -249,6 +309,18 @@ export default function RestaurantWorkbenchPage() {
             </div>
 
             <div className="space-y-4 p-5">
+              {actionMessage && (
+                <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                  {actionMessage}
+                </div>
+              )}
+
+              {actionError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+                  {actionError}
+                </div>
+              )}
+
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <span className="mb-1 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
@@ -339,6 +411,30 @@ export default function RestaurantWorkbenchPage() {
                   </p>
                 </div>
               )}
+
+              <div className="flex flex-col gap-3 border-t border-gray-200 pt-5 sm:flex-row dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => void handleOrderAction("confirm")}
+                  disabled={!canProcessSelectedOrder || processingAction !== null}
+                  className="h-11 flex-1 rounded-xl bg-orange-500 px-4 text-sm font-extrabold text-white transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {processingAction === "confirm"
+                    ? "Confirmando..."
+                    : "Confirmar pedido"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => void handleOrderAction("reject")}
+                  disabled={!canProcessSelectedOrder || processingAction !== null}
+                  className="h-11 flex-1 rounded-xl bg-red-500/10 px-4 text-sm font-extrabold text-red-500 transition hover:bg-red-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {processingAction === "reject"
+                    ? "Rechazando..."
+                    : "Rechazar pedido"}
+                </button>
+              </div>
             </div>
           </section>
         )}

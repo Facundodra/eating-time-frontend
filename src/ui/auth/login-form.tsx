@@ -69,7 +69,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
         <div>
           <label
             htmlFor="email"
-            className="mb-2 block text-xs font-bold text-slate-600"
+            className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300"
           >
             Correo electrónico
           </label>
@@ -88,13 +88,13 @@ export default function LoginForm({ reason }: LoginFormProps) {
           <div className="mb-2 flex items-center justify-between gap-3">
             <label
               htmlFor="password"
-              className="block text-xs font-bold text-slate-600"
+              className="block text-xs font-bold text-slate-600 dark:text-slate-300"
             >
               Contraseña
             </label>
             <Link
               href="/recover-password"
-              className="text-xs font-extrabold text-orange-600 transition hover:text-orange-700"
+              className="text-xs font-extrabold text-orange-600 transition hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
             >
               Recuperar contraseña
             </Link>
@@ -120,7 +120,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
           type="submit"
           isLoading={isSubmitting}
           loadingText="Ingresando..."
-          className="h-[52px] w-full cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100"
+          className="h-[52px] w-full cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-500/25"
         >
           Ingresar
         </LoadingButton>
@@ -140,7 +140,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
           </div>
           <Link
             href="/register/client"
-            className="shrink-0 text-sm font-extrabold text-orange-600 transition hover:text-orange-700"
+            className="shrink-0 text-sm font-extrabold text-orange-600 transition hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
           >
             Crear cuenta
           </Link>

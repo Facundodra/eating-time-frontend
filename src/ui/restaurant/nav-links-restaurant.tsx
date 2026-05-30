@@ -8,6 +8,7 @@ import {
   GiftIcon,
   HomeIcon,
   InboxIcon,
+  KeyIcon,
   PercentBadgeIcon,
   Squares2X2Icon,
   UserIcon,
@@ -35,6 +36,7 @@ const managementNavLinks = [
   { name: "Estadisticas", href: "/restaurant/statistics", icon: ArrowTrendingUpIcon },
   { name: "Horarios", href: "/restaurant/schedules", icon: ClockIcon },
   { name: "Mis datos", href: "/restaurant/my-data", icon: UserIcon },
+  { name: "Cambiar contraseña", href: "/restaurant/change-password", icon: KeyIcon },
 ];
 
 const navGroups = [
@@ -72,7 +74,7 @@ export default function NavLinksRestaurant() {
                     <Icon
                       className={clsx("h-5 w-5 shrink-0", {
                         "text-orange-700": isActive,
-                        "text-gray-700": !isActive,
+                        "text-gray-700 dark:text-slate-300": !isActive,
                       })}
                     />
                     <span
@@ -80,7 +82,7 @@ export default function NavLinksRestaurant() {
                         "relative top-[1px] overflow-hidden whitespace-nowrap text-sm transition-all duration-300 group-hover/li:text-orange-700",
                         {
                           "text-orange-700": isActive,
-                          "text-gray-700": !isActive,
+                          "text-gray-700 dark:text-slate-300": !isActive,
                         },
                       )}
                     >
