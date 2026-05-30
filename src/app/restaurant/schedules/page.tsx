@@ -1,8 +1,5 @@
-import { getLocalSchedule } from "@/services/local-schedule-service";
-import RestaurantSchedulesPage from "@/ui/restaurant/schedules/restaurant-schedules-page";
+import RestaurantSchedulesLoader from "@/ui/restaurant/schedules/restaurant-schedules-loader";
 
-export default async function SchedulesPage() {
-  const schedule = await getLocalSchedule("dev-local");
-
-  return <RestaurantSchedulesPage initialSchedule={schedule} />;
+export default function SchedulesPage() {
+  return <RestaurantSchedulesLoader />;
 }
