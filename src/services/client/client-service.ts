@@ -10,9 +10,11 @@ import type {
     DeliveryPoint,
     ClientDish,
     Cart,
+    OrderRequest,
+    PaymentResponse,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = getStoredSession();
@@ -355,5 +357,27 @@ export async function deleteCart(restaurantId: number): Promise<void> {
             throw new Error(message);
         }
         throw new Error("No se pudo eliminar el carrito.");
+    }
+}
+
+// Realiza el pedido: envía la dirección de entrega, cambia el carrito a ETAPA_DE_PAGO
+// y devuelve el link de pago de Mercado Pago
+export async function placeOrder(restaurantId: number, body: OrderRequest): Promise<PaymentResponse> {
+    const session = getStoredSession();
+    if (!session) throw new Error("Sesión no encontrada");
+
+    try {
+        const response = await api.patch<PaymentResponse>(
+            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`,
+            body
+        );
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al realizar pedido (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo realizar el pedido.");
     }
 }
