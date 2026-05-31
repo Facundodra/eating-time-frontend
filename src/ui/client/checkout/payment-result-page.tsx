@@ -39,11 +39,13 @@ const STATUS_CONFIG: Record<
 export default function PaymentResultPage() {
   const params = useSearchParams();
 
-  const rawStatus = params.get("paymentStatus") as PaymentStatus | null;
+  const rawStatus = params.get("paymentStatus");
   const localId = params.get("localId");
   const pedidoId = params.get("pedidoId");
 
-  const status = rawStatus && rawStatus in STATUS_CONFIG ? rawStatus : null;
+  // El backend puede enviar el valor duplicado (ej: "approved,approved"), tomamos el primero
+  const parsedStatus = (rawStatus?.split(",")[0] ?? "") as PaymentStatus;
+  const status = parsedStatus in STATUS_CONFIG ? parsedStatus : null;
 
   if (!status) {
     return (
