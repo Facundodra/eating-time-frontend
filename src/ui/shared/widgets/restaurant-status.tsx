@@ -3,26 +3,26 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useState } from "react";
 
-import { getStoredSession } from "@/lib/auth/session-store";
+import { getStoredSession } from "@/lib/shared/auth/session-store";
 import {
-  getLocalAvailability,
-  LOCAL_AVAILABILITY_REFRESH_EVENT,
-} from "@/services/local-availability-service";
+  getRestaurantAvailability,
+  RESTAURANT_AVAILABILITY_REFRESH_EVENT,
+} from "@/services/restaurant/availability-service";
 
 export default function RestaurantStatus({ className }: { className?: string }) {
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
 
   const refreshAvailability = useCallback(async () => {
     const session = getStoredSession();
-    const localId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
+    const restaurantId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
 
-    if (!localId) {
+    if (!restaurantId) {
       setIsAvailable(null);
       return;
     }
 
     try {
-      const availability = await getLocalAvailability(localId);
+      const availability = await getRestaurantAvailability(restaurantId);
       setIsAvailable(availability);
     } catch {
       setIsAvailable(null);
@@ -50,7 +50,7 @@ export default function RestaurantStatus({ className }: { className?: string }) 
 
     window.addEventListener("focus", handleFocus);
     window.addEventListener(
-      LOCAL_AVAILABILITY_REFRESH_EVENT,
+      RESTAURANT_AVAILABILITY_REFRESH_EVENT,
       handleFocus,
     );
     document.addEventListener("visibilitychange", handleVisibilityChange);
@@ -60,7 +60,7 @@ export default function RestaurantStatus({ className }: { className?: string }) 
       window.clearInterval(intervalId);
       window.removeEventListener("focus", handleFocus);
       window.removeEventListener(
-        LOCAL_AVAILABILITY_REFRESH_EVENT,
+        RESTAURANT_AVAILABILITY_REFRESH_EVENT,
         handleFocus,
       );
       document.removeEventListener("visibilitychange", handleVisibilityChange);

@@ -1,4 +1,4 @@
-import LoginPage from "@/ui/auth/login-page";
+import LoginPage from "@/ui/shared/auth/login-page";
 
 type PageProps = {
   searchParams: Promise<{

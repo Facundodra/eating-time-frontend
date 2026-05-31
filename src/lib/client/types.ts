@@ -1,4 +1,4 @@
-import { DishStatus } from "../local-dish/types";
+import { DishStatus } from "../restaurant/dish/types";
 
 export type DeliveryPointCredentials = {
   loc: string;

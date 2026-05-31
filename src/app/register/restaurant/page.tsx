@@ -1,3 +1,5 @@
+import RegisterPage from "@/ui/restaurant/register/register-page";
+
 export default function Page() {
-  return <div>Registro de restaurante</div>;
+  return <RegisterPage />;
 }

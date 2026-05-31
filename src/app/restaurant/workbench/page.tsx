@@ -1,4 +1,4 @@
-import RestaurantWorkbenchPage from "@/ui/restaurant/workbench/restaurant-workbench-page";
+import RestaurantWorkbenchPage from "@/ui/restaurant/workbench/workbench-page";
 
 export default function WorkbenchPage() {
   return <RestaurantWorkbenchPage />;

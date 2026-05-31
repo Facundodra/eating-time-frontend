@@ -1,7 +1,7 @@
 import axios, { AxiosError } from "axios";
 
-import { api } from "../api-client";
-import { getStoredSession } from "@/lib/auth/session-store";
+import { api } from "../shared/api-client";
+import { getStoredSession } from "@/lib/shared/auth/session-store";
 
 import type {
     RestaurantList,

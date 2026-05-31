@@ -1,4 +1,4 @@
-import RestaurantDashboard from "@/ui/restaurant/home/restaurant-dashboard";
+import RestaurantDashboard from "@/ui/restaurant/home/dashboard";
 
 export default function RestaurantPage() {
   return <RestaurantDashboard />;
