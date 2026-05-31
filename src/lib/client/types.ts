@@ -1,5 +1,4 @@
-import RestaurantListPage from "@/ui/client/restaurant/restaurant-list-page";
-import { DishStatus } from "../local-dish/types";
+import { DishStatus } from "../restaurant/dish/types";
 
 export type DeliveryPointCredentials = {
   loc: string;
@@ -48,3 +47,38 @@ export type Restaurant ={
   address: string | null;
   description: string | null;
 }
+
+// Estados posibles del pedido relevantes para el cliente
+export type OrderStatus = "EN_CARRITO" | "ETAPA_DE_PAGO" | "PENDIENTE_CONFIRMACION_LOCAL";
+
+export type CartItem = {
+  id: number;
+  pedidoId: number;
+  platoId: number;
+  descuentoId: number | null;
+  cantidad: number;
+  costoUnitario: number;
+  descuentoAplicado: number;
+  total: number;
+  creacion: string;
+  eliminacion: string | null;
+};
+
+export type Cart = {
+  id: number;
+  localId: number;
+  clienteId: number;
+  cuponId: number | null;
+  estado: OrderStatus;
+  total: number;
+  descuento: number | null;
+  tiempoEstimado: number | null;
+  urlFactura: string | null;
+  comentario: string | null;
+  direccion: string | null;
+  indicaciones: string | null;
+  motivoRechazo: string | null;
+  creacion: string;
+  eliminacion: string | null;
+  items: CartItem[];
+};

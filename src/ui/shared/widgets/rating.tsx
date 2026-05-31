@@ -2,7 +2,7 @@ import {
   StarIcon
 } from "@heroicons/react/24/solid";
 
-import { Restaurant } from "@/lib/data";
+import { Restaurant } from "@/lib/shared/data";
 
 export default function RestaurantRating() {
   const rating = Restaurant.rating;

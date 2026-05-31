@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
-import { pageMetadata } from "@/lib/page-metadata";
+import { pageMetadata } from "@/lib/shared/page-metadata";
 
 export default function PageTitle() {
   const pathname = usePathname();

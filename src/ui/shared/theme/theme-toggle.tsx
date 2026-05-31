@@ -3,7 +3,7 @@
 import { MoonIcon, SunIcon } from "@heroicons/react/24/outline";
 import { useEffect } from "react";
 
-import { THEME_STORAGE_KEY, type Theme } from "@/lib/theme";
+import { THEME_STORAGE_KEY, type Theme } from "@/lib/shared/theme";
 
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");

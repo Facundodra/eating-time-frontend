@@ -7,7 +7,7 @@ import { usePathname } from "next/navigation";
 
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import SessionWidget from "../shared/widgets/session-widget";
-import NavLinksRestaurant from "./nav-links-restaurant";
+import NavLinksRestaurant from "./nav-links";
 
 export default function Sidenav() {
   const pathname = usePathname();

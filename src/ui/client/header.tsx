@@ -7,12 +7,21 @@ import {
 import Form from "next/form";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 
 export default function Header() {
+  const pathname = usePathname();
+
+  // Si estamos dentro de un local, el carrito apunta al carrito de ese local
+  const localMatch = pathname.match(/^\/client\/local\/(\d+)/);
+  const cartHref = localMatch
+    ? `/client/local/${localMatch[1]}/cart`
+    : "/client/cart";
+
   return (
     <div className="client-header flex items-center justify-between px-10 py-5">
       <Link href="/" className="logo flex items-center gap-4">
@@ -55,7 +64,7 @@ export default function Header() {
 
       <div className="cart mr-5">
         <Link
-          href="/cart"
+          href={cartHref}
           className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800"
         >
           <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition group-hover:text-white" />

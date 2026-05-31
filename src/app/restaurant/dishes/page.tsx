@@ -2,13 +2,13 @@
 
 import { useEffect, useState } from "react";
 
-import { getStoredSession } from "@/lib/auth/session-store";
-import { getLocalDishes } from "@/services/local-dish-service";
-import type { LocalDishesResponse } from "@/lib/local-dish/types";
-import RestaurantDishesPage from "@/ui/restaurant/dishes/restaurant-dishes-page";
+import { getStoredSession } from "@/lib/shared/auth/session-store";
+import { getRestaurantDishes } from "@/services/restaurant/dish-service";
+import type { RestaurantDishesResponse } from "@/lib/restaurant/dish/types";
+import RestaurantDishesPage from "@/ui/restaurant/dishes/dishes-page";
 
 export default function DishesPage() {
-  const [initialData, setInitialData] = useState<LocalDishesResponse | null>(
+  const [initialData, setInitialData] = useState<RestaurantDishesResponse | null>(
     null,
   );
   const [error, setError] = useState<string | null>(null);
@@ -16,20 +16,20 @@ export default function DishesPage() {
   useEffect(() => {
     async function loadDishes() {
       const session = getStoredSession();
-      const localId = session?.idTipoUsuario
+      const restaurantId = session?.idTipoUsuario
         ? String(session.idTipoUsuario)
         : "";
 
-      if (!localId) {
+      if (!restaurantId) {
         setError("No se pudo obtener el ID del local. Intenta iniciar sesion nuevamente.");
         return;
       }
 
       try {
-        const data = await getLocalDishes(localId);
+        const data = await getRestaurantDishes(restaurantId);
         setInitialData(data);
       } catch {
-        setInitialData({ localId, dishes: [] });
+        setInitialData({ restaurantId, dishes: [] });
       }
     }
 
