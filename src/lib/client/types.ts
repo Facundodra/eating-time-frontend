@@ -66,7 +66,7 @@ export type CartItem = {
 
 export type Cart = {
   id: number;
-  localId: number;
+  restaurantId: number;
   clienteId: number;
   cuponId: number | null;
   estado: OrderStatus;

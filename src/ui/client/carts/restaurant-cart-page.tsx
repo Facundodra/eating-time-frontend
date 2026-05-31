@@ -18,7 +18,11 @@ import {
 } from "@/services/client/client-service";
 import type { Cart, Restaurant } from "@/lib/client/types";
 
-export default function LocalCartPage({ localId }: { localId: number }) {
+export default function RestaurantCartPage({
+  restaurantId,
+}: {
+  restaurantId: number;
+}) {
   const [cart, setCart] = useState<Cart | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,8 +32,8 @@ export default function LocalCartPage({ localId }: { localId: number }) {
   useEffect(() => {
     async function load() {
       const [cartData, restaurantData] = await Promise.allSettled([
-        getCart(localId),
-        getRestaurant(String(localId)),
+        getCart(restaurantId),
+        getRestaurant(String(restaurantId)),
       ]);
 
       if (cartData.status === "fulfilled") setCart(cartData.value);
@@ -38,12 +42,12 @@ export default function LocalCartPage({ localId }: { localId: number }) {
     }
 
     load();
-  }, [localId]);
+  }, [restaurantId]);
 
   async function handleUpdateItem(platoId: number, delta: number) {
     setUpdatingDishId(platoId);
     try {
-      const updated = await updateCartItem(localId, platoId, delta);
+      const updated = await updateCartItem(restaurantId, platoId, delta);
       const hasActiveItems = (updated.items ?? []).some((i) => i.eliminacion == null);
       setCart(hasActiveItems ? updated : null);
     } catch {
@@ -56,7 +60,7 @@ export default function LocalCartPage({ localId }: { localId: number }) {
   async function handleDeleteCart() {
     setDeletingCart(true);
     try {
-      await deleteCart(localId);
+      await deleteCart(restaurantId);
       setCart(null);
     } catch {
       // Falla silenciosa
@@ -69,13 +73,13 @@ export default function LocalCartPage({ localId }: { localId: number }) {
 
   return (
     <div className="max-w-xl mx-auto px-4 py-8">
-      {/* Volver al local */}
+      {/* Volver al restaurante */}
       <Link
-        href={`/client/local/${localId}`}
+        href={`/client/local/${restaurantId}`}
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
       >
         <ArrowLeftIcon className="w-4 h-4" />
-        Volver a {restaurant?.name ?? "el local"}
+        Volver a {restaurant?.name ?? "el restaurante"}
       </Link>
 
       <div className="flex items-center justify-between mb-6">
@@ -116,10 +120,10 @@ export default function LocalCartPage({ localId }: { localId: number }) {
           <ShoppingCartIcon className="w-14 h-14" />
           <p className="text-sm">Tu carrito está vacío.</p>
           <Link
-            href={`/client/local/${localId}`}
+            href={`/client/local/${restaurantId}`}
             className="text-orange-700 text-sm font-semibold hover:underline"
           >
-            Ver platos del local
+            Ver platos del restaurante
           </Link>
         </div>
       )}
@@ -144,7 +148,6 @@ export default function LocalCartPage({ localId }: { localId: number }) {
                   </div>
 
                   <div className="flex items-center gap-2 shrink-0">
-                    {/* Contador */}
                     <div className="flex items-center border border-orange-200 rounded-lg px-1 py-1 gap-2">
                       <button
                         type="button"
@@ -182,7 +185,6 @@ export default function LocalCartPage({ localId }: { localId: number }) {
             })}
           </div>
 
-          {/* Total y acción */}
           <div className="rounded-xl border border-orange-200 bg-orange-50 p-5 flex items-center justify-between">
             <div>
               <p className="text-xs text-gray-500">Total</p>

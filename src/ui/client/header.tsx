@@ -16,10 +16,12 @@ import ProfilePicture from "../shared/widgets/profile-picture";
 export default function Header() {
   const pathname = usePathname();
 
-  // Si estamos dentro de un local, el carrito apunta al carrito de ese local
-  const localMatch = pathname.match(/^\/client\/local\/(\d+)/);
-  const cartHref = localMatch
-    ? `/client/local/${localMatch[1]}/cart`
+  // Si estamos en un restaurante, el ícono del carrito apunta a su carrito
+  const restaurantMatch =
+    pathname.match(/^\/client\/local\/(\d+)/) ??
+    pathname.match(/^\/client\/restaurant\/(\d+)/);
+  const cartHref = restaurantMatch
+    ? `/client/restaurant/${restaurantMatch[1]}/cart`
     : "/client/cart";
 
   return (
