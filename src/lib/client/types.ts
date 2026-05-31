@@ -51,6 +51,25 @@ export type Restaurant ={
 // Estados posibles del pedido relevantes para el cliente
 export type OrderStatus = "EN_CARRITO" | "ETAPA_DE_PAGO" | "PENDIENTE_CONFIRMACION_LOCAL";
 
+// Body del PATCH para realizar pedido — punto guardado o dirección manual
+export type OrderRequest =
+  | { puntoDeEntregaId: number }
+  | {
+      localidad: string;
+      calle: string;
+      numero: string;
+      nroApto?: string;
+      indicaciones?: string;
+      guardarEnCuenta?: boolean;
+    };
+
+export type PaymentResponse = {
+  linkPago: string;
+};
+
+// Estado devuelto por Mercado Pago en el callback
+export type PaymentStatus = "approved" | "failure" | "pending";
+
 export type CartItem = {
   id: number;
   pedidoId: number;
@@ -66,7 +85,7 @@ export type CartItem = {
 
 export type Cart = {
   id: number;
-  localId: number;
+  restaurantId: number;
   clienteId: number;
   cuponId: number | null;
   estado: OrderStatus;

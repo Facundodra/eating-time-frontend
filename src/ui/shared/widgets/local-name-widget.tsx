@@ -17,7 +17,7 @@ export default function LocalNameWidget({ localId }: { localId: number }) {
 
   return (
     <Link
-      href={`/client/local/${localId}`}
+      href={`/client/restaurant/${localId}`}
       className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-orange-600 transition-colors"
     >
       <BuildingStorefrontIcon className="h-4 w-4 shrink-0" />

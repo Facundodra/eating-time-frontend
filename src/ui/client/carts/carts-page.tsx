@@ -32,18 +32,18 @@ export default function CartsPage() {
   const [carts, setCarts] = useState<CartWithName[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [deletingLocalId, setDeletingLocalId] = useState<number | null>(null);
+  const [deletingRestaurantId, setDeletingRestaurantId] = useState<number | null>(null);
 
   useEffect(() => {
     async function loadCarts() {
       try {
         const rawCarts = await getCarts();
 
-        // Carga el nombre de cada local en paralelo
+        // Carga el nombre de cada restaurante en paralelo
         const cartsWithNames = await Promise.all(
           rawCarts.map(async (cart) => {
-            const restaurantName = await getRestaurantName(cart.localId).catch(
-              () => `Local #${cart.localId}`
+            const restaurantName = await getRestaurantName(cart.restaurantId).catch(
+              () => `Restaurante #${cart.restaurantId}`
             );
             return { ...cart, restaurantName };
           })
@@ -60,15 +60,15 @@ export default function CartsPage() {
     loadCarts();
   }, []);
 
-  async function handleDelete(localId: number) {
-    setDeletingLocalId(localId);
+  async function handleDelete(restaurantId: number) {
+    setDeletingRestaurantId(restaurantId);
     try {
-      await deleteCart(localId);
-      setCarts((prev) => prev.filter((c) => c.localId !== localId));
+      await deleteCart(restaurantId);
+      setCarts((prev) => prev.filter((c) => c.restaurantId !== restaurantId));
     } catch {
       // Falla silenciosa; el carrito sigue visible
     } finally {
-      setDeletingLocalId(null);
+      setDeletingRestaurantId(null);
     }
   }
 
@@ -96,7 +96,7 @@ export default function CartsPage() {
             href="/client"
             className="text-orange-700 text-sm font-semibold hover:underline"
           >
-            Explorar locales
+            Explorar restaurantes
           </Link>
         </div>
       )}
@@ -104,7 +104,7 @@ export default function CartsPage() {
       {!loading && !error && carts.length > 0 && (
         <div className="space-y-4">
           {carts.map((cart) => {
-            const isDeleting = deletingLocalId === cart.localId;
+            const isDeleting = deletingRestaurantId === cart.restaurantId;
             return (
               <div
                 key={cart.id}
@@ -123,7 +123,7 @@ export default function CartsPage() {
                   <button
                     type="button"
                     disabled={isDeleting}
-                    onClick={() => handleDelete(cart.localId)}
+                    onClick={() => handleDelete(cart.restaurantId)}
                     className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
                     title="Eliminar carrito"
                   >
@@ -153,7 +153,7 @@ export default function CartsPage() {
                     Total: ${cart.total.toFixed(2)}
                   </span>
                   <Link
-                    href={`/client/local/${cart.localId}`}
+                    href={`/client/restaurant/${cart.restaurantId}/cart`}
                     className="flex items-center gap-1.5 bg-orange-700 hover:bg-orange-800 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
                   >
                     Continuar pedido

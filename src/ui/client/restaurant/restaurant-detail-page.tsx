@@ -30,7 +30,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
       )
       .finally(() => setLoading(false));
 
-    // Carga el carrito existente para este local (null si no hay)
+    // Carga el carrito existente para este restaurante (null si no hay)
     getCart(Number(id)).then(setCart).catch(() => setCart(null));
   }, [id]);
 
@@ -137,7 +137,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
               </div>
             </div>
             <Link
-              href={`/client/local/${id}/cart`}
+              href={`/client/restaurant/${id}/cart`}
               className="bg-white text-orange-700 font-bold text-sm px-5 py-2 rounded-xl hover:bg-orange-50 transition-colors"
             >
               Ver carrito
