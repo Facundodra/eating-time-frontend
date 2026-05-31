@@ -1,14 +1,18 @@
+import axios from "axios";
+
 import type {
   OrderStatus,
   WorkbenchFilters,
   WorkbenchOrder,
   WorkbenchOrderApiResponse,
 } from "@/lib/local-workbench/types";
+import { api } from "@/services/api-client";
 
-const apiBaseUrl =
-  process.env.NEXT_PUBLIC_API_BASE_URL ??
-  process.env.NEXT_PUBLIC_API_URL ??
-  "http://localhost:8080";
+type BackendErrorResponse = {
+  message?: string;
+  error?: string;
+  detail?: string;
+};
 
 function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
   return {
@@ -29,28 +33,15 @@ function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
   };
 }
 
-async function getBackendErrorMessage(
-  response: Response,
-  fallback: string,
-): Promise<string> {
-  const contentType = response.headers.get("content-type") ?? "";
+function getBackendErrorMessage(error: unknown, fallback: string): string {
+  if (axios.isAxiosError<BackendErrorResponse | string>(error)) {
+    const data = error.response?.data;
 
-  try {
-    if (contentType.includes("application/json")) {
-      const data = (await response.json()) as {
-        message?: string;
-        error?: string;
-        detail?: string;
-      };
-
-      return data.message ?? data.error ?? data.detail ?? fallback;
-    }
-
-    const text = await response.text();
-    return text.trim() || fallback;
-  } catch {
-    return fallback;
+    if (typeof data === "string") return data.trim() || fallback;
+    if (data) return data.message ?? data.error ?? data.detail ?? fallback;
   }
+
+  return fallback;
 }
 
 export async function fetchWorkbenchOrders(
@@ -65,18 +56,18 @@ export async function fetchWorkbenchOrders(
   if (filters?.startDateTime) params.set("rangoInicio", filters.startDateTime);
   if (filters?.endDateTime) params.set("rangoFin", filters.endDateTime);
 
-  const query = params.toString() ? `?${params.toString()}` : "";
-  const response = await fetch(
-    `${apiBaseUrl}/api/local/${localId}/mesa-trabajo${query}`,
-    { cache: "no-store" },
-  );
+  try {
+    const query = params.toString() ? `?${params.toString()}` : "";
+    const response = await api.get<WorkbenchOrderApiResponse[]>(
+      `/api/local/${encodeURIComponent(localId)}/mesa-trabajo${query}`,
+    );
 
-  if (!response.ok) {
-    throw new Error(`Error al obtener pedidos (${response.status})`);
+    return response.data.map(mapWorkbenchOrder);
+  } catch (error) {
+    throw new Error(
+      getBackendErrorMessage(error, "No se pudieron cargar los pedidos."),
+    );
   }
-
-  const orders = (await response.json()) as WorkbenchOrderApiResponse[];
-  return orders.map(mapWorkbenchOrder);
 }
 
 type WorkbenchOrderAction = "confirmar" | "rechazar";
@@ -91,23 +82,16 @@ export async function updateWorkbenchOrderStatus(
   orderId: number,
   action: WorkbenchOrderAction,
 ): Promise<OrderStatus> {
-  const response = await fetch(
-    `${apiBaseUrl}/api/local/${encodeURIComponent(
-      localId,
-    )}/pedido/${encodeURIComponent(orderId.toString())}/${action}`,
-    {
-      method: "PATCH",
-      credentials: "include",
-    },
-  );
-
-  if (!response.ok) {
-    const errorMessage = await getBackendErrorMessage(
-      response,
-      `Error al ${action} el pedido (${response.status})`,
+  try {
+    await api.patch(
+      `/api/local/${encodeURIComponent(localId)}/pedido/${encodeURIComponent(
+        orderId.toString(),
+      )}/${action}`,
     );
-
-    throw new Error(errorMessage);
+  } catch (error) {
+    throw new Error(
+      getBackendErrorMessage(error, `No se pudo ${action} el pedido.`),
+    );
   }
 
   return orderActionStatus[action];

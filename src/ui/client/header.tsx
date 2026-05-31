@@ -34,24 +34,24 @@ export default function Header() {
   }
 
   return (
-    <div className="client-header flex items-center justify-between border-b border-gray-200 bg-white px-10 py-5 text-slate-950 dark:border-slate-800 dark:bg-slate-950 dark:text-white">
+    <div className="client-header fixed inset-x-0 top-0 z-40 flex flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-4 py-4 text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:px-6 lg:flex-nowrap lg:px-10">
       <Link href="/" className="logo flex items-center gap-4">
         <EatingTimeBrand
-          iconSize={50}
-          iconClassName="h-[50px] w-[50px]"
-          textClassName="text-[28px] drop-shadow-sm"
+          iconSize={46}
+          iconClassName="h-10 w-10 sm:h-[50px] sm:w-[50px]"
+          textClassName="text-xl drop-shadow-sm sm:text-[24px] lg:text-[28px]"
         />
       </Link>
 
-      <div className="search ml-auto hidden md:block">
+      <div className="search order-last hidden w-full md:block lg:order-none lg:ml-auto lg:max-w-xl lg:flex-1">
         <Form
           action="/search"
-          className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          className="flex w-full items-center rounded-full border border-gray-100 bg-gray-100 px-3 py-2 transition hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
         >
           <input
             type="text"
             placeholder="Buscar..."
-            className="min-w-[400px] bg-transparent pr-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="min-w-0 flex-1 bg-transparent pr-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
@@ -62,11 +62,11 @@ export default function Header() {
         </Form>
       </div>
 
-      <div className="theme ml-auto mr-3">
+      <div className="theme ml-auto lg:ml-3">
         <ThemeToggle />
       </div>
 
-      <div className="cart mr-5">
+      <div className="cart">
         <Link
           href="/cart"
           className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800 dark:border-slate-800"
@@ -75,8 +75,8 @@ export default function Header() {
         </Link>
       </div>
 
-      <div className="account mr-3">
-        <Link href="/client/mi-cuenta" className="relative bottom-[3px]">
+      <div className="account">
+        <Link href="/client/mi-cuenta" className="block">
           <ProfilePicture />
         </Link>
       </div>

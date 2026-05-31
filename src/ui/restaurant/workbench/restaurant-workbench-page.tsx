@@ -99,9 +99,11 @@ export default function RestaurantWorkbenchPage() {
         if (ignore) return;
         setOrders(data);
         setError(null);
-      } catch {
+      } catch (err) {
         if (ignore) return;
-        setError("Error al cargar los pedidos.");
+        setError(
+          err instanceof Error ? err.message : "Error al cargar los pedidos.",
+        );
         setOrders([]);
       }
     }
@@ -112,6 +114,19 @@ export default function RestaurantWorkbenchPage() {
       ignore = true;
     };
   }, [sortBy, direction, orderId, startDateTime, endDateTime]);
+
+  useEffect(() => {
+    if (!orders) return;
+
+    if (orders.length === 0) {
+      setSelectedOrderId(null);
+      return;
+    }
+
+    if (!orders.some((order) => order.id === selectedOrderId)) {
+      setSelectedOrderId(orders[0].id);
+    }
+  }, [orders, selectedOrderId]);
 
   const selectedOrder = orders?.find((o) => o.id === selectedOrderId) ?? null;
   const canProcessSelectedOrder =
@@ -177,7 +192,7 @@ export default function RestaurantWorkbenchPage() {
       )}
 
       {/* Filters */}
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <div className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
           <label className="block">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
@@ -247,7 +262,7 @@ export default function RestaurantWorkbenchPage() {
       </div>
 
       {/* Orders grid */}
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(420px,1fr)]">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1.45fr)_minmax(320px,0.9fr)]">
         <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
             <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
@@ -258,7 +273,7 @@ export default function RestaurantWorkbenchPage() {
             </p>
           </div>
 
-          <div className="space-y-4 p-3">
+          <div className="space-y-4 p-3 sm:p-4">
             {orders === null && (
               <p className="px-4 py-8 text-center text-sm font-medium text-slate-400">
                 Cargando...
@@ -300,7 +315,7 @@ export default function RestaurantWorkbenchPage() {
         </section>
 
         {/* Detail panel */}
-        {selectedOrder && (
+        {selectedOrder ? (
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
@@ -435,6 +450,17 @@ export default function RestaurantWorkbenchPage() {
                     : "Rechazar pedido"}
                 </button>
               </div>
+            </div>
+          </section>
+        ) : (
+          <section className="flex min-h-[240px] items-center justify-center rounded-2xl border border-dashed border-gray-200 bg-white p-6 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div>
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                Selecciona un pedido
+              </h2>
+              <p className="mt-2 max-w-[320px] text-sm font-medium text-slate-500 dark:text-slate-400">
+                El detalle y las acciones disponibles se muestran en este panel.
+              </p>
             </div>
           </section>
         )}

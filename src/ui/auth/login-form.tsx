@@ -49,7 +49,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
   }
 
   return (
-    <section className="w-full max-w-[420px] rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900">
+    <section className="w-full max-w-[420px] rounded-[28px] border border-gray-200 bg-white px-5 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:px-9 sm:py-10">
       <div>
         <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 dark:text-white">
           Iniciar sesión
@@ -129,7 +129,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
       <div className="my-8 h-px bg-gray-200 dark:bg-slate-800" />
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 px-5 py-4 dark:border-slate-800">
+        <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 px-5 py-4 dark:border-slate-800 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
           <div>
             <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">
               ¿No tenés cuenta?
@@ -146,7 +146,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
           </Link>
         </div>
 
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-orange-100 bg-orange-50 px-5 py-4 dark:border-orange-500/20 dark:bg-orange-500/10">
+        <div className="flex flex-col gap-4 rounded-2xl border border-orange-100 bg-orange-50 px-5 py-4 dark:border-orange-500/20 dark:bg-orange-500/10 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
           <div>
             <h2 className="max-w-[150px] text-sm leading-5 font-extrabold text-slate-900 dark:text-white">
               ¿Tenés un local gastronómico?
@@ -158,7 +158,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
           </div>
           <Link
             href="/local/register"
-            className="flex h-11 shrink-0 items-center justify-center rounded-xl bg-orange-600 px-4 text-xs font-extrabold text-white transition hover:bg-orange-700"
+            className="flex h-11 shrink-0 items-center justify-center rounded-xl bg-orange-600 px-4 text-center text-xs font-extrabold text-white transition hover:bg-orange-700"
           >
             Registrar mi local
           </Link>

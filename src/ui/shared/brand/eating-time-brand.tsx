@@ -33,7 +33,7 @@ export default function EatingTimeBrand({
       {showText ? (
         <span
           className={clsx(
-            "whitespace-nowrap text-2xl font-extrabold tracking-tight text-slate-950 dark:text-white",
+            "whitespace-nowrap text-2xl font-extrabold tracking-tight text-slate-950 [font-family:Inter,sans-serif] dark:text-white",
             textClassName,
           )}
         >
