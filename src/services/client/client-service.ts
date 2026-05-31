@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 
 import { api } from "../api-client";
 import { getStoredSession } from "@/lib/auth/session-store";
@@ -8,11 +8,10 @@ import type {
     Restaurant,
     DeliveryPointCredentials,
     DeliveryPoint,
-    ClientDish,
-    LocalList,
+    ClientDish
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, LocalList };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = getStoredSession();
@@ -96,7 +95,6 @@ export type DishFilter = {
     idLocal?: number;
     precioMin?: number;
     precioMax?: number;
-    q?: string;
     conDescuento?: boolean;
     orden?: "precio";
     sentido?: "asc" | "desc";
@@ -112,7 +110,6 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
     if (filter?.idLocal != null)    params.set("idLocal",      String(filter.idLocal));
     if (filter?.precioMin != null)  params.set("precioMin",    String(filter.precioMin));
     if (filter?.precioMax != null)  params.set("precioMax",    String(filter.precioMax));
-    if (filter?.q)                  params.set("q",            filter.q);
     if (filter?.conDescuento)       params.set("conDescuento", "true");
     if (filter?.orden)              params.set("orden",        filter.orden);
     if (filter?.sentido)            params.set("sentido",      filter.sentido);
@@ -261,18 +258,4 @@ export async function getRestaurant(id: string): Promise<Restaurant> {
         }
         throw new Error("No se pudo cargar el local.");
     }
-}
-
-export async function getLocales(): Promise<LocalList[]> {
-    const { restaurants } = await getRestaurants({ size: 100 });
-
-    return restaurants.map((restaurant) => ({
-        id: restaurant.id,
-        nombre: restaurant.name,
-        descripcion: "",
-        direccion: "",
-        url_foto: restaurant.url_photo,
-        calificacion: restaurant.stars,
-        estado_servicio: restaurant.state,
-    }));
 }

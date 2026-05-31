@@ -9,20 +9,20 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
   const router = useRouter();
 
   return (
-    <div className="mx-auto max-w-2xl px-4 py-6">
+    <div className="max-w-2xl mx-auto px-4 py-6">
       {/* Volver */}
       <button
         type="button"
         onClick={() => router.back()}
-        className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-300"
+        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
       >
         <ChevronLeftIcon className="h-4 w-4" />
         Volver al listado
       </button>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         {/* Imagen */}
-        <div className="flex h-64 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+        <div className="flex items-center justify-center bg-orange-50 h-64">
           {dish.imageUrl ? (
             <img
               src={dish.imageUrl}
@@ -30,7 +30,7 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
               className="object-cover w-full h-full"
             />
           ) : (
-            <span className="text-7xl font-black text-orange-600 dark:text-orange-300">
+            <span className="text-7xl font-black text-orange-600">
               {dish.name.charAt(0).toUpperCase()}
             </span>
           )}
@@ -39,21 +39,21 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
         {/* Info */}
         <div className="p-6">
           <div className="flex items-start justify-between gap-4">
-            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-white">
+            <h1 className="text-2xl font-extrabold text-gray-900">
               {dish.name}
             </h1>
             <span
               className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
                 dish.status === "available"
                   ? "bg-green-100 text-green-700"
-                  : "bg-gray-100 text-gray-500 dark:bg-slate-800 dark:text-slate-300"
+                  : "bg-gray-100 text-gray-500"
               }`}
             >
               {dish.status === "available" ? "Disponible" : "No disponible"}
             </span>
           </div>
 
-          <p className="mt-3 text-3xl font-black text-orange-600 dark:text-orange-300">
+          <p className="mt-3 text-3xl font-black text-orange-600">
             ${dish.price}
           </p>
 

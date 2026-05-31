@@ -1,3 +1,4 @@
+import RestaurantListPage from "@/ui/client/restaurant/restaurant-list-page";
 import { DishStatus } from "../local-dish/types";
 
 export type DeliveryPointCredentials = {
@@ -37,16 +38,6 @@ export type RestaurantList = {
   stars: number;
   state: boolean;
 }
-
-export type LocalList = {
-  id: number;
-  nombre: string;
-  descripcion: string;
-  direccion: string;
-  url_foto: string;
-  calificacion: number;
-  estado_servicio: boolean;
-};
 
 export type Restaurant ={
   id: number;

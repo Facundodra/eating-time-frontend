@@ -1,49 +1,38 @@
 "use client";
 
-import {
-  CheckCircleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-  MoonIcon,
-  StarIcon,
-} from "@heroicons/react/24/outline";
-import clsx from "clsx";
-import Image from "next/image";
-import Link from "next/link";
 import { useEffect, useState } from "react";
 
-import type { RestaurantList as RestaurantListItem } from "@/lib/client/types";
 import { getRestaurants } from "@/services/client/client-service";
+import type { RestaurantList} from "@/lib/client/types";
 
-const PAGE_SIZE = 12;
+import Image from "next/image";
+import clsx from "clsx";
+import Link from "next/link";
 
-type SortKey = "calificacion_desc" | "calificacion_asc" | "nombre_asc" | "nombre_desc";
+import {
+    CheckCircleIcon,
+    MoonIcon,
+    StarIcon,
+    ChevronLeftIcon,
+    ChevronRightIcon,
+} from "@heroicons/react/24/outline";
 
-const sortMap: Record<
-  SortKey,
-  { ordenarPor: "calificacion" | "nombre"; direccion: "asc" | "desc" }
-> = {
-  calificacion_desc: { ordenarPor: "calificacion", direccion: "desc" },
-  calificacion_asc: { ordenarPor: "calificacion", direccion: "asc" },
-  nombre_asc: { ordenarPor: "nombre", direccion: "asc" },
-  nombre_desc: { ordenarPor: "nombre", direccion: "desc" },
-};
 
 function RestaurantSkeleton() {
   return (
-    <div className="locales-list mx-auto flex max-w-[1440px] flex-wrap">
+    <div className="locales-list flex flex-wrap max-w-[1440px] mx-auto">
       {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-        <div key={i} className="local w-1/2 px-2 py-2 md:w-1/3 lg:w-1/4">
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white animate-pulse dark:border-slate-800 dark:bg-slate-900">
-            <div className="h-[125px] bg-gray-100 dark:bg-slate-800" />
-            <div className="space-y-3 p-4">
+        <div key={i} className="local px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden animate-pulse">
+            <div className="bg-gray-100 h-[125px]" />
+            <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <div className="h-[45px] w-[45px] shrink-0 rounded-full bg-gray-200 dark:bg-slate-700" />
-                <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
+                <div className="w-[45px] h-[45px] rounded-full bg-gray-200 shrink-0" />
+                <div className="h-4 bg-gray-200 rounded w-2/3" />
               </div>
               <div className="flex items-center gap-2">
-                <div className="h-4 w-4 rounded bg-gray-200 dark:bg-slate-700" />
-                <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
+                <div className="w-4 h-4 rounded bg-gray-200" />
+                <div className="h-3 bg-gray-100 rounded w-1/4" />
               </div>
             </div>
           </div>
@@ -53,8 +42,20 @@ function RestaurantSkeleton() {
   );
 }
 
+
+const PAGE_SIZE = 12;
+
+type SortKey = "calificacion_desc" | "calificacion_asc" | "nombre_asc" | "nombre_desc";
+
+const sortMap: Record<SortKey, { ordenarPor: 'calificacion' | 'nombre'; direccion: 'asc' | 'desc' }> = {
+  calificacion_desc: { ordenarPor: 'calificacion', direccion: 'desc' },
+  calificacion_asc:  { ordenarPor: 'calificacion', direccion: 'asc'  },
+  nombre_asc:        { ordenarPor: 'nombre',        direccion: 'asc'  },
+  nombre_desc:       { ordenarPor: 'nombre',        direccion: 'desc' },
+};
+
 export default function RestaurantList() {
-  const [restaurants, setRestaurants] = useState<RestaurantListItem[]>([]);
+  const [restaurant, setRestaurants] = useState<RestaurantList[]>([]);
   const [totalPages, setTotalPages] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -66,9 +67,11 @@ export default function RestaurantList() {
   useEffect(() => {
     let cancelled = false;
 
+    setLoading(true);
+    setError(null);
     getRestaurants({
       ...sortMap[sort],
-      ...(filterOpen && { servicio: "ACTIVO" as const }),
+      ...(filterOpen  && { servicio: 'ACTIVO' as const }),
       ...(filterStars && { calificacionMin: 4 }),
       page: page - 1,
       size: PAGE_SIZE,
@@ -86,41 +89,12 @@ export default function RestaurantList() {
         if (!cancelled) setLoading(false);
       });
 
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [sort, filterOpen, filterStars, page]);
-
-  function setLoadingPage(nextPage: number | ((page: number) => number)) {
-    setLoading(true);
-    setError(null);
-    setPage(nextPage);
-  }
-
-  function applySort(value: SortKey) {
-    setLoading(true);
-    setError(null);
-    setSort(value);
-    setPage(1);
-  }
-
-  function toggleOpen() {
-    setLoading(true);
-    setError(null);
-    setFilterOpen((v) => !v);
-    setPage(1);
-  }
-
-  function toggleStars() {
-    setLoading(true);
-    setError(null);
-    setFilterStars((v) => !v);
-    setPage(1);
-  }
 
   if (error) {
     return (
-      <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-300">
+      <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
         {error}
       </p>
     );
@@ -130,107 +104,120 @@ export default function RestaurantList() {
     return <RestaurantSkeleton />;
   }
 
-  if (restaurants.length === 0) {
+  if (restaurant.length === 0) {
     return (
-      <p className="text-sm text-slate-400 dark:text-slate-500">
+      <p className="text-sm text-slate-400">
         No hay locales que coincidan con su busqueda.
       </p>
     );
   }
 
+  // Orden
+  function applySort(value: SortKey) {
+    setSort(value);
+    setPage(1);
+  }
+
+  // Abierto | Cerrado
+  function toggleOpen() {
+    setFilterOpen((v) => !v);
+    setPage(1);
+  }
+
+  // Filtro calificacion
+  function toggleStars() {
+    setFilterStars((v) => !v);
+    setPage(1);
+  }
+
   return (
     <div>
-      <div className="mx-auto mb-4 flex max-w-[1440px] items-center gap-6 overflow-auto rounded-xl bg-white p-4 text-sm text-gray-600 dark:bg-slate-900 dark:text-slate-300">
+      {/* Barra de filtros */}
+      <div className="bg-white flex items-center gap-6 mb-4 text-sm text-gray-600 max-w-[1440px] mx-auto p-4 rounded-xl overflow-auto">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-700 dark:text-slate-200">Ordenar:</span>
+          <span className="font-medium text-gray-700">Ordenar:</span>
           <select
             value={sort}
             onChange={(e) => applySort(e.target.value as SortKey)}
-            className="cursor-pointer rounded-lg border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-700 focus:outline-none dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100"
+            className="border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-700 focus:outline-none focus:border-orange-700 cursor-pointer"
           >
-            <option value="calificacion_desc">Mejor calificacion</option>
-            <option value="calificacion_asc">Menor calificacion</option>
+            <option value="calificacion_desc">Mejor calificación</option>
+            <option value="calificacion_asc">Menor calificación</option>
             <option value="nombre_asc">A-Z</option>
             <option value="nombre_desc">Z-A</option>
           </select>
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-700 dark:text-slate-200">Filtrar:</span>
+          <span className="font-medium text-gray-700">Filtrar:</span>
 
           <button
-            type="button"
             onClick={toggleOpen}
             className={clsx(
-              "flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors",
+              "flex items-center gap-1 px-3 py-1 rounded-full border text-sm transition-colors",
               filterOpen
-                ? "border-orange-700 bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
-                : "border-gray-200 text-gray-600 hover:border-orange-700 dark:border-slate-800 dark:text-slate-300",
+                ? "border-orange-700 bg-orange-50 text-orange-700"
+                : "border-gray-200 text-gray-600 hover:border-orange-700",
             )}
           >
-            <CheckCircleIcon className="h-4 w-4" />
+            <CheckCircleIcon className="w-4 h-4" />
             Abiertos
           </button>
 
           <button
-            type="button"
             onClick={toggleStars}
             className={clsx(
-              "flex items-center gap-1 rounded-full border px-3 py-1 text-sm transition-colors",
+              "flex items-center gap-1 px-3 py-1 rounded-full border text-sm transition-colors",
               filterStars
-                ? "border-orange-700 bg-orange-50 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300"
-                : "border-gray-200 text-gray-600 hover:border-orange-700 dark:border-slate-800 dark:text-slate-300",
+                ? "border-orange-700 bg-orange-50 text-orange-700"
+                : "border-gray-200 text-gray-600 hover:border-orange-700",
             )}
           >
-            <StarIcon className="h-4 w-4" />
+            <StarIcon className="w-4 h-4" />
             4+ estrellas
           </button>
         </div>
       </div>
 
-      <div className="locales-list mx-auto flex max-w-[1440px] flex-wrap">
-        {restaurants.map((restaurant) => (
+      {/* Lista */}
+      <div className="locales-list flex flex-wrap max-w-[1440px] mx-auto">
+        {restaurant.map((restaurant) => (
           <div
             key={restaurant.id}
-            className="local w-1/2 px-2 py-2 md:w-1/3 lg:w-1/4"
+            className="local px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4"
           >
-            <Link
-              href={`/client/local/${restaurant.id}`}
-              className="local-wrapper block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
-            >
-              <div className="local-img relative h-[125px] bg-gray-50 dark:bg-slate-950">
+            <Link href={`/client/local/${restaurant.id}`} className="block local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
+              <div className="local-img bg-gray-50 h-[125px] relative">
                 {restaurant.url_photo ? (
                   <Image
                     alt={restaurant.name}
                     src={restaurant.url_photo}
                     width="100"
                     height="100"
-                    className="mx-auto h-full w-[120px] object-contain p-3"
+                    className="object-contain mx-auto p-3 w-[120px] h-full"
                   />
                 ) : (
-                  <div className="mx-auto flex h-full w-[120px] items-center justify-center text-4xl text-gray-300 dark:text-slate-600">
-                    ET
+                  <div className="w-[120px] h-full mx-auto flex items-center justify-center text-gray-300 text-4xl">
+                    🍽
                   </div>
                 )}
                 <span
                   className={clsx(
-                    "local-estado absolute right-3 top-3 rounded-full px-3 py-1 text-sm",
+                    "local-estado absolute top-3 py-1 px-3 rounded-full right-3 text-sm",
                     {
-                      "bg-green-100 text-green-900 dark:bg-emerald-500/10 dark:text-emerald-300":
-                        restaurant.state,
-                      "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-300":
-                        !restaurant.state,
+                      "bg-green-100 text-green-900": restaurant.state,
+                      "bg-gray-200 text-gray-500": !restaurant.state,
                     },
                   )}
                 >
                   {restaurant.state ? (
                     <>
-                      <CheckCircleIcon className="relative bottom-[2px] mr-1 inline h-4 w-4" />
+                      <CheckCircleIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
                       Abierto
                     </>
                   ) : (
                     <>
-                      <MoonIcon className="relative bottom-[2px] mr-1 inline h-4 w-4" />
+                      <MoonIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
                       Cerrado
                     </>
                   )}
@@ -239,7 +226,7 @@ export default function RestaurantList() {
 
               <div className="local-info p-4">
                 <div className="local-nombre">
-                  <div className="img mr-2 inline-block h-[45px] w-[45px] rounded-full border border-gray-200 p-2 align-middle dark:border-slate-800">
+                  <div className="img inline-block align-middle mr-2 border border-gray-200 p-2 rounded-full w-[45px] h-[45px]">
                     {restaurant.url_photo ? (
                       <Image
                         alt={restaurant.name}
@@ -249,16 +236,16 @@ export default function RestaurantList() {
                         className="h-full object-contain"
                       />
                     ) : (
-                      <div className="h-full w-full rounded-full bg-gray-100 dark:bg-slate-800" />
+                      <div className="w-full h-full bg-gray-100 rounded-full" />
                     )}
                   </div>
-                  <span className="inline-block align-middle font-bold text-gray-800 dark:text-white">
+                  <span className="inline-block align-middle font-bold text-gray-800">
                     {restaurant.name}
                   </span>
                 </div>
-                <div className="local-calificacion mt-2 flex items-center gap-2">
-                  <StarIcon className="h-4 w-4 text-orange-400" />
-                  <span className="text-xs text-gray-400 dark:text-slate-400">
+                <div className="local-calificacion flex items-center gap-2 mt-2">
+                  <StarIcon className="text-orange-400 w-4 h-4" />
+                  <span className="text-xs text-gray-400">
                     {restaurant.stars} (384)
                   </span>
                 </div>
@@ -268,27 +255,26 @@ export default function RestaurantList() {
         ))}
       </div>
 
+      {/* Paginación */}
       {totalPages > 1 && (
-        <div className="mt-6 flex items-center justify-center gap-2">
+        <div className="flex items-center justify-center gap-2 mt-6">
           <button
-            type="button"
-            onClick={() => setLoadingPage((p) => p - 1)}
+            onClick={() => setPage((p) => p - 1)}
             disabled={page === 1}
-            className="rounded-lg border border-gray-200 p-2 transition-colors hover:border-orange-700 disabled:opacity-40 dark:border-slate-800 dark:text-slate-200"
+            className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-orange-700 transition-colors"
           >
-            <ChevronLeftIcon className="h-4 w-4" />
+            <ChevronLeftIcon className="w-4 h-4" />
           </button>
 
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((n) => (
             <button
-              type="button"
               key={n}
-              onClick={() => setLoadingPage(n)}
+              onClick={() => setPage(n)}
               className={clsx(
-                "h-9 w-9 rounded-lg border text-sm font-medium transition-colors",
+                "w-9 h-9 rounded-lg border text-sm font-medium transition-colors",
                 n === page
                   ? "border-orange-700 bg-orange-700 text-white"
-                  : "border-gray-200 text-gray-600 hover:border-orange-700 dark:border-slate-800 dark:text-slate-300",
+                  : "border-gray-200 text-gray-600 hover:border-orange-700",
               )}
             >
               {n}
@@ -296,12 +282,11 @@ export default function RestaurantList() {
           ))}
 
           <button
-            type="button"
-            onClick={() => setLoadingPage((p) => p + 1)}
+            onClick={() => setPage((p) => p + 1)}
             disabled={page === totalPages}
-            className="rounded-lg border border-gray-200 p-2 transition-colors hover:border-orange-700 disabled:opacity-40 dark:border-slate-800 dark:text-slate-200"
+            className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-orange-700 transition-colors"
           >
-            <ChevronRightIcon className="h-4 w-4" />
+            <ChevronRightIcon className="w-4 h-4" />
           </button>
         </div>
       )}

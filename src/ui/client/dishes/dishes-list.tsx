@@ -1,11 +1,11 @@
 "use client";
 
-import { TagIcon } from "@heroicons/react/24/outline";
-import Link from "next/link";
 import { useEffect, useState } from "react";
+import Link from "next/link";
+import { TagIcon } from "@heroicons/react/24/outline";
 
-import type { ClientDish } from "@/lib/client/types";
 import { getDishes, type DishFilter } from "@/services/client/client-service";
+import type { ClientDish } from "@/lib/client/types";
 
 const PAGE_SIZE = 20;
 
@@ -16,12 +16,12 @@ function DishSkeleton() {
   return (
     <div className="flex flex-wrap">
       {Array.from({ length: PAGE_SIZE }).map((_, i) => (
-        <div key={i} className="w-1/2 px-2 py-2 md:w-1/3 lg:w-1/4">
-          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white animate-pulse dark:border-slate-800 dark:bg-slate-900">
-            <div className="h-[150px] bg-gray-100 dark:bg-slate-800" />
-            <div className="space-y-3 p-4">
-              <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
-              <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
+        <div key={i} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden animate-pulse">
+            <div className="bg-gray-100 h-[150px]" />
+            <div className="p-4 space-y-3">
+              <div className="h-4 bg-gray-200 rounded w-2/3" />
+              <div className="h-3 bg-gray-100 rounded w-1/4" />
             </div>
           </div>
         </div>
@@ -38,11 +38,15 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
   const [filters, setFilters] = useState<Filters>({});
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
+
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
 
   useEffect(() => {
     const isNewSearch = page === 1;
+    if (isNewSearch) setLoading(true);
+    else setLoadingMore(true);
+    setError(null);
 
     getDishes({ ...filters, idLocal, pagina: page, tamano: PAGE_SIZE })
       .then((data) => {
@@ -59,8 +63,6 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
   }, [filters, page, idLocal]);
 
   function updateFilters(patch: Partial<Filters>) {
-    setLoading(true);
-    setError(null);
     setPage(1);
     setFilters((f) => ({ ...f, ...patch }));
   }
@@ -68,11 +70,10 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
   function handleOrden(val: OrdenValue) {
     if (val === "") {
       updateFilters({ orden: undefined, sentido: undefined });
-      return;
+    } else {
+      const [orden, sentido] = val.split("-") as ["precio", "asc" | "desc"];
+      updateFilters({ orden, sentido });
     }
-
-    const [orden, sentido] = val.split("-") as ["precio", "asc" | "desc"];
-    updateFilters({ orden, sentido });
   }
 
   function toggleDescuento() {
@@ -93,14 +94,15 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
     : "";
 
   return (
-    <div className="mx-auto max-w-[1440px]">
-      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border-b border-gray-100 bg-white p-3 text-sm text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
+    <div className="max-w-[1440px] mx-auto">
+      {/* Barra de filtros */}
+      <div className="flex flex-wrap items-center bg-white p-3 rounded-xl gap-x-6 gap-y-2 mb-6 border-b border-gray-100 text-sm text-gray-500">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-600 dark:text-slate-300">Ordenar:</span>
+          <span className="font-medium text-gray-600">Ordenar:</span>
           <select
             value={ordenValue}
             onChange={(e) => handleOrden(e.target.value as OrdenValue)}
-            className="cursor-pointer rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
           >
             <option value="">Por defecto</option>
             <option value="precio-asc">Precio: menor a mayor</option>
@@ -108,17 +110,17 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
           </select>
         </div>
 
-        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-800 sm:block" />
+        <div className="h-4 w-px bg-gray-200 hidden sm:block" />
 
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-600 dark:text-slate-300">Filtrar:</span>
+          <span className="font-medium text-gray-600">Filtrar:</span>
           <button
             type="button"
             onClick={toggleDescuento}
             className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
               filters.conDescuento
                 ? "border-orange-600 bg-orange-600 text-white"
-                : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300"
+                : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600"
             }`}
           >
             <TagIcon className="h-3.5 w-3.5" />
@@ -126,70 +128,68 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
           </button>
         </div>
 
-        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-800 sm:block" />
+        <div className="h-4 w-px bg-gray-200 hidden sm:block" />
 
         <div className="flex items-center gap-1.5">
-          <span className="font-medium text-gray-600 dark:text-slate-300">Precio:</span>
+          <span className="font-medium text-gray-600">Precio:</span>
           <input
             type="number"
             min={0}
-            placeholder="min"
+            placeholder="mín"
             value={precioMin}
             onChange={(e) => setPrecioMin(e.target.value)}
             onBlur={applyPrecio}
             onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="w-20 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
           />
-          <span className="text-gray-400 dark:text-slate-500">-</span>
+          <span className="text-gray-400">—</span>
           <input
             type="number"
             min={0}
-            placeholder="max"
+            placeholder="máx"
             value={precioMax}
             onChange={(e) => setPrecioMax(e.target.value)}
             onBlur={applyPrecio}
             onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="w-20 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
           />
         </div>
       </div>
 
+      {/* Resultados */}
       {loading ? (
         <DishSkeleton />
       ) : error ? (
-        <p className="text-sm text-red-500 dark:text-red-400">{error}</p>
+        <p className="text-sm text-red-500">{error}</p>
       ) : dishes.length === 0 ? (
-        <p className="text-sm text-slate-400 dark:text-slate-500">
+        <p className="text-sm text-slate-400">
           No se encontraron resultados para los filtros aplicados.
         </p>
       ) : (
         <>
           <div className="flex flex-wrap">
             {dishes.map((dish) => (
-              <div key={dish.id} className="w-1/2 px-2 py-2 md:w-1/3 lg:w-1/4">
-                <Link
-                  href={`/client/platos/${dish.id}`}
-                  className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
-                >
-                  <div className="flex h-[150px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+              <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
+              <Link href={`/client/platos/${dish.id}`} className="block rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
+                  <div className="flex items-center justify-center bg-orange-50 h-[150px]">
                     {dish.imageUrl ? (
                       <img
                         alt={dish.name}
                         src={dish.imageUrl}
-                        className="h-full w-full object-cover"
+                        className="object-cover w-full h-full"
                       />
                     ) : (
-                      <span className="text-4xl font-black text-orange-600 dark:text-orange-300">
+                      <span className="text-4xl font-black text-orange-600">
                         {dish.name.charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
                   <div className="p-4">
-                    <span className="inline-block font-bold text-gray-800 dark:text-white">
+                    <span className="inline-block font-bold text-gray-800">
                       {dish.name}
                     </span>
                     <div className="mt-2">
-                      <span className="text-md font-bold text-orange-700 dark:text-orange-300">
+                      <span className="text-md text-orange-700 font-bold">
                         ${dish.price}
                       </span>
                     </div>
@@ -199,17 +199,14 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
             ))}
           </div>
 
+          {/* Cargar más */}
           {hasMore && (
-            <div className="mb-4 mt-8 flex justify-center">
+            <div className="flex justify-center mt-8 mb-4">
               <button
                 type="button"
-                onClick={() => {
-                  setLoadingMore(true);
-                  setError(null);
-                  setPage((p) => p + 1);
-                }}
+                onClick={() => setPage((p) => p + 1)}
                 disabled={loadingMore}
-                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-900"
+                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {loadingMore ? (
                   <>
@@ -217,7 +214,7 @@ export default function DishesList({ idLocal }: { idLocal?: number }) {
                     Cargando...
                   </>
                 ) : (
-                  "Cargar mas"
+                  "Cargar más"
                 )}
               </button>
             </div>
