@@ -186,7 +186,7 @@ export default function RestaurantList() {
             key={restaurant.id}
             className="local px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4"
           >
-            <Link href={`/client/local/${restaurant.id}`} className="block local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
+            <Link href={`/client/restaurant/${restaurant.id}`} className="block local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
               <div className="local-img bg-gray-50 h-[125px] relative">
                 {restaurant.url_photo ? (
                   <Image

@@ -75,7 +75,7 @@ export default function RestaurantCartPage({
     <div className="max-w-xl mx-auto px-4 py-8">
       {/* Volver al restaurante */}
       <Link
-        href={`/client/local/${restaurantId}`}
+        href={`/client/restaurant/${restaurantId}`}
         className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
       >
         <ArrowLeftIcon className="w-4 h-4" />
@@ -120,7 +120,7 @@ export default function RestaurantCartPage({
           <ShoppingCartIcon className="w-14 h-14" />
           <p className="text-sm">Tu carrito está vacío.</p>
           <Link
-            href={`/client/local/${restaurantId}`}
+            href={`/client/restaurant/${restaurantId}`}
             className="text-orange-700 text-sm font-semibold hover:underline"
           >
             Ver platos del restaurante

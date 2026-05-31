@@ -17,9 +17,7 @@ export default function Header() {
   const pathname = usePathname();
 
   // Si estamos en un restaurante, el ícono del carrito apunta a su carrito
-  const restaurantMatch =
-    pathname.match(/^\/client\/local\/(\d+)/) ??
-    pathname.match(/^\/client\/restaurant\/(\d+)/);
+  const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
   const cartHref = restaurantMatch
     ? `/client/restaurant/${restaurantMatch[1]}/cart`
     : "/client/cart";
