@@ -38,6 +38,14 @@ export type RestaurantList = {
   state: boolean;
 }
 
+export type LocalList = {
+  id: number;
+  nombre: string;
+  direccion?: string | null;
+  urlFoto?: string | null;
+  estadoServicio?: boolean;
+};
+
 export type Restaurant ={
   id: number;
   name: string;

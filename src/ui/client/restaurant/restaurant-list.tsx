@@ -67,27 +67,31 @@ export default function RestaurantList() {
   useEffect(() => {
     let cancelled = false;
 
-    setLoading(true);
-    setError(null);
-    getRestaurants({
-      ...sortMap[sort],
-      ...(filterOpen  && { servicio: 'ACTIVO' as const }),
-      ...(filterStars && { calificacionMin: 4 }),
-      page: page - 1,
-      size: PAGE_SIZE,
-    })
-      .then(({ restaurants, totalPages }) => {
+    async function loadRestaurants() {
+      setLoading(true);
+      setError(null);
+
+      try {
+        const { restaurants, totalPages } = await getRestaurants({
+          ...sortMap[sort],
+          ...(filterOpen && { servicio: 'ACTIVO' as const }),
+          ...(filterStars && { calificacionMin: 4 }),
+          page: page - 1,
+          size: PAGE_SIZE,
+        });
+
         if (cancelled) return;
         setRestaurants(restaurants);
         setTotalPages(totalPages);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (cancelled) return;
         setError(err instanceof Error ? err.message : "Error al cargar");
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoading(false);
-      });
+      }
+    }
+
+    void loadRestaurants();
 
     return () => { cancelled = true; };
   }, [sort, filterOpen, filterStars, page]);

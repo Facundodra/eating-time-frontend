@@ -12,6 +12,7 @@ import type {
     Cart,
     OrderRequest,
     PaymentResponse,
+    LocalList,
 } from "@/lib/client/types";
 
 export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, OrderRequest, PaymentResponse };
@@ -103,6 +104,7 @@ export type DishFilter = {
     sentido?: "asc" | "desc";
     pagina?: number;
     tamano?: number;
+    q?: string;
 };
 
 export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
@@ -118,6 +120,7 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
     if (filter?.sentido)            params.set("sentido",      filter.sentido);
     if (filter?.pagina != null)     params.set("pagina",       String(filter.pagina));
     if (filter?.tamano != null)     params.set("tamano",       String(filter.tamano));
+    if (filter?.q)                  params.set("q",            filter.q);
 
     const query = params.toString();
     const url = `/api/locales/platos${query ? `?${query}` : ""}`;
@@ -151,6 +154,20 @@ export async function getDish(id: string): Promise<ClientDish> {
             throw new Error(message);
         }
         throw new Error("No se pudo cargar el plato.");
+    }
+}
+
+export async function getLocales(): Promise<LocalList[]> {
+    try {
+        const response = await api.get<LocalList[]>(`/api/locales`);
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener locales (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudieron cargar los locales.");
     }
 }
 

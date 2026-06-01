@@ -5,10 +5,10 @@ import type {
   ChangePasswordInput,
   UpdateAccountProfileInput,
 } from "@/lib/account/types";
-import type { BackendUserRole, LoginWebResponse } from "@/lib/auth/types";
-import { getStoredSession } from "@/lib/auth/session-store";
+import type { BackendUserRole, LoginWebResponse } from "@/lib/shared/auth/types";
+import { getStoredSession } from "@/lib/shared/auth/session-store";
 
-import { api } from "./api-client";
+import { api } from "@/services/shared/api-client";
 
 type BackendErrorResponse = {
   error?: string;

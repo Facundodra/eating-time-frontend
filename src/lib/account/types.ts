@@ -1,4 +1,4 @@
-import type { BackendUserRole } from "@/lib/auth/types";
+import type { BackendUserRole } from "@/lib/shared/auth/types";
 
 export type AccountProfile = {
   idUsuario: number;
