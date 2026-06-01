@@ -74,7 +74,7 @@ export default function ClientHomePage() {
             : restaurants.map((restaurant) => (
                 <Link
                   key={restaurant.id}
-                  href={`/client/local/${restaurant.id}`}
+                  href={`/client/restaurant/${restaurant.id}`}
                   className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900"
                 >
                   <div className="relative h-[125px] bg-gray-50 dark:bg-slate-800">

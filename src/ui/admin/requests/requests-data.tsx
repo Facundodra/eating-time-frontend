@@ -2,7 +2,7 @@ export type RequestStatus = "pending" | "approved" | "rejected";
 
 export type RequestStatusFilter = "all" | RequestStatus;
 
-export type LocalRequest = {
+export type RestaurantRequest = {
   id: number;
   restaurant: string;
   email: string;
@@ -16,13 +16,13 @@ export type LocalRequest = {
 };
 
 export function matchesRequestStatusFilter(
-  request: LocalRequest,
+  request: RestaurantRequest,
   filterStatus: RequestStatusFilter,
 ): boolean {
   return filterStatus === "all" || request.status === filterStatus;
 }
 
-export const initialRequests: LocalRequest[] = [
+export const initialRequests: RestaurantRequest[] = [
   {
     id: 1,
     restaurant: "La Pasta Nostra",

@@ -1,14 +1,14 @@
 "use client";
 
 import Link from "next/link";
-import type { LocalRequest } from "./requests-data";
+import type { RestaurantRequest } from "./requests-data";
 import {
   getRequestStatusLabel,
   getRequestStatusStyle,
 } from "./requests-status";
 
 type RequestsTableProps = Readonly<{
-  requests: LocalRequest[];
+  requests: RestaurantRequest[];
 }>;
 
 export default function RequestsTable({ requests }: RequestsTableProps) {

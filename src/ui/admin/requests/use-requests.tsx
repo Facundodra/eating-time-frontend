@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { LocalRequest, RequestStatus } from "./requests-data";
+import type { RestaurantRequest, RequestStatus } from "./requests-data";
 import {
-  aprobarSolicitudRegistroLocal,
-  obtenerSolicitudesRegistroLocal,
-  rechazarSolicitudRegistroLocal,
+  aprobarSolicitudRegistroRestaurant,
+  obtenerSolicitudesRegistroRestaurant,
+  rechazarSolicitudRegistroRestaurant,
   type SolicitudRegistroResponse,
-} from "@/services/gestion-service";
+} from "@/services/admin/gestion-service";
 
 type UseRequestsOptions = {
   autoLoad?: boolean;
@@ -35,9 +35,9 @@ function getStatusFromBackend(
   return "pending";
 }
 
-function mapBackendToLocalRequest(
+function mapBackendToRestaurantRequest(
   response: SolicitudRegistroResponse,
-): LocalRequest {
+): RestaurantRequest {
   return {
     id: Number(response.id),
     restaurant: response.nombre ?? "",
@@ -55,7 +55,7 @@ function mapBackendToLocalRequest(
 export function useRequests(options: UseRequestsOptions = {}) {
   const { autoLoad = true } = options;
 
-  const [requests, setRequests] = useState<LocalRequest[]>([]);
+  const [requests, setRequests] = useState<RestaurantRequest[]>([]);
   const [loading, setLoading] = useState(autoLoad);
   const [error, setError] = useState<string | null>(null);
 
@@ -64,8 +64,8 @@ export function useRequests(options: UseRequestsOptions = {}) {
       setLoading(true);
       setError(null);
 
-      const data = await obtenerSolicitudesRegistroLocal();
-      const mapped = data.map(mapBackendToLocalRequest);
+      const data = await obtenerSolicitudesRegistroRestaurant();
+      const mapped = data.map(mapBackendToRestaurantRequest);
 
       setRequests(mapped);
     } catch (err) {
@@ -106,7 +106,7 @@ export function useRequests(options: UseRequestsOptions = {}) {
       try {
         setError(null);
 
-        await aprobarSolicitudRegistroLocal(id);
+        await aprobarSolicitudRegistroRestaurant(id);
         updateRequestStatus(id, "approved");
       } catch (err) {
         const requestError =
@@ -127,7 +127,7 @@ export function useRequests(options: UseRequestsOptions = {}) {
       try {
         setError(null);
 
-        await rechazarSolicitudRegistroLocal(id);
+        await rechazarSolicitudRegistroRestaurant(id);
         updateRequestStatus(id, "rejected");
       } catch (err) {
         const requestError =

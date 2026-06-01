@@ -1,17 +1,20 @@
 import axios, { AxiosError } from "axios";
 
-import { api } from "../api-client";
-import { getStoredSession } from "@/lib/auth/session-store";
+import { api } from "../shared/api-client";
+import { getStoredSession } from "@/lib/shared/auth/session-store";
 
 import type {
     RestaurantList,
     Restaurant,
     DeliveryPointCredentials,
     DeliveryPoint,
-    ClientDish
+    ClientDish,
+    Cart,
+    OrderRequest,
+    PaymentResponse,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = getStoredSession();
@@ -257,5 +260,124 @@ export async function getRestaurant(id: string): Promise<Restaurant> {
             throw new Error(message);
         }
         throw new Error("No se pudo cargar el local.");
+    }
+}
+
+// ── Carrito ────────────────────────────────────────────────────────────────────
+
+/** Respuesta del backend (campo `localId` en PedidoDto). */
+type CartFromApi = Omit<Cart, "restaurantId"> & { localId: number };
+
+function mapCartFromApi(cart: CartFromApi): Cart {
+    const { localId, ...rest } = cart;
+    return { ...rest, restaurantId: localId };
+}
+
+// Devuelve todos los carritos activos (EN_CARRITO) del cliente, uno por restaurante
+export async function getCarts(): Promise<Cart[]> {
+    const session = getStoredSession();
+    if (!session) throw new Error("Sesión no encontrada");
+
+    try {
+        const response = await api.get<CartFromApi[]>(
+            `/api/clientes/${session.idTipoUsuario}/carritos`
+        );
+        return response.data.map(mapCartFromApi);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener carritos (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudieron cargar los carritos.");
+    }
+}
+
+// Devuelve el carrito activo del cliente para un restaurante específico
+// Lanza error con status 404 si no hay carrito para ese restaurante
+export async function getCart(restaurantId: number): Promise<Cart | null> {
+    const session = getStoredSession();
+    if (!session) throw new Error("Sesión no encontrada");
+
+    try {
+        const response = await api.get<CartFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`
+        );
+        return mapCartFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response?.status === 404) {
+            return null;
+        }
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener carrito (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo cargar el carrito.");
+    }
+}
+
+// Agrega o quita unidades de un plato en el carrito de un restaurante.
+// cantidad es un delta: positivo suma, negativo resta.
+// Si el carrito no existe, el backend lo crea automáticamente.
+export async function updateCartItem(
+    restaurantId: number,
+    platoId: number,
+    cantidad: number
+): Promise<Cart> {
+    const session = getStoredSession();
+    if (!session) throw new Error("Sesión no encontrada");
+
+    try {
+        const response = await api.post<CartFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/local/${restaurantId}/agregar-plato/${platoId}/cantidad/${cantidad}`
+        );
+        return mapCartFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al actualizar carrito (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo actualizar el carrito.");
+    }
+}
+
+// Elimina (soft delete) el carrito activo de un restaurante
+export async function deleteCart(restaurantId: number): Promise<void> {
+    const session = getStoredSession();
+    if (!session) throw new Error("Sesión no encontrada");
+
+    try {
+        await api.delete(`/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al eliminar carrito (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo eliminar el carrito.");
+    }
+}
+
+// Realiza el pedido: envía la dirección de entrega, cambia el carrito a ETAPA_DE_PAGO
+// y devuelve el link de pago de Mercado Pago
+export async function placeOrder(restaurantId: number, body: OrderRequest): Promise<PaymentResponse> {
+    const session = getStoredSession();
+    if (!session) throw new Error("Sesión no encontrada");
+
+    try {
+        const response = await api.patch<PaymentResponse>(
+            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`,
+            body
+        );
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al realizar pedido (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo realizar el pedido.");
     }
 }

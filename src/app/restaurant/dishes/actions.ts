@@ -7,10 +7,10 @@ import {
   deleteDish,
   toggleDishAvailability,
   updateDish,
-} from "@/services/local-dish-service";
+} from "@/services/restaurant/dish-service";
 
 export async function createDishAction(
-  localId: string,
+  restaurantId: string,
   formData: FormData,
 ): Promise<{ error?: string }> {
   const name = String(formData.get("name") ?? "").trim();
@@ -22,7 +22,7 @@ export async function createDishAction(
   }
 
   try {
-    await createDish(localId, {
+    await createDish(restaurantId, {
       name,
       price,
       image: image && image.size > 0 ? image : null,

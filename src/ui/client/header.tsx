@@ -7,17 +7,18 @@ import {
 } from "@heroicons/react/24/outline";
 import Form from "next/form";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 
-import { clearSessionCookies, clearStoredSession } from "@/lib/auth/session-store";
-import { logout } from "@/services/auth-service";
+import { clearSessionCookies, clearStoredSession } from "@/lib/shared/auth/session-store";
+import { logout } from "@/services/shared/auth-service";
 import EatingTimeBrand from "@/ui/shared/brand/eating-time-brand";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 
 export default function Header() {
   const router = useRouter();
+  const pathname = usePathname();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   async function handleLogout() {
@@ -32,6 +33,11 @@ export default function Header() {
       router.refresh();
     }
   }
+
+  const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
+  const cartHref = restaurantMatch
+    ? `/client/restaurant/${restaurantMatch[1]}/cart`
+    : "/client/cart";
 
   return (
     <div className="client-header fixed inset-x-0 top-0 z-40 flex flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-4 py-4 text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:px-6 lg:flex-nowrap lg:px-10">
@@ -68,7 +74,7 @@ export default function Header() {
 
       <div className="cart">
         <Link
-          href="/cart"
+          href={cartHref}
           className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800 dark:border-slate-800"
         >
           <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition group-hover:text-white dark:text-slate-100" />

@@ -6,8 +6,8 @@ import { useEffect } from "react";
 import {
   clearSessionCookies,
   clearStoredSession,
-} from "@/lib/auth/session-store";
-import { logout } from "@/services/auth-service";
+} from "@/lib/shared/auth/session-store";
+import { logout } from "@/services/shared/auth-service";
 import PageLoader from "@/ui/shared/feedback/page-loader";
 
 export default function LogoutPage() {

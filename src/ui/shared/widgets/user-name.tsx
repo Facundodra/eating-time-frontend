@@ -1,4 +1,4 @@
-import { User } from "@/lib/data";
+import { User } from "@/lib/shared/data";
 
 export default function UserName({ className }: { className?: string }) {
   const name = User.name;

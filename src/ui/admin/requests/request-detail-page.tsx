@@ -4,11 +4,11 @@ import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 import {
-  obtenerSolicitudRegistroLocalPorId as getLocalRegistrationRequestById,
-  type SolicitudRegistroResponse as LocalRegistrationRequestResponse,
-} from "@/services/gestion-service";
+  obtenerSolicitudRegistroRestaurantPorId as getRestaurantRegistrationRequestById,
+  type SolicitudRegistroResponse as RestaurantRegistrationRequestResponse,
+} from "@/services/admin/gestion-service";
 
-import type { LocalRequest } from "./requests-data";
+import type { RestaurantRequest } from "./requests-data";
 import {
   getRequestStatusLabel,
   getRequestStatusStyle,
@@ -20,8 +20,8 @@ type Props = Readonly<{
 }>;
 
 function mapBackendStatusToRequestStatus(
-  response: LocalRegistrationRequestResponse,
-): LocalRequest["status"] {
+  response: RestaurantRegistrationRequestResponse,
+): RestaurantRequest["status"] {
   if (response.rechazo || response.estado === "RECHAZADA") {
     return "rejected";
   }
@@ -37,9 +37,9 @@ function mapBackendStatusToRequestStatus(
   return "pending";
 }
 
-function mapBackendToLocalRequest(
-  response: LocalRegistrationRequestResponse,
-): LocalRequest {
+function mapBackendToRestaurantRequest(
+  response: RestaurantRegistrationRequestResponse,
+): RestaurantRequest {
   return {
     id: response.id,
     restaurant: response.nombre,
@@ -63,7 +63,7 @@ export default function RequestDetailPage({ id }: Props) {
   } = useRequests();
   const requestFromList = getRequestById(id);
 
-  const [request, setRequest] = useState<LocalRequest | null>(
+  const [request, setRequest] = useState<RestaurantRequest | null>(
     requestFromList ?? null,
   );
   const [loadingRequest, setLoadingRequest] = useState(!requestFromList);
@@ -78,8 +78,8 @@ export default function RequestDetailPage({ id }: Props) {
       setLoadingRequest(true);
       setDetailError(null);
 
-      const data = await getLocalRegistrationRequestById(id);
-      setRequest(mapBackendToLocalRequest(data));
+      const data = await getRestaurantRegistrationRequestById(id);
+      setRequest(mapBackendToRestaurantRequest(data));
     } catch (err) {
       setDetailError(
         err instanceof Error

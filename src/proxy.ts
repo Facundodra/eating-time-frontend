@@ -1,13 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { FRONTEND_SESSION_COOKIE_NAME } from "@/lib/auth/session-cookies";
+import { FRONTEND_SESSION_COOKIE_NAME } from "@/lib/shared/auth/session-cookies";
 
 const publicRoutes = [
   "/register",
   "/login",
-  "/confirmar-cuenta",
-  "/local/confirmation",
-  "/local/register",
+  "/register/restaurant",
+  "/register/restaurant/confirmation",
   "/forgot-password",
   "/reset-password",
 ];

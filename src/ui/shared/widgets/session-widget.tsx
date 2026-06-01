@@ -8,8 +8,8 @@ import { useState } from "react";
 import {
   clearSessionCookies,
   clearStoredSession,
-} from "@/lib/auth/session-store";
-import { logout } from "@/services/auth-service";
+} from "@/lib/shared/auth/session-store";
+import { logout } from "@/services/shared/auth-service";
 import LoadingButton from "@/ui/shared/buttons/loading-button";
 
 import ProfilePicture from "./profile-picture";

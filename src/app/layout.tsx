@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "typeface-inter";
 import "@/css/globals.css";
 
-import { THEME_STORAGE_KEY } from "@/lib/theme";
+import { THEME_STORAGE_KEY } from "@/lib/shared/theme";
 
 export const metadata: Metadata = {
   title: "Eating Time",

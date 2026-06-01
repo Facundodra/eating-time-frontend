@@ -1,20 +1,20 @@
 "use server";
 
 import {
-  confirmarCuentaLocal,
-  CuentaLocalYaConfirmadaError,
-} from "@/services/gestion-service";
+  confirmarCuentaRestaurant,
+  RestaurantAccountAlreadyConfirmedError,
+} from "@/services/admin/gestion-service";
 
-export type ConfirmLocalState =
+export type ConfirmRestaurantState =
   | { error: string }
   | { success: true }
   | { alreadyConfirmed: true }
   | null;
 
-export async function confirmLocalAccountAction(
-  _prev: ConfirmLocalState,
+export async function confirmRestaurantAccountAction(
+  _prev: ConfirmRestaurantState,
   formData: FormData,
-): Promise<ConfirmLocalState> {
+): Promise<ConfirmRestaurantState> {
   const codigo = String(
     formData.get("codigo") ?? formData.get("code") ?? "",
   ).trim();
@@ -38,14 +38,14 @@ export async function confirmLocalAccountAction(
   }
 
   try {
-    await confirmarCuentaLocal({
+    await confirmarCuentaRestaurant({
       codigo,
       password,
     });
 
     return { success: true };
   } catch (err) {
-    if (err instanceof CuentaLocalYaConfirmadaError) {
+    if (err instanceof RestaurantAccountAlreadyConfirmedError) {
       return { alreadyConfirmed: true };
     }
 

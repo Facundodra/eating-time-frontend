@@ -1,5 +1,4 @@
-import RestaurantListPage from "@/ui/client/restaurant/restaurant-list-page";
-import { DishStatus } from "../local-dish/types";
+import { DishStatus } from "../restaurant/dish/types";
 
 export type DeliveryPointCredentials = {
   loc: string;
@@ -48,3 +47,57 @@ export type Restaurant ={
   address: string | null;
   description: string | null;
 }
+
+// Estados posibles del pedido relevantes para el cliente
+export type OrderStatus = "EN_CARRITO" | "ETAPA_DE_PAGO" | "PENDIENTE_CONFIRMACION_LOCAL";
+
+// Body del PATCH para realizar pedido — punto guardado o dirección manual
+export type OrderRequest =
+  | { puntoDeEntregaId: number }
+  | {
+      localidad: string;
+      calle: string;
+      numero: string;
+      nroApto?: string;
+      indicaciones?: string;
+      guardarEnCuenta?: boolean;
+    };
+
+export type PaymentResponse = {
+  linkPago: string;
+};
+
+// Estado devuelto por Mercado Pago en el callback
+export type PaymentStatus = "approved" | "failure" | "pending";
+
+export type CartItem = {
+  id: number;
+  pedidoId: number;
+  platoId: number;
+  descuentoId: number | null;
+  cantidad: number;
+  costoUnitario: number;
+  descuentoAplicado: number;
+  total: number;
+  creacion: string;
+  eliminacion: string | null;
+};
+
+export type Cart = {
+  id: number;
+  restaurantId: number;
+  clienteId: number;
+  cuponId: number | null;
+  estado: OrderStatus;
+  total: number;
+  descuento: number | null;
+  tiempoEstimado: number | null;
+  urlFactura: string | null;
+  comentario: string | null;
+  direccion: string | null;
+  indicaciones: string | null;
+  motivoRechazo: string | null;
+  creacion: string;
+  eliminacion: string | null;
+  items: CartItem[];
+};
