@@ -1,5 +1,5 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import MyDataPage from "@/ui/account/my-data-page";
 
 export default function AdminMyDataPage() {
-  return <ComingSoonPage backHref="/admin" title="Mis datos" />;
+  return <MyDataPage changePasswordHref="/admin/change-password" />;
 }

@@ -41,7 +41,7 @@ export default function RegisterForm() {
 
   if (state && "success" in state) {
     return (
-      <div className="w-full rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900">
+      <div className="w-full max-w-[520px] rounded-[28px] border border-gray-200 bg-white px-5 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:px-9 sm:py-10">
         <div className="flex flex-col items-center text-center py-6">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100 mb-6">
             <svg className="h-8 w-8 text-green-600" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -66,7 +66,7 @@ export default function RegisterForm() {
   }
 
   return (
-    <div className="w-full rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900">
+    <div className="w-full max-w-[520px] rounded-[28px] border border-gray-200 bg-white px-5 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:px-9 sm:py-10">
       <div>
         <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 dark:text-white">
           Crear cuenta cliente
@@ -94,8 +94,8 @@ export default function RegisterForm() {
         </div>
 
         {/* Cedula y telefono */}
-        <div className="flex align-center flex-wrap">
-          <div className="w-1/2 pr-2">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
             <label htmlFor="document" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
               Documento de identidad
             </label>
@@ -109,7 +109,7 @@ export default function RegisterForm() {
               required
             />
           </div>
-          <div className="w-1/2 pl-2">
+          <div>
             <label htmlFor="phone" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
               Teléfono
             </label>
@@ -142,8 +142,8 @@ export default function RegisterForm() {
 
         {/* Contraseña */}
         <div>
-          <div className="flex align-center flex-wrap">
-            <div className="w-1/2 pr-2 relative">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="relative">
               <label htmlFor="password" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
                 Contraseña
               </label>
@@ -153,7 +153,7 @@ export default function RegisterForm() {
                 type={showPsw ? "text" : "password"}
                 autoComplete="new-password"
                 placeholder="Creá tu contraseña"
-                className="field pr-[30px]"
+                className="field pr-10"
                 onChange={handlePasswordChange}
                 required
               />
@@ -161,12 +161,12 @@ export default function RegisterForm() {
                 type="button"
                 onClick={() => setShowPsw(v => !v)}
                 tabIndex={-1}
-                className="absolute bottom-[13px] right-[20px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute bottom-[13px] right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 {showPsw ? <EyeSlashIcon className="w-[20px]" /> : <EyeIcon className="w-[20px]" />}
               </button>
             </div>
-            <div className="w-1/2 pl-2 relative">
+            <div className="relative">
               <label htmlFor="confirm_password" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
                 Confirmar contraseña
               </label>
@@ -176,7 +176,7 @@ export default function RegisterForm() {
                 type={showConfirmPsw ? "text" : "password"}
                 autoComplete="new-password"
                 placeholder="Repetí la contraseña"
-                className={`field pr-[30px] ${passwordError ? "!border-red-400" : ""}`}
+                className={`field pr-10 ${passwordError ? "!border-red-400" : ""}`}
                 onChange={handleConfirmChange}
                 required
               />
@@ -184,7 +184,7 @@ export default function RegisterForm() {
                 type="button"
                 onClick={() => setShowConfirmPsw(v => !v)}
                 tabIndex={-1}
-                className="absolute bottom-[13px] right-[20px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                className="absolute bottom-[13px] right-4 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
               >
                 {showConfirmPsw ? <EyeSlashIcon className="w-[20px]" /> : <EyeIcon className="w-[20px]" />}
               </button>

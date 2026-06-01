@@ -49,7 +49,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
   }
 
   return (
-    <section className="w-full max-w-[420px] rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900">
+    <section className="w-full max-w-[420px] rounded-[28px] border border-gray-200 bg-white px-5 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:px-9 sm:py-10">
       <div>
         <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 dark:text-white">
           Iniciar sesión
@@ -69,7 +69,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
         <div>
           <label
             htmlFor="email"
-            className="mb-2 block text-xs font-bold text-slate-600"
+            className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300"
           >
             Correo electrónico
           </label>
@@ -88,13 +88,13 @@ export default function LoginForm({ reason }: LoginFormProps) {
           <div className="mb-2 flex items-center justify-between gap-3">
             <label
               htmlFor="password"
-              className="block text-xs font-bold text-slate-600"
+              className="block text-xs font-bold text-slate-600 dark:text-slate-300"
             >
               Contraseña
             </label>
             <Link
               href="/forgot-password"
-              className="text-xs font-extrabold text-orange-600 transition hover:text-orange-700"
+              className="text-xs font-extrabold text-orange-600 transition hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
             >
               Recuperar contraseña
             </Link>
@@ -120,7 +120,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
           type="submit"
           isLoading={isSubmitting}
           loadingText="Ingresando..."
-          className="h-[52px] w-full cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100"
+          className="h-[52px] w-full cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:focus:ring-orange-500/25"
         >
           Ingresar
         </LoadingButton>
@@ -129,7 +129,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
       <div className="my-8 h-px bg-gray-200 dark:bg-slate-800" />
 
       <div className="space-y-4">
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-200 px-5 py-4 dark:border-slate-800">
+        <div className="flex flex-col gap-4 rounded-2xl border border-gray-200 px-5 py-4 dark:border-slate-800 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
           <div>
             <h2 className="text-sm font-extrabold text-slate-900 dark:text-white">
               ¿No tenés cuenta?
@@ -140,13 +140,13 @@ export default function LoginForm({ reason }: LoginFormProps) {
           </div>
           <Link
             href="/register/client"
-            className="shrink-0 text-sm font-extrabold text-orange-600 transition hover:text-orange-700"
+            className="shrink-0 text-sm font-extrabold text-orange-600 transition hover:text-orange-700 dark:text-orange-300 dark:hover:text-orange-200"
           >
             Crear cuenta
           </Link>
         </div>
 
-        <div className="flex items-center justify-between gap-4 rounded-2xl border border-orange-100 bg-orange-50 px-5 py-4 dark:border-orange-500/20 dark:bg-orange-500/10">
+        <div className="flex flex-col gap-4 rounded-2xl border border-orange-100 bg-orange-50 px-5 py-4 dark:border-orange-500/20 dark:bg-orange-500/10 min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between">
           <div>
             <h2 className="max-w-[150px] text-sm leading-5 font-extrabold text-slate-900 dark:text-white">
               ¿Tenés un local gastronómico?

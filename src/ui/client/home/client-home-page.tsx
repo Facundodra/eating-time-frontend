@@ -14,16 +14,16 @@ import type { RestaurantList, ClientDish } from "@/lib/client/types";
 
 function RestaurantCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden animate-pulse">
-      <div className="bg-gray-100 h-[125px]" />
-      <div className="p-4 space-y-3">
+    <div className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-[125px] bg-gray-100 dark:bg-slate-800" />
+      <div className="space-y-3 p-4">
         <div className="flex items-center gap-2">
-          <div className="w-[45px] h-[45px] rounded-full bg-gray-200 shrink-0" />
-          <div className="h-4 bg-gray-200 rounded w-2/3" />
+          <div className="h-[45px] w-[45px] shrink-0 rounded-full bg-gray-200 dark:bg-slate-700" />
+          <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-4 h-4 rounded bg-gray-200" />
-          <div className="h-3 bg-gray-100 rounded w-1/4" />
+          <div className="h-4 w-4 rounded bg-gray-200 dark:bg-slate-700" />
+          <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
         </div>
       </div>
     </div>
@@ -32,11 +32,11 @@ function RestaurantCardSkeleton() {
 
 function DishCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white overflow-hidden animate-pulse">
-      <div className="bg-gray-100 h-[150px]" />
-      <div className="p-4 space-y-3">
-        <div className="h-4 bg-gray-200 rounded w-2/3" />
-        <div className="h-3 bg-gray-100 rounded w-1/4" />
+    <div className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-[150px] bg-gray-100 dark:bg-slate-800" />
+      <div className="space-y-3 p-4">
+        <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
+        <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
       </div>
     </div>
   );
@@ -61,75 +61,80 @@ export default function ClientHomePage() {
   }, []);
 
   return (
-    <div className="max-w-[1440px] mx-auto px-4 py-6 space-y-10">
-      {/* Mejores locales */}
+    <div className="mx-auto max-w-[1440px] space-y-10">
       <section>
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Mejores locales</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <h2 className="mb-4 text-lg font-bold text-gray-800 dark:text-slate-100">
+          Mejores locales
+        </h2>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
           {loadingRestaurants
             ? Array.from({ length: 8 }).map((_, i) => (
                 <RestaurantCardSkeleton key={i} />
               ))
-            : restaurants.map((r) => (
+            : restaurants.map((restaurant) => (
                 <Link
-                  key={r.id}
-                  href={`/client/restaurant/${r.id}`}
-                  className="block rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden"
+                  key={restaurant.id}
+                  href={`/client/restaurant/${restaurant.id}`}
+                  className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <div className="local-img bg-gray-50 h-[125px] relative">
-                    {r.url_photo ? (
+                  <div className="relative h-[125px] bg-gray-50 dark:bg-slate-800">
+                    {restaurant.url_photo ? (
                       <Image
-                        alt={r.name}
-                        src={r.url_photo}
+                        alt={restaurant.name}
+                        src={restaurant.url_photo}
                         width={120}
                         height={125}
-                        className="object-contain mx-auto p-3 w-[120px] h-full"
+                        className="mx-auto h-full w-[120px] object-contain p-3"
                       />
                     ) : (
-                      <div className="w-[120px] h-full mx-auto flex items-center justify-center text-gray-300 text-4xl">
-                        🍽
+                      <div className="mx-auto flex h-full w-[120px] items-center justify-center text-center text-xs font-bold uppercase tracking-wide text-gray-300 dark:text-slate-600">
+                        Sin imagen
                       </div>
                     )}
                     <span
-                      className={`absolute top-3 right-3 py-1 px-3 rounded-full text-sm ${
-                        r.state
-                          ? "bg-green-100 text-green-900"
-                          : "bg-gray-200 text-gray-500"
+                      className={`absolute right-3 top-3 rounded-full px-3 py-1 text-xs font-bold sm:text-sm ${
+                        restaurant.state
+                          ? "bg-green-100 text-green-900 dark:bg-green-500/10 dark:text-green-300"
+                          : "bg-gray-200 text-gray-500 dark:bg-slate-900 dark:text-slate-400"
                       }`}
                     >
-                      {r.state ? (
+                      {restaurant.state ? (
                         <>
-                          <CheckCircleIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
+                          <CheckCircleIcon className="relative bottom-[2px] mr-1 inline h-4 w-4" />
                           Abierto
                         </>
                       ) : (
                         <>
-                          <MoonIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
+                          <MoonIcon className="relative bottom-[2px] mr-1 inline h-4 w-4" />
                           Cerrado
                         </>
                       )}
                     </span>
                   </div>
                   <div className="p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="border border-gray-200 p-2 rounded-full w-[45px] h-[45px] shrink-0">
-                        {r.url_photo ? (
+                    <div className="flex min-w-0 items-center gap-2">
+                      <div className="h-[45px] w-[45px] shrink-0 rounded-full border border-gray-200 p-2 dark:border-slate-700">
+                        {restaurant.url_photo ? (
                           <Image
-                            alt={r.name}
-                            src={r.url_photo}
+                            alt={restaurant.name}
+                            src={restaurant.url_photo}
                             width={45}
                             height={45}
                             className="h-full object-contain"
                           />
                         ) : (
-                          <div className="w-full h-full bg-gray-100 rounded-full" />
+                          <div className="h-full w-full rounded-full bg-gray-100 dark:bg-slate-800" />
                         )}
                       </div>
-                      <span className="font-bold text-gray-800 text-sm">{r.name}</span>
+                      <span className="min-w-0 text-sm font-bold text-gray-800 dark:text-slate-100">
+                        {restaurant.name}
+                      </span>
                     </div>
-                    <div className="flex items-center gap-2 mt-2">
-                      <StarIcon className="text-orange-400 w-4 h-4" />
-                      <span className="text-xs text-gray-400">{r.stars}</span>
+                    <div className="mt-2 flex items-center gap-2">
+                      <StarIcon className="h-4 w-4 text-orange-400" />
+                      <span className="text-xs text-gray-400 dark:text-slate-500">
+                        {restaurant.stars}
+                      </span>
                     </div>
                   </div>
                 </Link>
@@ -137,37 +142,43 @@ export default function ClientHomePage() {
         </div>
       </section>
 
-      {/* Platos destacados */}
       <section>
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Platos destacados</h2>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <h2 className="mb-4 text-lg font-bold text-gray-800 dark:text-slate-100">
+          Platos destacados
+        </h2>
+        <div className="grid grid-cols-[repeat(auto-fit,minmax(220px,1fr))] gap-4">
           {loadingDishes
             ? Array.from({ length: 8 }).map((_, i) => (
                 <DishCardSkeleton key={i} />
               ))
-            : dishes.map((d) => (
+            : dishes.map((dish) => (
                 <Link
-                  key={d.id}
-                  href={`/client/platos/${d.id}`}
-                  className="block rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden"
+                  key={dish.id}
+                  href={`/client/platos/${dish.id}`}
+                  className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900"
                 >
-                  <div className="flex items-center justify-center bg-orange-50 h-[150px]">
-                    {d.imageUrl ? (
-                      <img
-                        alt={d.name}
-                        src={d.imageUrl}
-                        className="object-cover w-full h-full"
+                  <div className="relative flex h-[150px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+                    {dish.imageUrl ? (
+                      <Image
+                        alt={dish.name}
+                        src={dish.imageUrl}
+                        fill
+                        sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 25vw"
+                        className="object-cover"
+                        unoptimized
                       />
                     ) : (
                       <span className="text-4xl font-black text-orange-600">
-                        {d.name.charAt(0).toUpperCase()}
+                        {dish.name.charAt(0).toUpperCase()}
                       </span>
                     )}
                   </div>
                   <div className="p-4">
-                    <span className="font-bold text-gray-800 block">{d.name}</span>
-                    <span className="text-orange-700 font-bold text-sm mt-1 block">
-                      ${d.price}
+                    <span className="block font-bold text-gray-800 dark:text-slate-100">
+                      {dish.name}
+                    </span>
+                    <span className="mt-1 block text-sm font-bold text-orange-700 dark:text-orange-300">
+                      ${dish.price}
                     </span>
                   </div>
                 </Link>

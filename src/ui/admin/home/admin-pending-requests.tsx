@@ -1,15 +1,14 @@
 "use client";
 
 import Link from "next/link";
-
+import { useRequests } from "../requests/use-requests";
 import {
   getRequestStatusLabel,
   getRequestStatusStyle,
 } from "../requests/requests-status";
-import { useRequests } from "../requests/use-requests";
 
 export default function AdminPendingRequests() {
-  const { getPendingRequests, loading, error } = useRequests();
+  const { getPendingRequests } = useRequests();
   const pendingRequests = getPendingRequests().slice(0, 3);
 
   return (
@@ -19,13 +18,11 @@ export default function AdminPendingRequests() {
           <h2 className="text-base font-bold text-slate-950 dark:text-white">
             Solicitudes de locales pendientes
           </h2>
-
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Locales que requieren resolucion del administrador para quedar
+            Locales que requieren resolución del administrador para quedar
             habilitados.
           </p>
         </div>
-
         <Link
           className="w-fit rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10"
           href="/admin/requests"
@@ -34,19 +31,7 @@ export default function AdminPendingRequests() {
         </Link>
       </div>
 
-      {loading ? (
-        <div className="px-5 py-6">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Cargando solicitudes...
-          </p>
-        </div>
-      ) : error ? (
-        <div className="px-5 py-6">
-          <p className="text-sm font-semibold text-red-600 dark:text-red-300">
-            {error}
-          </p>
-        </div>
-      ) : pendingRequests.length === 0 ? (
+      {pendingRequests.length === 0 ? (
         <div className="px-5 py-6">
           <p className="text-sm text-slate-500 dark:text-slate-400">
             No hay solicitudes pendientes por revisar.
@@ -64,22 +49,18 @@ export default function AdminPendingRequests() {
                 <th className="px-5 py-4 font-bold">Detalle</th>
               </tr>
             </thead>
-
             <tbody className="divide-y divide-gray-100 text-sm dark:divide-slate-800">
               {pendingRequests.map((request) => (
-                <tr key={request.id}>
+                <tr key={request.email}>
                   <td className="px-5 py-4 font-bold text-slate-950 dark:text-white">
                     {request.restaurant}
                   </td>
-
                   <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
                     {request.email}
                   </td>
-
                   <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
                     {request.date}
                   </td>
-
                   <td className="px-5 py-4">
                     <span
                       className={`rounded-full px-3 py-1 text-xs font-bold ${getRequestStatusStyle(
@@ -89,15 +70,12 @@ export default function AdminPendingRequests() {
                       {getRequestStatusLabel(request.status)}
                     </span>
                   </td>
-
                   <td className="px-5 py-4">
                     <Link
                       className="rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10"
-                      href={`/admin/requests/${encodeURIComponent(
-                        request.id.toString(),
-                      )}`}
+                      href={`/admin/requests/${encodeURIComponent(request.email)}`}
                     >
-                      Ver solicitud
+                      Ver solicitud 
                     </Link>
                   </td>
                 </tr>

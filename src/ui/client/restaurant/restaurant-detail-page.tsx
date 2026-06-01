@@ -47,6 +47,16 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
     );
   }
 
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <p className="rounded-lg bg-white px-4 py-3 text-sm font-medium text-slate-500">
+          Cargando local...
+        </p>
+      </div>
+    );
+  }
+
   if (!restaurant) return null;
 
   return (

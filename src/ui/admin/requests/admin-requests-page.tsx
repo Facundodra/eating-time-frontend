@@ -1,19 +1,18 @@
 "use client";
 
 import { useMemo, useState } from "react";
-
+import RequestsFilters from "./requests-filters";
+import RequestsTable from "./requests-table";
+import { useRequests } from "./use-requests";
 import {
   matchesRequestStatusFilter,
   type RequestStatusFilter,
 } from "./requests-data";
-import RequestsFilters from "./requests-filters";
-import RequestsTable from "./requests-table";
-import { useRequests } from "./use-requests";
 
 type SortBy = "recent" | "oldest" | "name-asc";
 
 export default function AdminRequestsPage() {
-  const { requests, loading, error } = useRequests();
+  const { requests, totals, loading, error } = useRequests();
 
   const [filterRestaurant, setFilterRestaurant] = useState("");
   const [filterEmail, setFilterEmail] = useState("");
@@ -32,7 +31,9 @@ export default function AdminRequestsPage() {
         .includes(restaurantQuery);
 
       const matchesEmail = request.email.toLowerCase().includes(emailQuery);
+
       const matchesStatus = matchesRequestStatusFilter(request, filterStatus);
+
       const requestDate = request.date.slice(0, 10);
       const matchesDate = filterDate ? requestDate === filterDate : true;
 
@@ -88,6 +89,12 @@ export default function AdminRequestsPage() {
 
   return (
     <RequestsLayout>
+      <div className="grid gap-4 md:grid-cols-3">
+        <StatusCard label="Pendientes" value={totals.pending} />
+        <StatusCard label="Aceptadas" value={totals.approved} />
+        <StatusCard label="Rechazadas" value={totals.rejected} />
+      </div>
+
       <RequestsFilters
         resultCount={filteredRequests.length}
         filterRestaurant={filterRestaurant}
@@ -120,12 +127,29 @@ function RequestsLayout({
         </h1>
 
         <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Gestion y revision de solicitudes de registro de locales pendientes,
+          Gestión y revisión de solicitudes de registro de locales pendientes,
           aceptadas o rechazadas.
         </p>
       </header>
 
       {children}
     </section>
+  );
+}
+
+function StatusCard({
+  label,
+  value,
+}: Readonly<{ label: string; value: number }>) {
+  return (
+    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
+        {label}
+      </p>
+
+      <p className="mt-3 text-3xl font-bold text-slate-950 dark:text-white">
+        {value}
+      </p>
+    </article>
   );
 }

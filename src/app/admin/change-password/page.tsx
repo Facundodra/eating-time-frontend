@@ -1,5 +1,5 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import ChangePasswordPage from "@/ui/account/change-password-page";
 
 export default function AdminChangePasswordPage() {
-  return <ComingSoonPage backHref="/admin" title="Cambiar contrasena" />;
+  return <ChangePasswordPage backHref="/admin/my-data" />;
 }

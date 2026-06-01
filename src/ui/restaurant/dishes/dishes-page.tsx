@@ -2,6 +2,7 @@
 
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import Image from "next/image";
 import { useMemo, useRef, useState, useTransition } from "react";
 
 import {
@@ -362,12 +363,15 @@ export default function RestaurantDishesPage({
                       : "border-transparent bg-white dark:bg-slate-900",
                   )}
                 >
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 dark:bg-orange-500/10">
+                  <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 dark:bg-orange-500/10">
                     {dish.imageUrl ? (
-                      <img
-                        src={dish.imageUrl}
+                      <Image
                         alt={dish.name}
-                        className="h-full w-full object-cover"
+                        src={dish.imageUrl}
+                        fill
+                        sizes="80px"
+                        className="object-cover"
+                        unoptimized
                       />
                     ) : (
                       <span className="text-2xl font-black text-orange-600 dark:text-orange-400">

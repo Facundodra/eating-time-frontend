@@ -1,17 +1,24 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import ThemeToggle from "../shared/theme/theme-toggle";
-import ProfilePicture from "../shared/widgets/profile-picture";
-import UserName from "../shared/widgets/user-name";
 
 const pageHeaders = [
   {
     path: "/admin/requests",
     breadcrumb: "Administracion / Solicitudes",
     title: "Solicitudes de locales",
+  },
+  {
+    path: "/admin/change-password",
+    breadcrumb: "Administracion / Cuenta",
+    title: "Cambiar contrasena",
+  },
+  {
+    path: "/admin/my-data",
+    breadcrumb: "Administracion / Cuenta",
+    title: "Mis datos",
   },
   {
     path: "/admin",
@@ -23,7 +30,7 @@ const pageHeaders = [
 function getPageHeader(pathname: string) {
   return (
     pageHeaders.find((header) => pathname.startsWith(header.path)) ??
-    pageHeaders[1]
+    pageHeaders[pageHeaders.length - 1]
   );
 }
 
@@ -43,15 +50,6 @@ export default function Topnav() {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <div className="user">
-          <Link
-            href="/admin/my-data"
-            className="flex min-h-11 w-fit items-center gap-2 rounded-3xl bg-white px-3 py-1.5 shadow-sm ring-1 ring-gray-100 dark:bg-slate-900 dark:ring-slate-800"
-          >
-            <ProfilePicture className="h-8 w-8" />
-            <UserName className="leading-none text-sm font-semibold" />
-          </Link>
-        </div>
       </div>
     </div>
   );

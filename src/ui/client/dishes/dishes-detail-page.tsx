@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { ChevronLeftIcon, ShoppingCartIcon } from "@heroicons/react/24/outline";
 import type { ClientDish } from "@/lib/client/types";
@@ -22,12 +23,15 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
 
       <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
         {/* Imagen */}
-        <div className="flex items-center justify-center bg-orange-50 h-64">
+        <div className="relative flex h-64 items-center justify-center bg-orange-50">
           {dish.imageUrl ? (
-            <img
-              src={dish.imageUrl}
+            <Image
               alt={dish.name}
-              className="object-cover w-full h-full"
+              src={dish.imageUrl}
+              fill
+              sizes="(max-width: 768px) 100vw, 672px"
+              className="object-cover"
+              unoptimized
             />
           ) : (
             <span className="text-7xl font-black text-orange-600">

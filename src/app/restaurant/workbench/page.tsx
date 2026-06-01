@@ -1,5 +1,5 @@
 import RestaurantWorkbenchPage from "@/ui/restaurant/workbench/workbench-page";
 
 export default function WorkbenchPage() {
-  return <RestaurantWorkbenchPage />;
+  return <RestaurantWorkbenchPage mode="workbench" />;
 }

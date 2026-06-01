@@ -88,6 +88,7 @@ function CheckoutSection({ restaurantId, onSuccess }: CheckoutSectionProps) {
     setPlacing(true);
     try {
       const { linkPago } = await placeOrder(restaurantId, body);
+      onSuccess();
       router.push(linkPago);
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo realizar el pedido.");

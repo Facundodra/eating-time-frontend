@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
 import { MinusIcon, PlusIcon, TagIcon } from "@heroicons/react/24/outline";
 
@@ -212,12 +213,15 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                 <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
                   <div className="rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden flex flex-col">
                     <Link href={`/client/platos/${dish.id}`} className="block">
-                      <div className="flex items-center justify-center bg-orange-50 h-[150px]">
+                      <div className="relative flex h-[150px] items-center justify-center bg-orange-50">
                         {dish.imageUrl ? (
-                          <img
+                          <Image
                             alt={dish.name}
                             src={dish.imageUrl}
-                            className="object-cover w-full h-full"
+                            fill
+                            sizes="(max-width: 768px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                            className="object-cover"
+                            unoptimized
                           />
                         ) : (
                           <span className="text-4xl font-black text-orange-600">

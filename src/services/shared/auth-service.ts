@@ -53,6 +53,12 @@ export type RestaurantConfirmationCredentials = {
 export async function login(
   credentials: LoginCredentials,
 ): Promise<LoginWebResponse> {
+  if (!publicApi.defaults.baseURL) {
+    throw new LoginError(
+      "No está configurada la URL del backend. Revisá NEXT_PUBLIC_API_URL o NEXT_PUBLIC_API_BASE_URL.",
+    );
+  }
+
   try {
     const response = await publicApi.post<LoginWebResponse>(
       "/api/auth/login-web",

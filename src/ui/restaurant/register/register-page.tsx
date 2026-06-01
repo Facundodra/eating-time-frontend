@@ -1,8 +1,6 @@
-import Image from "next/image";
 import Link from "next/link";
 import { UserIcon } from "@heroicons/react/24/outline";
-
-import EatingTimeLogo from "@/ui/shared/images/logo.png";
+import EatingTimeBrand from "@/ui/shared/brand/eating-time-brand";
 import RegisterForm from "./register-form";
 
 export default function RegisterPage() {
@@ -10,17 +8,12 @@ export default function RegisterPage() {
     <div className="flex min-h-screen flex-col bg-[#f7f7f7] dark:bg-slate-950">
       <header className="sticky top-0 z-10 flex h-[62px] items-center gap-4 border-b border-gray-100 bg-white px-6 dark:border-slate-800 dark:bg-slate-900 sm:px-10">
         <Link href="/login" className="flex items-center gap-2.5">
-          <Image
-            src={EatingTimeLogo}
-            alt="Eating Time"
-            width={42}
-            height={42}
-            className="h-[42px] w-[42px] rounded-[11px] object-cover"
+          <EatingTimeBrand
+            iconSize={42}
+            iconClassName="h-[42px] w-[42px] rounded-[11px]"
+            textClassName="text-xl font-semibold"
             priority
           />
-          <span className="text-xl font-semibold tracking-tight text-slate-900 dark:text-white">
-            Eating<span className="text-orange-600">Time</span>
-          </span>
         </Link>
 
         <div className="ml-auto">

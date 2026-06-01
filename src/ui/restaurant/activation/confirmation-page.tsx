@@ -10,12 +10,10 @@ import {
   KeyIcon,
   ShieldCheckIcon,
 } from "@heroicons/react/24/outline";
-import Image from "next/image";
 import Link from "next/link";
 import { useActionState, useState, type ReactNode } from "react";
-
 import { confirmRestaurantAccountAction } from "@/app/register/restaurant/confirmation/actions";
-import EatingTimeLogo from "@/ui/shared/images/logo.png";
+import EatingTimeBrand from "@/ui/shared/brand/eating-time-brand";
 import ThemeToggle from "@/ui/shared/theme/theme-toggle";
 
 type Props = Readonly<{
@@ -48,16 +46,13 @@ export default function ConfirmationPage({
       <section className="mx-auto max-w-5xl">
         <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
           <Link href="/" className="flex items-center gap-3">
-            <Image
-              src={EatingTimeLogo}
-              alt="Eating Time"
-              width={40}
-              height={40}
-              className="h-10 w-10 rounded-xl shadow-sm"
+            <EatingTimeBrand
+              iconSize={40}
+              iconClassName="h-10 w-10 shadow-sm"
+              textClassName="text-sm"
               priority
             />
             <div>
-              <p className="text-sm font-extrabold">Eating Time</p>
               <p className="text-xs text-slate-500 dark:text-slate-400">
                 Confirmación de local
               </p>
