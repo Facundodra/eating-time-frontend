@@ -93,7 +93,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
               Contraseña
             </label>
             <Link
-              href="/forgot-password"
+              href="/restablecer-contrasena"
               className="text-xs font-extrabold text-orange-600 transition hover:text-orange-700"
             >
               Recuperar contraseña
