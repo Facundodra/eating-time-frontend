@@ -14,6 +14,11 @@ const pageHeaders = [
     title: "Solicitudes de locales",
   },
   {
+    path: "/admin/usuarios",
+    breadcrumb: "Administracion / Usuarios",
+    title: "Gestión de usuarios",
+  },
+  {
     path: "/admin",
     breadcrumb: "Administracion / Inicio",
     title: "Panel de administracion",

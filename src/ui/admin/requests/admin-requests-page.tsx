@@ -113,17 +113,7 @@ function RequestsLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-          Solicitudes de locales
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Gestion y revision de solicitudes de registro de locales pendientes,
-          aceptadas o rechazadas.
-        </p>
-      </header>
+    <section className="mx-auto w-full space-y-6 px-4 py-6">
 
       {children}
     </section>
