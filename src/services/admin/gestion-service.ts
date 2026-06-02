@@ -1,4 +1,17 @@
-import type { RestaurantRegistrationRequestInput } from "@/lib/admin/registration/types";
+import type { 
+  RestaurantRegistrationRequestInput
+} from "@/lib/admin/registration/types";
+
+import type {
+  User,
+  Client,
+  Restaurant,
+} from "@/lib/admin/users/types"
+
+
+import { api } from "../shared/api-client";
+import { getStoredSession } from "@/lib/shared/auth/session-store";
+import axios from "axios";
 
 export type SolicitudRegistroResponse = {
   fechaSolicitud: string;
@@ -43,7 +56,6 @@ export class RestaurantAccountAlreadyConfirmedError extends Error {
 
 function getApiBaseUrl(): string {
   return (
-    process.env.NEXT_PUBLIC_API_URL ??
     process.env.NEXT_PUBLIC_API_BASE_URL ??
     ""
   ).replace(/\/$/, "");
@@ -294,4 +306,59 @@ export async function confirmarCuentaRestaurant(
 
     throw new SolicitudRegistroError(errorMessage, response.status);
   }
+}
+
+
+// Listado de usuarios 
+export type UsersFilter = {
+    page?: number;
+    size?: number;
+};
+
+interface UsersPageResponse {
+    content: User[];
+    totalPages: number;
+}
+
+
+type UserTypeMap = {
+  "admins": User;
+  "clientes": Client;
+  "locales": Restaurant;
+};
+
+export async function getUsers<T extends keyof UserTypeMap>(filter: UsersFilter, type: T): Promise<{
+  users: UserTypeMap[T][];
+  totalPages: number;
+}> {
+    const session = getStoredSession();
+    if(!session) throw new Error("Sesión no encontrada");
+
+    try {
+        const response = await api.get<UsersPageResponse>(`/api/admin/usuarios/${type}`, { params: filter });
+        return {
+            users: response.data.content.map((u) => ({
+                usuarioId: u.usuarioId,
+                nombre: u.nombre,
+                email: u.email,
+                telefono: u.telefono,
+                creacion: new Date(u.creacion),
+                bloqueo: u.bloqueo ? new Date(u.bloqueo) : null,
+                eliminacion: u.eliminacion ? new Date(u.eliminacion) : null,
+                urlFoto: (u as any).urlFoto ?? null,
+                calificacion: (u as any).calificacion ?? null,
+                direccion: (u as any).direccion ?? null,
+                descripcion: (u as any).descripcion ?? null,
+                estadoServicio: (u as any).estadoServicio ?? null,
+             })),
+            totalPages: response.data.totalPages,
+        };
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener usuarios (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudieron cargar los usuarios.");
+    }
 }

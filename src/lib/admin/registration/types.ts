@@ -6,3 +6,5 @@ export type RestaurantRegistrationRequestInput = {
   telefono: string;
   fotos: File[];
 };
+
+

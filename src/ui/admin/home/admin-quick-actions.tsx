@@ -10,7 +10,7 @@ const actions = [
     title: "Usuarios registrados",
     description:
       "Consultar usuarios del sistema y aplicar filtros por tipo, nombre y estado de bloqueo.",
-    href: "/admin/users",
+    href: "/admin/usuarios",
     linkLabel: "Ver usuarios",
     icon: UsersIcon,
   },

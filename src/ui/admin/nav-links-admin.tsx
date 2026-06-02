@@ -14,7 +14,7 @@ import {
 
 const mainNavLinks = [
   { name: "Inicio", href: "/admin", icon: HomeIcon },
-  { name: "Usuarios", href: "/admin/users", icon: UsersIcon },
+  { name: "Usuarios", href: "/admin/usuarios", icon: UsersIcon },
   {
     name: "Solicitudes de locales",
     href: "/admin/requests",
