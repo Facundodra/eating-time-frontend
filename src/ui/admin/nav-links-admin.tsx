@@ -7,7 +7,6 @@ import {
   BuildingStorefrontIcon,
   HomeIcon,
   KeyIcon,
-  LockClosedIcon,
   UserIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
@@ -19,8 +18,7 @@ const mainNavLinks = [
     name: "Solicitudes de locales",
     href: "/admin/requests",
     icon: BuildingStorefrontIcon,
-  },
-  { name: "Bloqueos", href: "/admin/blocks", icon: LockClosedIcon },
+  }
 ];
 
 const accountNavLinks = [

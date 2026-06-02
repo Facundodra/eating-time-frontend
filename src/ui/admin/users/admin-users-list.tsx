@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 
 import type { Client, Restaurant, User } from "@/lib/admin/users/types";
-import { getUsers } from "@/services/admin/gestion-service";
+import { getUsers, blockUser, unblockUser } from "@/services/admin/gestion-service";
 
 type UserType = "clientes" | "locales" | "admins";
 type StatusFilter = "all" | "active" | "blocked" | "deleted";
@@ -67,6 +67,8 @@ export default function AdminUsersList() {
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<SortBy>("recent");
   const [page, setPage] = useState(1);
+  const [blockingId, setBlockingId] = useState<number | null>(null);
+  const [blockError, setBlockError] = useState<string | null>(null);
 
   useEffect(() => { setPage(1); }, [type, search, filterStatus, sortBy]);
 
@@ -89,6 +91,28 @@ export default function AdminUsersList() {
 
     return () => { cancelled = true; };
   }, [type]);
+
+  async function handleToggleBlock(user: User) {
+    setBlockingId(user.usuarioId);
+    setBlockError(null);
+    try {
+      if (user.bloqueo) {
+        await unblockUser(user.usuarioId);
+        setAllUsers((prev) =>
+          prev.map((u) => u.usuarioId === user.usuarioId ? { ...u, bloqueo: null } : u)
+        );
+      } else {
+        await blockUser(user.usuarioId);
+        setAllUsers((prev) =>
+          prev.map((u) => u.usuarioId === user.usuarioId ? { ...u, bloqueo: new Date() } : u)
+        );
+      }
+    } catch (err) {
+      setBlockError(err instanceof Error ? err.message : "Error al actualizar el usuario.");
+    } finally {
+      setBlockingId(null);
+    }
+  }
 
   const filteredUsers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -177,6 +201,13 @@ export default function AdminUsersList() {
         )}
       </div>
 
+      {/* Block error */}
+      {blockError && (
+        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm dark:border-red-900 dark:bg-red-950">
+          <p className="text-sm font-semibold text-red-700 dark:text-red-200">Error: {blockError}</p>
+        </div>
+      )}
+
       {/* States */}
       {loading && (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -203,7 +234,7 @@ export default function AdminUsersList() {
       {/* Table */}
       {!loading && !error && pagedUsers.length > 0 && (
         <>
-          <UsersTable users={pagedUsers} type={type} />
+          <UsersTable users={pagedUsers} type={type} onToggleBlock={handleToggleBlock} blockingId={blockingId} />
 
           {totalPages > 1 && (
             <Pagination page={page} totalPages={totalPages} onPageChange={setPage} />
@@ -214,11 +245,22 @@ export default function AdminUsersList() {
   );
 }
 
-function UsersTable({ users, type }: { users: (User | Client | Restaurant)[]; type: UserType }) {
+function UsersTable({
+  users,
+  type,
+  onToggleBlock,
+  blockingId,
+}: {
+  users: (User | Client | Restaurant)[];
+  type: UserType;
+  onToggleBlock: (user: User) => void;
+  blockingId: number | null;
+}) {
   const showPhoto = type === "clientes" || type === "locales";
   const showCalificacion = type === "clientes" || type === "locales";
   const showDireccion = type === "locales";
   const showServicio = type === "locales";
+  const showActions = type !== "admins";
 
   return (
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -234,12 +276,14 @@ function UsersTable({ users, type }: { users: (User | Client | Restaurant)[]; ty
               {showServicio && <th className="px-5 py-4 font-bold">Servicio</th>}
               <th className="px-5 py-4 font-bold">Registro</th>
               <th className="px-5 py-4 font-bold">Estado</th>
+              {showActions && <th className="px-5 py-4 font-bold">Acciones</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white dark:divide-slate-800 dark:bg-slate-950">
             {users.map((user) => {
               const client = type === "clientes" ? (user as Client) : null;
               const restaurant = type === "locales" ? (user as Restaurant) : null;
+              const isBlocking = blockingId === user.usuarioId;
 
               return (
                 <tr key={user.usuarioId} className="transition hover:bg-slate-50 dark:hover:bg-slate-900/70">
@@ -296,6 +340,30 @@ function UsersTable({ users, type }: { users: (User | Client | Restaurant)[]; ty
                   <td className="px-5 py-4">
                     <StatusBadge user={user} />
                   </td>
+
+                  {showActions && (
+                    <td className="px-5 py-4">
+                      {user.eliminacion ? (
+                        <span className="text-slate-400">—</span>
+                      ) : user.bloqueo ? (
+                        <button
+                          onClick={() => onToggleBlock(user)}
+                          disabled={isBlocking}
+                          className="rounded-lg border border-slate-200 bg-slate-100 px-3 py-1 text-xs font-semibold cursor-pointer text-slate-700 transition hover:bg-slate-200 disabled:opacity-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
+                        >
+                          {isBlocking ? "..." : "Desbloquear"}
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => onToggleBlock(user)}
+                          disabled={isBlocking}
+                          className="rounded-lg border cursor-pointer border-amber-200 bg-amber-50 px-3 py-1 text-xs font-semibold text-amber-700 transition hover:bg-amber-100 disabled:opacity-50 dark:border-amber-800 dark:bg-amber-500/10 dark:text-amber-400 dark:hover:bg-amber-500/20"
+                        >
+                          {isBlocking ? "..." : "Bloquear"}
+                        </button>
+                      )}
+                    </td>
+                  )}
                 </tr>
               );
             })}
