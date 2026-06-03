@@ -1,7 +1,7 @@
-import axios, { AxiosError } from "axios";
+import axios from "axios";
 
 import { api } from "../shared/api-client";
-import { getStoredSession } from "@/lib/shared/auth/session-store";
+import { requireCurrentSession } from "@/services/shared/auth-service";
 
 import type {
     RestaurantList,
@@ -17,8 +17,7 @@ import type {
 export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     const body: Record<string, string> = {
         localidad: credentials.loc,
@@ -48,8 +47,7 @@ export async function addDeliveryPoint(credentials: DeliveryPointCredentials): P
 }
 
 export async function getDeliveryPoints(): Promise<DeliveryPoint[]> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
         const response = await api.get<DeliveryPoint[]>(
@@ -106,8 +104,7 @@ export type DishFilter = {
 };
 
 export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    await requireCurrentSession();
 
     const params = new URLSearchParams();
     if (filter?.idLocal != null)    params.set("idLocal",      String(filter.idLocal));
@@ -137,8 +134,7 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
 
 export async function getDish(id: string): Promise<ClientDish> {
     if (typeof window !== 'undefined') {
-        const session = getStoredSession();
-        if (!session) throw new Error("Sesión no encontrada");
+        await requireCurrentSession();
     }
 
     try {
@@ -195,8 +191,7 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
 export async function getRestaurants(
     filter: RestaurantFilter = {}
 ): Promise<{ restaurants: RestaurantList[]; totalPages: number }> {
-    const session = getStoredSession();
-    if(!session) throw new Error("Sesión no encontrada");
+    await requireCurrentSession();
 
     try {
         const response = await api.get<RestaurantPageResponse>(`/api/locales`, { params: filter });
@@ -246,8 +241,7 @@ export async function getRestaurantName(id: number): Promise<string> {
 
 export async function getRestaurant(id: string): Promise<Restaurant> {
     if (typeof window !== 'undefined') {
-        const session = getStoredSession();
-        if (!session) throw new Error("Sesión no encontrada");
+        await requireCurrentSession();
     }
 
     try {
@@ -275,8 +269,7 @@ function mapCartFromApi(cart: CartFromApi): Cart {
 
 // Devuelve todos los carritos activos (EN_CARRITO) del cliente, uno por restaurante
 export async function getCarts(): Promise<Cart[]> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
         const response = await api.get<CartFromApi[]>(
@@ -296,8 +289,7 @@ export async function getCarts(): Promise<Cart[]> {
 // Devuelve el carrito activo del cliente para un restaurante específico
 // Lanza error con status 404 si no hay carrito para ese restaurante
 export async function getCart(restaurantId: number): Promise<Cart | null> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
         const response = await api.get<CartFromApi>(
@@ -325,8 +317,7 @@ export async function updateCartItem(
     platoId: number,
     cantidad: number
 ): Promise<Cart> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
         const response = await api.post<CartFromApi>(
@@ -345,8 +336,7 @@ export async function updateCartItem(
 
 // Elimina (soft delete) el carrito activo de un restaurante
 export async function deleteCart(restaurantId: number): Promise<void> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
         await api.delete(`/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`);
@@ -363,8 +353,7 @@ export async function deleteCart(restaurantId: number): Promise<void> {
 // Realiza el pedido: envía la dirección de entrega, cambia el carrito a ETAPA_DE_PAGO
 // y devuelve el link de pago de Mercado Pago
 export async function placeOrder(restaurantId: number, body: OrderRequest): Promise<PaymentResponse> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
         const response = await api.patch<PaymentResponse>(

@@ -1,28 +1,20 @@
-export type UserRole = "admin" | "restaurant" | "client";
-
 export type BackendUserRole = "ADMIN" | "LOCAL" | "CLIENTE";
-
-export type AuthUser = {
-  id: string;
-  roleId?: string;
-  name: string;
-  email: string;
-  role: UserRole;
-};
 
 export type LoginCredentials = {
   email: string;
   password: string;
 };
 
+// Es la forma canónica de sesión para el frontend. Viene del backend en
+// login-web y, principalmente, en GET /api/auth/me usando la cookie JSESSIONID.
 export type LoginWebResponse = {
   tipoUsuario: BackendUserRole;
   idUsuario: number;
   idTipoUsuario: number;
-};
-
-export type AuthSession = {
-  user: AuthUser;
+  nombre?: string | null;
+  correo?: string | null;
+  email?: string | null;
+  urlFoto?: string | null;
 };
 
 export type RegisterCredentials = {

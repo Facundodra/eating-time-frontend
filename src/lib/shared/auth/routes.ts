@@ -1,17 +1,7 @@
-import type { BackendUserRole, UserRole } from "./types";
+import type { BackendUserRole } from "./types";
 
-export const AUTH_COOKIE_NAME = "eating_time_session";
-
-export const roleHomePath: Record<UserRole, string> = {
-  admin: "/admin",
-  restaurant: "/restaurant",
-  client: "/client",
-};
-
-export function getRoleHomePath(role: UserRole) {
-  return roleHomePath[role];
-}
-
+// Mapea el rol que devuelve el backend a la raiz del modulo que puede usar.
+// Los layouts protegidos usan esto para sacar al usuario de una zona incorrecta.
 const backendRoleHomePath: Record<BackendUserRole, string> = {
   ADMIN: "/admin",
   LOCAL: "/restaurant",

@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { useEffect, useState } from "react";
 
-import { getStoredSession } from "@/lib/shared/auth/session-store";
+import { getCurrentSession } from "@/services/shared/auth-service";
 import type { OrderStatus, WorkbenchFilters, WorkbenchOrder } from "@/lib/restaurant/workbench/types";
 import { fetchWorkbenchOrders } from "@/services/restaurant/workbench-service";
 
@@ -68,7 +68,7 @@ export default function RestaurantWorkbenchPage() {
     let ignore = false;
 
     async function fetchOrders() {
-      const session = getStoredSession();
+      const session = await getCurrentSession();
       const restaurantId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
 
       if (!restaurantId) {

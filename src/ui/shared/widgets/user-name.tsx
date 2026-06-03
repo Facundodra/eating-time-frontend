@@ -1,7 +1,9 @@
-import { User } from "@/lib/shared/data";
-
-export default function UserName({ className }: { className?: string }) {
-  const name = User.name;
-
+export default function UserName({
+  className,
+  name = "Usuario",
+}: {
+  className?: string;
+  name?: string;
+}) {
   return <span className={`user-name ${className ?? ""}`.trim()}>{name}</span>;
 }

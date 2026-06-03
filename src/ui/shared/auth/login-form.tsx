@@ -5,8 +5,11 @@ import { useRouter } from "next/navigation";
 import { FormEvent, useState } from "react";
 
 import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
-import { saveSession } from "@/lib/shared/auth/session-store";
-import { login, LoginError } from "@/services/shared/auth-service";
+import {
+  getCurrentSession,
+  login,
+  LoginError,
+} from "@/services/shared/auth-service";
 import LoadingButton from "@/ui/shared/buttons/loading-button";
 
 type LoginFormProps = {
@@ -14,8 +17,8 @@ type LoginFormProps = {
 };
 
 const loginReasonMessages: Record<string, string> = {
-  "auth-required": "Inicia sesion para continuar.",
-  "session-expired": "Tu sesion expiro. Inicia sesion nuevamente.",
+  "auth-required": "Iniciá sesión para continuar.",
+  "session-expired": "Tu sesión expiró. Iniciá sesión nuevamente.",
 };
 
 export default function LoginForm({ reason }: LoginFormProps) {
@@ -34,14 +37,19 @@ export default function LoginForm({ reason }: LoginFormProps) {
     setIsSubmitting(true);
 
     try {
-      const user = await login({ email, password });
-      saveSession(user);
-      router.push(getBackendRoleHomePath(user.tipoUsuario));
+      await login({ email, password });
+
+      const currentSession = await getCurrentSession();
+      if (!currentSession) {
+        throw new LoginError("No se pudo validar la sesión. Intentalo nuevamente.", 401);
+      }
+
+      router.push(getBackendRoleHomePath(currentSession.tipoUsuario));
     } catch (error) {
       setErrorMessage(
         error instanceof LoginError
           ? error.message
-          : "No se pudo iniciar sesion. Intentalo nuevamente.",
+          : "No se pudo iniciar sesión. Intentalo nuevamente.",
       );
     } finally {
       setIsSubmitting(false);
