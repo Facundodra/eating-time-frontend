@@ -1,10 +1,24 @@
+import { redirect } from "next/navigation";
+
+import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
+import { getServerSession } from "@/lib/shared/auth/server-session";
 import Header from "@/ui/client/header";
 
-export default function ClientLayout({
+export default async function ClientLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await getServerSession();
+
+  if (!session) {
+    redirect("/login?reason=auth-required");
+  }
+
+  if (session.tipoUsuario !== "CLIENTE") {
+    redirect(getBackendRoleHomePath(session.tipoUsuario));
+  }
+
   return (
     <>
       <Header />

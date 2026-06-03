@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { api } from "../shared/api-client";
+import { clientApi } from "../shared/api-client";
 import { requireCurrentSession } from "@/services/shared/auth-service";
 
 import type {
@@ -34,7 +34,7 @@ export async function addDeliveryPoint(credentials: DeliveryPointCredentials): P
     }
 
     try{
-        await api.post(`/api/clientes/${session.idTipoUsuario}/puntos-entrega`, body);
+        await clientApi.post(`/api/clientes/${session.idTipoUsuario}/puntos-entrega`, body);
     } catch(error){
         if (axios.isAxiosError(error)) {
             const data = error.response?.data;
@@ -50,7 +50,7 @@ export async function getDeliveryPoints(): Promise<DeliveryPoint[]> {
     const session = await requireCurrentSession();
 
     try {
-        const response = await api.get<DeliveryPoint[]>(
+        const response = await clientApi.get<DeliveryPoint[]>(
             `/api/clientes/${session.idTipoUsuario}/puntos-entrega`
         );
         return response.data;
@@ -104,8 +104,6 @@ export type DishFilter = {
 };
 
 export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
-    await requireCurrentSession();
-
     const params = new URLSearchParams();
     if (filter?.idLocal != null)    params.set("idLocal",      String(filter.idLocal));
     if (filter?.precioMin != null)  params.set("precioMin",    String(filter.precioMin));
@@ -120,7 +118,7 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
     const url = `/api/locales/platos${query ? `?${query}` : ""}`;
 
     try{
-        const response = await api.get<PlatoDtoFromApi[]>(url);
+        const response = await clientApi.get<PlatoDtoFromApi[]>(url);
         return response.data.map(mapPlatoToClientDish);
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -138,7 +136,7 @@ export async function getDish(id: string): Promise<ClientDish> {
     }
 
     try {
-        const response = await api.get<PlatoDtoFromApi>(`/api/platos/${id}`);
+        const response = await clientApi.get<PlatoDtoFromApi>(`/api/platos/${id}`);
         return mapPlatoToClientDish(response.data);
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -191,10 +189,8 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
 export async function getRestaurants(
     filter: RestaurantFilter = {}
 ): Promise<{ restaurants: RestaurantList[]; totalPages: number }> {
-    await requireCurrentSession();
-
     try {
-        const response = await api.get<RestaurantPageResponse>(`/api/locales`, { params: filter });
+        const response = await clientApi.get<RestaurantPageResponse>(`/api/locales`, { params: filter });
         return {
             restaurants: response.data.content.map(mapRestaurantDtoApiToRestaurantType),
             totalPages: response.data.totalPages,
@@ -245,7 +241,7 @@ export async function getRestaurant(id: string): Promise<Restaurant> {
     }
 
     try {
-        const response = await api.get<RestaurantSingleDtoFromApi>(`/api/locales/${id}`);
+        const response = await clientApi.get<RestaurantSingleDtoFromApi>(`/api/locales/${id}`);
         return mapRestaurantDtoApiToRestaurant(response.data);
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -272,7 +268,7 @@ export async function getCarts(): Promise<Cart[]> {
     const session = await requireCurrentSession();
 
     try {
-        const response = await api.get<CartFromApi[]>(
+        const response = await clientApi.get<CartFromApi[]>(
             `/api/clientes/${session.idTipoUsuario}/carritos`
         );
         return response.data.map(mapCartFromApi);
@@ -292,7 +288,7 @@ export async function getCart(restaurantId: number): Promise<Cart | null> {
     const session = await requireCurrentSession();
 
     try {
-        const response = await api.get<CartFromApi>(
+        const response = await clientApi.get<CartFromApi>(
             `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`
         );
         return mapCartFromApi(response.data);
@@ -320,7 +316,7 @@ export async function updateCartItem(
     const session = await requireCurrentSession();
 
     try {
-        const response = await api.post<CartFromApi>(
+        const response = await clientApi.post<CartFromApi>(
             `/api/clientes/${session.idTipoUsuario}/local/${restaurantId}/agregar-plato/${platoId}/cantidad/${cantidad}`
         );
         return mapCartFromApi(response.data);
@@ -339,7 +335,7 @@ export async function deleteCart(restaurantId: number): Promise<void> {
     const session = await requireCurrentSession();
 
     try {
-        await api.delete(`/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`);
+        await clientApi.delete(`/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`);
     } catch (error) {
         if (axios.isAxiosError(error)) {
             const data = error.response?.data;
@@ -356,7 +352,7 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
     const session = await requireCurrentSession();
 
     try {
-        const response = await api.patch<PaymentResponse>(
+        const response = await clientApi.patch<PaymentResponse>(
             `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`,
             body
         );
