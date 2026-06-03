@@ -7,7 +7,6 @@ import {
   BuildingStorefrontIcon,
   HomeIcon,
   KeyIcon,
-  LockClosedIcon,
   UserIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
@@ -20,12 +19,11 @@ const mainNavLinks = [
     href: "/admin/requests",
     icon: BuildingStorefrontIcon,
   },
-  { name: "Bloqueos", href: "/admin/blocks", icon: LockClosedIcon },
 ];
 
 const accountNavLinks = [
   { name: "Mis datos", href: "/admin/my-data", icon: UserIcon },
-  { name: "Cambiar contrasena", href: "/admin/change-password", icon: KeyIcon },
+  { name: "Cambiar contraseña", href: "/admin/change-password", icon: KeyIcon },
 ];
 
 export default function NavLinksAdmin() {

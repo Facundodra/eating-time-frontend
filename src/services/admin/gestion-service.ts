@@ -309,7 +309,31 @@ export async function confirmarCuentaRestaurant(
 }
 
 
-// Listado de usuarios 
+export async function blockUser(id: number): Promise<void> {
+  try {
+    await api.patch(`/api/admin/usuarios/${id}/bloqueo`);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data;
+      throw new Error(data?.error ?? data?.message ?? `Error al bloquear usuario (${error.response?.status})`);
+    }
+    throw new Error("No se pudo bloquear el usuario.");
+  }
+}
+
+export async function unblockUser(id: number): Promise<void> {
+  try {
+    await api.patch(`/api/admin/usuarios/${id}/desbloqueo`);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data;
+      throw new Error(data?.error ?? data?.message ?? `Error al desbloquear usuario (${error.response?.status})`);
+    }
+    throw new Error("No se pudo desbloquear el usuario.");
+  }
+}
+
+// Listado de usuarios
 export type UsersFilter = {
     page?: number;
     size?: number;
