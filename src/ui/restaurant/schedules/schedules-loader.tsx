@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 
-import { getStoredSession } from "@/lib/shared/auth/session-store";
+import { getCurrentSession } from "@/services/shared/auth-service";
 import type { RestaurantSchedule } from "@/lib/restaurant/schedule/types";
 import { getRestaurantServiceStatus } from "@/services/restaurant/service-status-service";
 import { getRestaurantSchedule } from "@/services/restaurant/schedule-service";
@@ -16,9 +16,9 @@ export default function RestaurantSchedulesLoader() {
   const [error, setError] = useState(false);
 
   async function loadSchedule() {
-    const session = getStoredSession();
+    const session = await getCurrentSession();
 
-    if (!session || session.tipoUsuario !== "LOCAL") {
+    if (!session) {
       setError(true);
       return;
     }

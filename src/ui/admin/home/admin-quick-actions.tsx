@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   BuildingStorefrontIcon,
-  LockClosedIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
 
@@ -21,7 +20,7 @@ const actions = [
     href: "/admin/requests",
     linkLabel: "Ver solicitudes",
     icon: BuildingStorefrontIcon,
-  }
+  },
 ];
 
 export default function AdminQuickActions() {

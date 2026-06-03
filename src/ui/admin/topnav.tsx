@@ -3,38 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
+import type { LoginWebResponse } from "@/lib/shared/auth/types";
+import { getPageMetadata } from "@/lib/shared/page-metadata";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 import UserName from "../shared/widgets/user-name";
 
-const pageHeaders = [
-  {
-    path: "/admin/requests",
-    breadcrumb: "Administracion / Solicitudes",
-    title: "Solicitudes de locales",
-  },
-  {
-    path: "/admin/usuarios",
-    breadcrumb: "Administracion / Usuarios",
-    title: "Gestión de usuarios",
-  },
-  {
-    path: "/admin",
-    breadcrumb: "Administracion / Inicio",
-    title: "Panel de administracion",
-  },
-];
-
-function getPageHeader(pathname: string) {
-  return (
-    pageHeaders.find((header) => pathname.startsWith(header.path)) ??
-    pageHeaders[1]
-  );
-}
-
-export default function Topnav() {
+export default function Topnav({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
-  const pageHeader = getPageHeader(pathname);
+  const pageHeader = getPageMetadata(pathname);
+  const { imageUrl, name, profileAlt } = getSessionDisplayData(session);
 
   return (
     <div className="admin-top-nav mb-4 flex items-center justify-between gap-4 py-1">
@@ -53,8 +32,15 @@ export default function Topnav() {
             href="/admin/my-data"
             className="flex min-h-11 w-fit items-center gap-2 rounded-3xl bg-white px-3 py-1.5 shadow-sm ring-1 ring-gray-100 dark:bg-slate-900 dark:ring-slate-800"
           >
-            <ProfilePicture className="h-8 w-8" />
-            <UserName className="leading-none text-sm font-semibold" />
+            <ProfilePicture
+              alt={profileAlt}
+              imageUrl={imageUrl}
+              className="h-8 w-8"
+            />
+            <UserName
+              name={name}
+              className="leading-none text-sm font-semibold"
+            />
           </Link>
         </div>
       </div>

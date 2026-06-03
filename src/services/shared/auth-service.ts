@@ -53,24 +53,85 @@ export type RestaurantConfirmationCredentials = {
 export async function login(
   credentials: LoginCredentials,
 ): Promise<LoginWebResponse> {
-  try {
-    const response = await publicApi.post<LoginWebResponse>(
-      "/api/auth/login-web",
-      credentials,
-    );
+  const response = await fetch("/api/auth/login", {
+    method: "POST",
+    cache: "no-store",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(credentials),
+  });
 
-    return response.data;
-  } catch (error) {
-    if (axios.isAxiosError<LoginErrorResponse>(error)) {
-      throw mapLoginError(error);
-    }
-
-    throw new LoginError("No se pudo iniciar sesion. Intentalo nuevamente.");
+  if (!response.ok) {
+    throw mapLoginFetchError(response.status, await getFetchErrorMessage(response));
   }
+
+  return (await response.json()) as LoginWebResponse;
 }
 
 export async function logout(): Promise<void> {
-  await publicApi.post("/api/auth/logout", { isMobile: false });
+  await fetch("/api/auth/logout", {
+    method: "POST",
+    cache: "no-store",
+  });
+}
+
+// Fuente de verdad de sesión en cliente: el backend identifica al usuario por
+// JSESSIONID y /api/auth/me devuelve el rol e ids actuales. No se persiste nada
+// en sessionStorage/localStorage del frontend.
+export async function getCurrentSession(): Promise<LoginWebResponse | null> {
+  const response = await fetch("/api/auth/me", {
+    method: "GET",
+    cache: "no-store",
+  });
+
+  if (response.status === 401) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error("No se pudo obtener la sesión.");
+  }
+
+  return (await response.json()) as LoginWebResponse;
+}
+
+export async function requireCurrentSession(): Promise<LoginWebResponse> {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    throw new Error("Sesión no encontrada");
+  }
+
+  return session;
+}
+
+// Variante para Server Components/layouts: recibe el header Cookie ya leido por
+// el adaptador server y valida esa sesión contra el mismo endpoint del backend.
+export async function getSessionFromCookieHeader(
+  cookieHeader: string,
+): Promise<LoginWebResponse | null> {
+  if (!publicApi.defaults.baseURL || !cookieHeader) {
+    return null;
+  }
+
+  const response = await fetch(`${publicApi.defaults.baseURL}/api/auth/me`, {
+    method: "GET",
+    cache: "no-store",
+    headers: {
+      cookie: cookieHeader,
+    },
+  });
+
+  if (response.status === 401) {
+    return null;
+  }
+
+  if (!response.ok) {
+    throw new Error("No se pudo obtener la sesión.");
+  }
+
+  return (await response.json()) as LoginWebResponse;
 }
 
 export async function confirmRestaurantAccount(
@@ -106,10 +167,23 @@ export async function confirmRestaurantAccount(
   throw mapRestaurantConfirmationError(lastError);
 }
 
-function mapLoginError(error: AxiosError<LoginErrorResponse>) {
-  const status = error.response?.status;
-  const responseMessage = getErrorMessage(error.response?.data);
+async function getFetchErrorMessage(response: Response) {
+  const contentType = response.headers.get("content-type") ?? "";
 
+  try {
+    if (contentType.includes("application/json")) {
+      const data = (await response.json()) as LoginErrorResponse | string;
+      return typeof data === "string" ? data : getErrorMessage(data);
+    }
+
+    const text = await response.text();
+    return text.trim() || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function mapLoginFetchError(status: number, responseMessage?: string) {
   if (status === 400) {
     return new LoginError(responseMessage ?? "Revisa los datos ingresados.", 400);
   }
@@ -122,7 +196,7 @@ function mapLoginError(error: AxiosError<LoginErrorResponse>) {
     return new LoginError(responseMessage ?? "No tenes permiso para ingresar.", 403);
   }
 
-  return new LoginError("No se pudo iniciar sesion. Intentalo nuevamente.", status);
+  return new LoginError("No se pudo iniciar sesión. Intentalo nuevamente.", status);
 }
 
 function mapRestaurantConfirmationError(

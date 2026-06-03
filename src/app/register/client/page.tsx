@@ -1,20 +1,15 @@
-import RegisterPage from "@/ui/shared/auth/register-page";
-import { cookies } from "next/headers";
+import RegisterPage from "@/ui/client/register/register-page";
 import { redirect } from "next/navigation";
 
 import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
-import { FRONTEND_SESSION_ROLE_COOKIE_NAME } from "@/lib/shared/auth/session-cookies";
-import type { BackendUserRole } from "@/lib/shared/auth/types";
+import { getServerSession } from "@/lib/shared/auth/server-session";
 
 export default async function Page() {
-    const cookieStore = await cookies();
-    const role = cookieStore.get(FRONTEND_SESSION_ROLE_COOKIE_NAME)?.value as
-        | BackendUserRole
-        | undefined;
+    const session = await getServerSession();
     
-    if (role) {
+    if (session) {
         // Redirigir a usuarios logueados
-        redirect(getBackendRoleHomePath(role));
+        redirect(getBackendRoleHomePath(session.tipoUsuario));
     }
 
     return <RegisterPage />;

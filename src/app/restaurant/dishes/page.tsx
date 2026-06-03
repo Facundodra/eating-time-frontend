@@ -1,56 +1,21 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { useEffect, useState } from "react";
-
-import { getStoredSession } from "@/lib/shared/auth/session-store";
-import { getRestaurantDishes } from "@/services/restaurant/dish-service";
-import type { RestaurantDishesResponse } from "@/lib/restaurant/dish/types";
+import { getServerSession } from "@/lib/shared/auth/server-session";
 import RestaurantDishesPage from "@/ui/restaurant/dishes/dishes-page";
+import { getRestaurantDishes } from "@/services/restaurant/dish-service";
 
-export default function DishesPage() {
-  const [initialData, setInitialData] = useState<RestaurantDishesResponse | null>(
-    null,
-  );
-  const [error, setError] = useState<string | null>(null);
+export default async function DishesPage() {
+  const session = await getServerSession();
 
-  useEffect(() => {
-    async function loadDishes() {
-      const session = getStoredSession();
-      const restaurantId = session?.idTipoUsuario
-        ? String(session.idTipoUsuario)
-        : "";
-
-      if (!restaurantId) {
-        setError("No se pudo obtener el ID del local. Intenta iniciar sesion nuevamente.");
-        return;
-      }
-
-      try {
-        const data = await getRestaurantDishes(restaurantId);
-        setInitialData(data);
-      } catch {
-        setInitialData({ restaurantId, dishes: [] });
-      }
-    }
-
-    loadDishes();
-  }, []);
-
-  if (error) {
-    return (
-      <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
-        {error}
-      </div>
-    );
+  if (!session) {
+    redirect("/login?reason=auth-required");
   }
 
-  if (!initialData) {
-    return (
-      <p className="text-sm font-medium text-slate-400 dark:text-slate-500">
-        Cargando platos...
-      </p>
-    );
-  }
+  const restaurantId = String(session.idTipoUsuario);
+  const initialData = await getRestaurantDishes(restaurantId).catch(() => ({
+    restaurantId,
+    dishes: [],
+  }));
 
   return <RestaurantDishesPage initialData={initialData} />;
 }

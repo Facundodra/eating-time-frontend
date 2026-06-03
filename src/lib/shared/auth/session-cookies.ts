@@ -1,2 +1,3 @@
-export const FRONTEND_SESSION_COOKIE_NAME = "eating_time_session_present";
-export const FRONTEND_SESSION_ROLE_COOKIE_NAME = "eating_time_session_role";
+// Única cookie de sesión persistente: la crea y elimina el backend.
+// El frontend no guarda tokens ni duplica la sesión en cookies propias.
+export const BACKEND_SESSION_COOKIE_NAME = "JSESSIONID";

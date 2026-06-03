@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { useCallback, useEffect, useState } from "react";
 
-import { getStoredSession } from "@/lib/shared/auth/session-store";
+import { getCurrentSession } from "@/services/shared/auth-service";
 import {
   getRestaurantAvailability,
   RESTAURANT_AVAILABILITY_REFRESH_EVENT,
@@ -13,7 +13,7 @@ export default function RestaurantStatus({ className }: { className?: string }) 
   const [isAvailable, setIsAvailable] = useState<boolean | null>(null);
 
   const refreshAvailability = useCallback(async () => {
-    const session = getStoredSession();
+    const session = await getCurrentSession();
     const restaurantId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
 
     if (!restaurantId) {

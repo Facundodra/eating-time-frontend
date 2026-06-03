@@ -135,13 +135,6 @@ export default function AdminUsersList() {
 
   return (
     <section className="mx-auto w-full space-y-6 px-4 py-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">Usuarios</h1>
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Listado de todos los usuarios registrados en la plataforma.
-        </p>
-      </header>
-
       {/* Tabs */}
       <div className="flex gap-1 border-b border-slate-200 dark:border-slate-800">
         {(Object.keys(TYPE_LABELS) as UserType[]).map((t) => (

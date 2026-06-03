@@ -114,7 +114,6 @@ function RequestsLayout({
 }>) {
   return (
     <section className="mx-auto w-full space-y-6 px-4 py-6">
-
       {children}
     </section>
   );

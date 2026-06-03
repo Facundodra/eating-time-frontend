@@ -10,7 +10,7 @@ import type {
 
 
 import { api } from "../shared/api-client";
-import { getStoredSession } from "@/lib/shared/auth/session-store";
+import { requireCurrentSession } from "@/services/shared/auth-service";
 import axios from "axios";
 
 export type SolicitudRegistroResponse = {
@@ -339,8 +339,19 @@ export type UsersFilter = {
     size?: number;
 };
 
+type UserApiResponse = Omit<User, "creacion" | "bloqueo" | "eliminacion"> & {
+    creacion: string;
+    bloqueo: string | null;
+    eliminacion: string | null;
+    urlFoto?: string | null;
+    calificacion?: number | null;
+    direccion?: string | null;
+    descripcion?: string | null;
+    estadoServicio?: boolean | null;
+};
+
 interface UsersPageResponse {
-    content: User[];
+    content: UserApiResponse[];
     totalPages: number;
 }
 
@@ -351,30 +362,56 @@ type UserTypeMap = {
   "locales": Restaurant;
 };
 
+function mapBaseUser(user: UserApiResponse): User {
+    return {
+        usuarioId: user.usuarioId,
+        nombre: user.nombre,
+        email: user.email,
+        telefono: user.telefono,
+        creacion: new Date(user.creacion),
+        bloqueo: user.bloqueo ? new Date(user.bloqueo) : null,
+        eliminacion: user.eliminacion ? new Date(user.eliminacion) : null,
+    };
+}
+
+function mapUserResponse<T extends keyof UserTypeMap>(
+    user: UserApiResponse,
+    type: T,
+): UserTypeMap[T] {
+    const baseUser = mapBaseUser(user);
+
+    if (type === "clientes") {
+        return {
+            ...baseUser,
+            urlFoto: user.urlFoto ?? null,
+            calificacion: user.calificacion ?? null,
+        } as UserTypeMap[T];
+    }
+
+    if (type === "locales") {
+        return {
+            ...baseUser,
+            urlFoto: user.urlFoto ?? null,
+            calificacion: user.calificacion ?? null,
+            direccion: user.direccion ?? null,
+            descripcion: user.descripcion ?? null,
+            estadoServicio: user.estadoServicio ?? false,
+        } as UserTypeMap[T];
+    }
+
+    return baseUser as UserTypeMap[T];
+}
+
 export async function getUsers<T extends keyof UserTypeMap>(filter: UsersFilter, type: T): Promise<{
   users: UserTypeMap[T][];
   totalPages: number;
 }> {
-    const session = getStoredSession();
-    if(!session) throw new Error("Sesión no encontrada");
+    await requireCurrentSession();
 
     try {
         const response = await api.get<UsersPageResponse>(`/api/admin/usuarios/${type}`, { params: filter });
         return {
-            users: response.data.content.map((u) => ({
-                usuarioId: u.usuarioId,
-                nombre: u.nombre,
-                email: u.email,
-                telefono: u.telefono,
-                creacion: new Date(u.creacion),
-                bloqueo: u.bloqueo ? new Date(u.bloqueo) : null,
-                eliminacion: u.eliminacion ? new Date(u.eliminacion) : null,
-                urlFoto: (u as any).urlFoto ?? null,
-                calificacion: (u as any).calificacion ?? null,
-                direccion: (u as any).direccion ?? null,
-                descripcion: (u as any).descripcion ?? null,
-                estadoServicio: (u as any).estadoServicio ?? null,
-             })),
+            users: response.data.content.map((user) => mapUserResponse(user, type)),
             totalPages: response.data.totalPages,
         };
     } catch (error) {
