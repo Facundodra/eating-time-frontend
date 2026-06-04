@@ -80,6 +80,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
         {/* </Link> */}
         <ul className="sub-menu absolute bg-white py-5 px-6 right-0 w-max rounded-md shadow-md hidden group-hover:block">
           <li><Link href="/client/mi-cuenta" className="text-sm text-gray-800 hover:text-orange-700 transition">Mi cuenta</Link></li>
+          <li><Link href="/client/order-history" className="text-sm text-gray-800 hover:text-orange-700 transition">Historial de Pedidos</Link></li>
           <li><Link href="/logout" className="text-sm text-gray-800 hover:text-orange-700 transition">Salir</Link></li>
         </ul>
       </div>

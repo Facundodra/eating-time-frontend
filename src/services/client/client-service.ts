@@ -10,11 +10,14 @@ import type {
     DeliveryPoint,
     ClientDish,
     Cart,
+    CartItem,
+    Order,
+    OrderHistoryStatus,
     OrderRequest,
     PaymentResponse,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, OrderRequest, PaymentResponse };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = await requireCurrentSession();
@@ -361,4 +364,128 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
         }
         throw new Error("No se pudo realizar el pedido.");
     }
+}
+
+// ── Historial de pedidos ────────────────────────────────────────────────────────
+
+export type OrderHistoryFilter = {
+    localId?: number;
+    desde?: string; // ISO datetime enviado al backend, ej "2026-06-01T00:00:00"
+    hasta?: string;
+    ordenarPor?: "fecha" | "precio";
+    direccion?: "asc" | "desc";
+    page?: number;
+    size?: number;
+};
+
+interface PedidoDtoFromApi {
+    id: number;
+    localId: number;
+    clienteId: number;
+    cuponId: number | null;
+    estado: OrderHistoryStatus;
+    total: number;
+    descuento: number | null;
+    tiempoEstimado: string | null;
+    urlFactura: string | null;
+    comentario: string | null;
+    direccion: string | null;
+    indicaciones: string | null;
+    motivoRechazo: string | null;
+    creacion: string;
+    eliminacion: string | null;
+    items: CartItem[] | null;
+}
+
+interface OrderHistoryPageResponse {
+    content: PedidoDtoFromApi[];
+    totalPages: number;
+    totalElements: number;
+    number: number;
+}
+
+function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
+    const { localId, items, ...rest } = dto;
+    return { ...rest, restaurantId: localId, items: items ?? [] };
+}
+
+// Historial de pedidos cerrados del cliente, paginado en el backend.
+export async function getOrderHistory(
+    filter: OrderHistoryFilter = {}
+): Promise<{ orders: Order[]; totalPages: number; totalElements: number }> {
+    const session = await requireCurrentSession();
+
+    const params: Record<string, string | number> = {};
+    if (filter.localId != null) params.localId = filter.localId;
+    if (filter.desde) params.desde = filter.desde;
+    if (filter.hasta) params.hasta = filter.hasta;
+    if (filter.ordenarPor) params.ordenarPor = filter.ordenarPor;
+    if (filter.direccion) params.direccion = filter.direccion;
+    params.page = filter.page ?? 0;
+    params.size = filter.size ?? 10;
+
+    try {
+        const response = await clientApi.get<OrderHistoryPageResponse>(
+            `/api/clientes/${session.idTipoUsuario}/pedidos`,
+            { params }
+        );
+        return {
+            orders: response.data.content.map(mapOrderFromApi),
+            totalPages: response.data.totalPages,
+            totalElements: response.data.totalElements,
+        };
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const status = error.response?.status;
+            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+
+            if (status === 404) {
+                throw new Error(
+                    "El historial de pedidos no está disponible en el servidor. El backend desplegado aún no incluye este endpoint; pedile al equipo que actualice el backend o probá apuntando NEXT_PUBLIC_API_BASE_URL a un backend local actualizado.",
+                );
+            }
+
+            const message =
+                typeof data === "string"
+                    ? data
+                    : data?.error ?? data?.message ?? `Error al obtener pedidos (${status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudieron cargar los pedidos.");
+    }
+}
+
+export type OrderHistoryRestaurant = {
+    id: number;
+    name: string;
+};
+
+// Locales distintos con al menos un pedido en el historial del cliente (para el filtro).
+export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaurant[]> {
+    const restaurantIds = new Set<number>();
+    let page = 0;
+    let totalPages = 1;
+
+    while (page < totalPages) {
+        const { orders, totalPages: pages } = await getOrderHistory({
+            page,
+            size: 100,
+            ordenarPor: "fecha",
+            direccion: "desc",
+        });
+        totalPages = pages;
+        for (const order of orders) {
+            restaurantIds.add(order.restaurantId);
+        }
+        page += 1;
+    }
+
+    const restaurants = await Promise.all(
+        [...restaurantIds].map(async (id) => ({
+            id,
+            name: await getRestaurantName(id).catch(() => `Local #${id}`),
+        })),
+    );
+
+    return restaurants.sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
