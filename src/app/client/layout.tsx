@@ -21,7 +21,7 @@ export default async function ClientLayout({
 
   return (
     <>
-      <Header />
+      <Header session={session} />
       <main className="px-5 md:px-10 py-10  bg-gray-100 min-h-[100vh]">{children}</main>
     </>
   );

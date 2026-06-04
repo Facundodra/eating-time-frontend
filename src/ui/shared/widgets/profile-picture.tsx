@@ -14,7 +14,7 @@ export default function ProfilePicture({
     <span
       aria-label={alt}
       className={clsx(
-        "profile-picture flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-600 text-white shadow-sm ring-2 ring-white dark:ring-slate-900",
+        "profile-picture flex h-[35px] w-[35px] shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-600 text-white shadow-sm ring-2 ring-white dark:ring-slate-900",
         className,
       )}
     >

@@ -3,7 +3,7 @@ import type {
   RestaurantScheduleDay,
 } from "@/lib/restaurant/schedule/types";
 
-import { api } from "../shared/api-client";
+import { clientApi as api } from "../shared/api-client";
 
 type RestaurantScheduleApiDay = {
   id: number;

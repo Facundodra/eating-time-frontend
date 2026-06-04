@@ -1,6 +1,6 @@
 import axios from "axios";
 
-import { clientApi } from "../shared/api-client";
+import { clientApi, publicApi } from "../shared/api-client";
 import { requireCurrentSession } from "@/services/shared/auth-service";
 
 import type {
@@ -131,12 +131,8 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
 }
 
 export async function getDish(id: string): Promise<ClientDish> {
-    if (typeof window !== 'undefined') {
-        await requireCurrentSession();
-    }
-
     try {
-        const response = await clientApi.get<PlatoDtoFromApi>(`/api/platos/${id}`);
+        const response = await publicApi.get<PlatoDtoFromApi>(`/api/platos/${id}`);
         return mapPlatoToClientDish(response.data);
     } catch (error) {
         if (axios.isAxiosError(error)) {

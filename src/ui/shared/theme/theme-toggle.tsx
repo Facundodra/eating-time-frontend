@@ -69,10 +69,10 @@ export default function ThemeToggle() {
       title="Cambiar tema"
       aria-label="Cambiar tema"
       onClick={toggleTheme}
-      className="flex h-11 w-11 cursor-pointer items-center justify-center rounded-3xl bg-white text-slate-700 shadow-sm ring-1 ring-gray-100 transition hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
+      className="flex h-[35px] w-[35px]  cursor-pointer items-center justify-center rounded-3xl bg-white text-slate-700 ring-1 ring-gray-200 transition hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800 dark:hover:bg-orange-500/10 dark:hover:text-orange-400"
     >
-      <MoonIcon className="h-5 w-5 dark:hidden" />
-      <SunIcon className="hidden h-5 w-5 dark:block" />
+      <MoonIcon className="h-4 w-4 dark:hidden" />
+      <SunIcon className="hidden h-4 w-4 dark:block" />
     </button>
   );
 }

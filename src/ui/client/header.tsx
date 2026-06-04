@@ -9,12 +9,15 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
+import type { LoginWebResponse } from "@/lib/shared/auth/types";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 
-export default function Header() {
+export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
+  const { imageUrl, profileAlt } = getSessionDisplayData(session);
 
   // Si estamos en un restaurante, el ícono del carrito apunta a su carrito
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
@@ -62,19 +65,23 @@ export default function Header() {
         <ThemeToggle />
       </div>
 
-      <div className="cart mr-5">
+      <div className="cart mr-3 relative top-[3px]">
         <Link
           href={cartHref}
-          className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800"
+          className="group h-[37px] w-[37px]   inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800"
         >
-          <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition group-hover:text-white" />
+          <ShoppingCartIcon className="text-gray-800 transition group-hover:text-white" />
         </Link>
       </div>
 
-      <div className="account">
-        <Link href="/client/mi-cuenta" className="relative bottom-[3px]">
-          <ProfilePicture />
-        </Link>
+      <div className="account relative cursor-pointer group">
+        {/* <Link href="/client/mi-cuenta" className="relative bottom-[3px]"> */}
+        <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+        {/* </Link> */}
+        <ul className="sub-menu absolute bg-white py-5 px-6 right-0 w-max rounded-md shadow-md hidden group-hover:block">
+          <li><Link href="/client/mi-cuenta" className="text-sm text-gray-800 hover:text-orange-700 transition">Mi cuenta</Link></li>
+          <li><Link href="/logout" className="text-sm text-gray-800 hover:text-orange-700 transition">Salir</Link></li>
+        </ul>
       </div>
     </div>
   );

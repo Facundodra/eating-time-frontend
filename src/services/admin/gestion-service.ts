@@ -9,7 +9,7 @@ import type {
 } from "@/lib/admin/users/types"
 
 
-import { api } from "../shared/api-client";
+import { clientApi } from "../shared/api-client";
 import { requireCurrentSession } from "@/services/shared/auth-service";
 import axios from "axios";
 
@@ -96,126 +96,64 @@ async function getBackendErrorMessage(
 export async function obtenerSolicitudesRegistroRestaurant(): Promise<
   SolicitudRegistroResponse[]
 > {
-  const apiBaseUrl = getApiBaseUrl();
-  assertApiBaseUrl(apiBaseUrl);
-
-  const url = `${apiBaseUrl}/api/gestion/solicitudes`;
-  //const url = `${apiBaseUrl}/api/gestion/solicitudes/pendientes`;
-
-  let response: Response;
-
   try {
-    response = await fetch(url, {
-      method: "GET",
-      cache: "no-store",
-      credentials: "include",
-    });
-  } catch {
-    throw new SolicitudRegistroError(
-      `Error de red al obtener solicitudes: no se pudo conectar con ${url}.`,
-    );
+    const response = await clientApi.get<SolicitudRegistroResponse[]>("/api/gestion/solicitudes");
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data as { message?: string; error?: string; detail?: string } | undefined;
+      const message = data?.message ?? data?.error ?? data?.detail ?? `Error al obtener solicitudes (${error.response?.status})`;
+      throw new SolicitudRegistroError(message, error.response?.status);
+    }
+    throw new SolicitudRegistroError("Error de red al obtener solicitudes.");
   }
-
-  if (!response.ok) {
-    const errorMessage = await getBackendErrorMessage(
-      response,
-      `Error al obtener solicitudes (${response.status})`,
-    );
-
-    throw new SolicitudRegistroError(errorMessage, response.status);
-  }
-
-  return (await response.json()) as SolicitudRegistroResponse[];
 }
 
 export async function obtenerSolicitudRegistroRestaurantPorId(
   id: number,
 ): Promise<SolicitudRegistroResponse> {
-  const apiBaseUrl = getApiBaseUrl();
-  assertApiBaseUrl(apiBaseUrl);
-
-  const url = `${apiBaseUrl}/api/gestion/solicitudes/${encodeURIComponent(
-    id.toString(),
-  )}`;
-
-  let response: Response;
-
   try {
-    response = await fetch(url, {
-      method: "GET",
-      cache: "no-store",
-      credentials: "include",
-    });
-  } catch {
-    throw new SolicitudRegistroError(
-      `Error de red al obtener la solicitud: no se pudo conectar con ${url}.`,
-    );
+    const response = await clientApi.get<SolicitudRegistroResponse>(`/api/gestion/solicitudes/${id}`);
+    return response.data;
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data as { message?: string; error?: string; detail?: string } | undefined;
+      const message = data?.message ?? data?.error ?? data?.detail ?? `Error al obtener la solicitud (${error.response?.status})`;
+      throw new SolicitudRegistroError(message, error.response?.status);
+    }
+    throw new SolicitudRegistroError("Error de red al obtener la solicitud.");
   }
-
-  if (!response.ok) {
-    const errorMessage = await getBackendErrorMessage(
-      response,
-      `Error al obtener la solicitud (${response.status})`,
-    );
-
-    throw new SolicitudRegistroError(errorMessage, response.status);
-  }
-
-  return (await response.json()) as SolicitudRegistroResponse;
 }
 
 export async function enviarSolicitudRegistroRestaurant(
   input: RestaurantRegistrationRequestInput,
 ): Promise<void> {
-  const apiBaseUrl = getApiBaseUrl();
-  assertApiBaseUrl(apiBaseUrl);
-
-  const url = `${apiBaseUrl}/api/gestion/solicitud-registro`;
   const body = new FormData();
-
   body.append("nombre", input.nombre.trim());
   body.append("descripcion", input.descripcion.trim());
   body.append("email", input.email.trim().toLowerCase());
   body.append("direccion", input.direccion.trim());
   body.append("telefono", input.telefono.trim());
-
   for (const file of input.fotos) {
-    if (file.size > 0) {
-      body.append("fotos", file);
-    }
+    if (file.size > 0) body.append("fotos", file);
   }
-
-  let response: Response;
 
   try {
-    response = await fetch(url, {
-      method: "POST",
-      body,
-      credentials: "include",
-    });
-  } catch {
-    throw new SolicitudRegistroError(
-      `Error de red al enviar la solicitud: no se pudo conectar con ${url}.`,
-    );
-  }
-
-  if (!response.ok) {
-    let errorMessage = await getBackendErrorMessage(
-      response,
-      `Error al enviar la solicitud (${response.status})`,
-    );
-
-    if (response.status === 409 && errorMessage === "Conflict") {
-      errorMessage =
-        "Ya existe una solicitud o una cuenta registrada con esos datos.";
+    await clientApi.post("/api/gestion/solicitud-registro", body);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const data = error.response?.data as { message?: string; error?: string; detail?: string } | undefined;
+      let message = data?.message ?? data?.error ?? data?.detail ?? `Error al enviar la solicitud (${status})`;
+      if (status === 409 && message === "Conflict") {
+        message = "Ya existe una solicitud o una cuenta registrada con esos datos.";
+      }
+      if (status === 413) {
+        message = "Las imágenes superan el tamaño permitido. Usá archivos más livianos o menos fotos.";
+      }
+      throw new SolicitudRegistroError(message, status);
     }
-
-    if (response.status === 413) {
-      errorMessage =
-        "Las imágenes superan el tamaño permitido. Usá archivos más livianos o menos fotos.";
-    }
-
-    throw new SolicitudRegistroError(errorMessage, response.status);
+    throw new SolicitudRegistroError("Error de red al enviar la solicitud.");
   }
 }
 
@@ -235,33 +173,15 @@ async function actualizarEstadoSolicitudRegistroRestaurant(
   id: number,
   action: "aprobar" | "rechazar",
 ): Promise<void> {
-  const apiBaseUrl = getApiBaseUrl();
-  assertApiBaseUrl(apiBaseUrl);
-
-  const url = `${apiBaseUrl}/api/gestion/solicitudes/${encodeURIComponent(
-    id.toString(),
-  )}/${action}`;
-
-  let response: Response;
-
   try {
-    response = await fetch(url, {
-      method: "PATCH",
-      credentials: "include",
-    });
-  } catch {
-    throw new SolicitudRegistroError(
-      `Error de red al ${action} la solicitud: no se pudo conectar con ${url}.`,
-    );
-  }
-
-  if (!response.ok) {
-    const errorMessage = await getBackendErrorMessage(
-      response,
-      `Error al ${action} la solicitud (${response.status})`,
-    );
-
-    throw new SolicitudRegistroError(errorMessage, response.status);
+    await clientApi.patch(`/api/gestion/solicitudes/${id}/${action}`);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const data = error.response?.data as { message?: string; error?: string; detail?: string } | undefined;
+      const message = data?.message ?? data?.error ?? data?.detail ?? `Error al ${action} la solicitud (${error.response?.status})`;
+      throw new SolicitudRegistroError(message, error.response?.status);
+    }
+    throw new SolicitudRegistroError(`Error de red al ${action} la solicitud.`);
   }
 }
 
@@ -311,7 +231,7 @@ export async function confirmarCuentaRestaurant(
 
 export async function blockUser(id: number): Promise<void> {
   try {
-    await api.patch(`/api/admin/usuarios/${id}/bloqueo`);
+    await clientApi.patch(`/api/admin/usuarios/${id}/bloqueo`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const data = error.response?.data;
@@ -323,7 +243,7 @@ export async function blockUser(id: number): Promise<void> {
 
 export async function unblockUser(id: number): Promise<void> {
   try {
-    await api.patch(`/api/admin/usuarios/${id}/desbloqueo`);
+    await clientApi.patch(`/api/admin/usuarios/${id}/desbloqueo`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const data = error.response?.data;
@@ -409,7 +329,7 @@ export async function getUsers<T extends keyof UserTypeMap>(filter: UsersFilter,
     await requireCurrentSession();
 
     try {
-        const response = await api.get<UsersPageResponse>(`/api/admin/usuarios/${type}`, { params: filter });
+        const response = await clientApi.get<UsersPageResponse>(`/api/admin/usuarios/${type}`, { params: filter });
         return {
             users: response.data.content.map((user) => mapUserResponse(user, type)),
             totalPages: response.data.totalPages,
