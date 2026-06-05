@@ -2,10 +2,13 @@
 
 import { ChevronLeftIcon, ChevronRightIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type { Client, Restaurant, User } from "@/lib/admin/users/types";
 import { getUsers, blockUser, unblockUser } from "@/services/admin/gestion-service";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
 
 type UserType = "clientes" | "locales" | "admins";
 type StatusFilter = "all" | "active" | "blocked" | "deleted";
@@ -60,8 +63,6 @@ function formatCalificacion(cal: number | null) {
 
 export default function AdminUsersList() {
   const [allUsers, setAllUsers] = useState<(User | Client | Restaurant)[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [type, setType] = useState<UserType>("clientes");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<StatusFilter>("all");
@@ -72,25 +73,18 @@ export default function AdminUsersList() {
 
   useEffect(() => { setPage(1); }, [type, search, filterStatus, sortBy]);
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    setAllUsers([]);
-
-    getUsers({ size: -1 }, type)
-      .then((result) => {
-        if (cancelled) return;
-        setAllUsers(result.users);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        setError(err instanceof Error ? err.message : "Error al cargar");
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-
-    return () => { cancelled = true; };
-  }, [type]);
+  // Cada cambio de tipo consulta backend otra vez, pero mantiene filtros y
+  // estructura visible mientras la tabla muestra su propio loader/error.
+  const loadUsers = useCallback(() => getUsers({ size: -1 }, type), [type]);
+  const {
+    error: loadError,
+    isLoading,
+    reload,
+  } = useAsyncData(loadUsers, {
+    onSuccess: (result) => {
+      setAllUsers(result.users);
+    },
+  });
 
   async function handleToggleBlock(user: User) {
     setBlockingId(user.usuarioId);
@@ -187,7 +181,7 @@ export default function AdminUsersList() {
           <option value="name-asc">Nombre A→Z</option>
         </select>
 
-        {!loading && !error && (
+        {!isLoading && !loadError && (
           <span className="text-sm text-slate-500 dark:text-slate-400">
             {filteredUsers.length} {filteredUsers.length === 1 ? "resultado" : "resultados"}
           </span>
@@ -202,19 +196,22 @@ export default function AdminUsersList() {
       )}
 
       {/* States */}
-      {loading && (
+      {isLoading && (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-sm text-slate-500 dark:text-slate-400">Cargando usuarios...</p>
+          <LoadingIndicator label="Cargando usuarios..." />
         </div>
       )}
 
-      {!loading && error && (
+      {!isLoading && loadError && (
         <div className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm font-semibold text-red-700 dark:text-red-200">Error: {error}</p>
+          <PanelError
+            message={loadError.message ?? "Error al cargar usuarios."}
+            onRetry={reload}
+          />
         </div>
       )}
 
-      {!loading && !error && filteredUsers.length === 0 && (
+      {!isLoading && !loadError && filteredUsers.length === 0 && (
         <div className="rounded-2xl border border-slate-200 bg-white p-10 text-center shadow-sm dark:border-slate-800 dark:bg-slate-900">
           <p className="text-sm text-slate-500 dark:text-slate-400">
             {search || filterStatus !== "all"
@@ -225,7 +222,7 @@ export default function AdminUsersList() {
       )}
 
       {/* Table */}
-      {!loading && !error && pagedUsers.length > 0 && (
+      {!isLoading && !loadError && pagedUsers.length > 0 && (
         <>
           <UsersTable users={pagedUsers} type={type} onToggleBlock={handleToggleBlock} blockingId={blockingId} />
 

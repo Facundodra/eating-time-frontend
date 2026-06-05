@@ -4,11 +4,17 @@ import { PlusIcon, TrashIcon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import { useEffect, useMemo, useState } from "react";
 
+import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
+  DiscountDish,
   DiscountStatus,
   RestaurantDiscount,
   RestaurantDiscountsResponse,
 } from "@/lib/restaurant/discount/types";
+import { getRestaurantDiscounts } from "@/services/restaurant/discount-service";
+import { getCurrentSession } from "@/services/shared/auth-service";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
 
 type DiscountFilter = "all" | DiscountStatus;
 
@@ -62,24 +68,36 @@ function StatusBadge({ status }: { status: DiscountStatus }) {
   );
 }
 
-export default function RestaurantDiscountsPage({
-  initialData,
-}: {
-  initialData: RestaurantDiscountsResponse;
-}) {
-  const initialSelectedDiscount = initialData.discounts[0] ?? null;
+async function loadRestaurantDiscounts(): Promise<RestaurantDiscountsResponse> {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    throw new Error("No se encontró una sesión activa.");
+  }
+
+  return getRestaurantDiscounts(String(session.idTipoUsuario));
+}
+
+export default function RestaurantDiscountsPage() {
+  // Descuentos todavia usa un bypass de datos, pero la pagina ya sigue el flujo
+  // final: render inmediato y carga de paneles en segundo plano.
   const [filter, setFilter] = useState<DiscountFilter>("all");
-  const [discounts, setDiscounts] = useState(initialData.discounts);
-  const [savedDiscounts, setSavedDiscounts] = useState(initialData.discounts);
-  const [selectedDiscountId, setSelectedDiscountId] = useState(
-    initialSelectedDiscount?.id ?? "",
-  );
-  const [selectedDishId, setSelectedDishId] = useState(
-    initialData.availableDishes[0]?.id ?? "",
-  );
+  const [discounts, setDiscounts] = useState<RestaurantDiscount[]>([]);
+  const [savedDiscounts, setSavedDiscounts] = useState<RestaurantDiscount[]>([]);
+  const [availableDishes, setAvailableDishes] = useState<DiscountDish[]>([]);
+  const [selectedDiscountId, setSelectedDiscountId] = useState("");
+  const [selectedDishId, setSelectedDishId] = useState("");
   const [isAddingDish, setIsAddingDish] = useState(false);
   const [isSavingChanges, setIsSavingChanges] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const {
+    data: loadedData,
+    error: loadError,
+    isLoading,
+    reload,
+  } = useAsyncData(loadRestaurantDiscounts, {
+    onSuccess: (data) => applyDiscountsData(data, filter),
+  });
 
   useEffect(() => {
     if (!formError) {
@@ -112,6 +130,25 @@ export default function RestaurantDiscountsPage({
         savedSelectedDiscount?.dishes ?? [],
       ));
 
+  function applyDiscountsData(
+    nextData: RestaurantDiscountsResponse,
+    currentFilter: DiscountFilter,
+  ) {
+    // Mantiene en memoria el listado editable y su copia guardada. La copia
+    // guardada es la referencia para detectar cambios y cancelar sin recargar.
+    const nextSelectedDiscount =
+      filterDiscounts(nextData.discounts, currentFilter)[0] ?? null;
+
+    setAvailableDishes(nextData.availableDishes);
+    setDiscounts(nextData.discounts);
+    setSavedDiscounts(nextData.discounts);
+    setSelectedDiscountId(nextSelectedDiscount?.id ?? "");
+    setSelectedDishId(nextData.availableDishes[0]?.id ?? "");
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setFormError(null);
+  }
+
   function updateSelectedDiscount(updates: Partial<RestaurantDiscount>) {
     if (!selectedDiscount) {
       return;
@@ -128,7 +165,7 @@ export default function RestaurantDiscountsPage({
 
   function selectDiscount(discountId: string) {
     setSelectedDiscountId(discountId);
-    setSelectedDishId(initialData.availableDishes[0]?.id ?? "");
+    setSelectedDishId(availableDishes[0]?.id ?? "");
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setFormError(null);
@@ -148,7 +185,7 @@ export default function RestaurantDiscountsPage({
 
     const nextDiscount = nextFilteredDiscounts[0] ?? null;
     setSelectedDiscountId(nextDiscount?.id ?? "");
-    setSelectedDishId(initialData.availableDishes[0]?.id ?? "");
+    setSelectedDishId(availableDishes[0]?.id ?? "");
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setFormError(null);
@@ -160,7 +197,7 @@ export default function RestaurantDiscountsPage({
       return;
     }
 
-    const dish = initialData.availableDishes.find(
+    const dish = availableDishes.find(
       (availableDish) => availableDish.id === selectedDishId,
     );
 
@@ -203,7 +240,7 @@ export default function RestaurantDiscountsPage({
           : discount,
       ),
     );
-    setSelectedDishId(initialData.availableDishes[0]?.id ?? "");
+    setSelectedDishId(availableDishes[0]?.id ?? "");
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setFormError(null);
@@ -250,6 +287,10 @@ export default function RestaurantDiscountsPage({
     }
   }
 
+  const isDataReady = Boolean(loadedData) && !isLoading && !loadError;
+  const loadErrorMessage =
+    loadError?.message ?? "No se pudieron cargar los descuentos.";
+
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
@@ -260,10 +301,11 @@ export default function RestaurantDiscountsPage({
           <select
             id="discount-status-filter"
             value={filter}
+            disabled={!isDataReady}
             onChange={(event) =>
               handleFilterChange(event.target.value as DiscountFilter)
             }
-            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
           >
             <option value="all">Todos</option>
             <option value="active">Activos</option>
@@ -285,7 +327,8 @@ export default function RestaurantDiscountsPage({
             </div>
             <button
               type="button"
-              className="flex h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700"
+              disabled={!isDataReady}
+              className="flex h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <PlusIcon className="h-5 w-5" />
               Nuevo descuento
@@ -293,7 +336,18 @@ export default function RestaurantDiscountsPage({
           </div>
 
           <div className="space-y-4 p-3">
-            {filteredDiscounts.map((discount) => {
+            {isLoading ? (
+              <div className="py-8">
+                <LoadingIndicator label="Cargando listado de descuentos..." />
+              </div>
+            ) : loadError ? (
+              <PanelError message={loadErrorMessage} onRetry={reload} />
+            ) : filteredDiscounts.length === 0 ? (
+              <p className="px-4 py-8 text-center text-sm font-medium text-slate-400 dark:text-slate-500">
+                No hay descuentos para mostrar.
+              </p>
+            ) : null}
+            {isDataReady && filteredDiscounts.map((discount) => {
               const isSelected = discount.id === selectedDiscount?.id;
 
               return (
@@ -334,7 +388,39 @@ export default function RestaurantDiscountsPage({
           </div>
         </section>
 
-        {selectedDiscount && (
+        {isLoading && (
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                Detalle del descuento
+              </h2>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                Los datos del descuento se cargan en segundo plano.
+              </p>
+            </div>
+            <div className="p-5 py-10">
+              <LoadingIndicator label="Cargando detalle de descuentos..." />
+            </div>
+          </section>
+        )}
+
+        {loadError && (
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                Detalle del descuento
+              </h2>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                No se pudieron cargar los datos para editar.
+              </p>
+            </div>
+            <div className="p-5">
+              <PanelError message={loadErrorMessage} onRetry={reload} />
+            </div>
+          </section>
+        )}
+
+        {isDataReady && selectedDiscount && (
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <div>
@@ -417,7 +503,7 @@ export default function RestaurantDiscountsPage({
                     onChange={(event) => setSelectedDishId(event.target.value)}
                     className="h-11 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                   >
-                    {initialData.availableDishes.map((dish) => (
+                    {availableDishes.map((dish) => (
                       <option key={dish.id} value={dish.id}>
                         {dish.name}
                       </option>
