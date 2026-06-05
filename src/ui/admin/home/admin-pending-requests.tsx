@@ -7,9 +7,11 @@ import {
   getRequestStatusStyle,
 } from "../requests/requests-status";
 import { useRequests } from "../requests/use-requests";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
 
 export default function AdminPendingRequests() {
-  const { getPendingRequests, loading, error } = useRequests();
+  const { getPendingRequests, loading, error, loadRequests } = useRequests();
   const pendingRequests = getPendingRequests().slice(0, 3);
 
   return (
@@ -36,15 +38,11 @@ export default function AdminPendingRequests() {
 
       {loading ? (
         <div className="px-5 py-6">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Cargando solicitudes...
-          </p>
+          <LoadingIndicator label="Cargando solicitudes..." />
         </div>
       ) : error ? (
         <div className="px-5 py-6">
-          <p className="text-sm font-semibold text-red-600 dark:text-red-300">
-            {error}
-          </p>
+          <PanelError message={error} onRetry={() => void loadRequests()} />
         </div>
       ) : pendingRequests.length === 0 ? (
         <div className="px-5 py-6">

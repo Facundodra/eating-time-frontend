@@ -5,11 +5,12 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
+import type { LoginWebResponse } from "@/lib/shared/auth/types";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import SessionWidget from "../shared/widgets/session-widget";
 import NavLinksRestaurant from "./nav-links";
 
-export default function Sidenav() {
+export default function Sidenav({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
 
   return (
@@ -42,7 +43,7 @@ export default function Sidenav() {
       </Link>
 
       <NavLinksRestaurant />
-      <SessionWidget profileHref="/restaurant/my-data" />
+      <SessionWidget session={session} profileHref="/restaurant/my-data" />
     </aside>
   );
 }

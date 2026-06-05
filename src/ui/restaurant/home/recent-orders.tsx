@@ -1,42 +1,101 @@
-import Link from "next/link";
+"use client";
 
-const orders = [
-  {
-    id: "#1248",
-    customer: "Martina Diaz",
-    time: "20:14",
-    items: 4,
-    total: "$ 1.280",
-    status: "pending",
-    statusLabel: "Pendiente",
-  },
-  {
-    id: "#1247",
-    customer: "Federico Ruiz",
-    time: "20:05",
-    items: 2,
-    total: "$ 740",
-    status: "accepted",
-    statusLabel: "Aceptado",
-  },
-  {
-    id: "#1246",
-    customer: "Lucia Moreira",
-    time: "19:52",
-    items: 5,
-    total: "$ 1.690",
-    status: "inProgress",
-    statusLabel: "En curso",
-  },
+import Link from "next/link";
+import { useCallback, useMemo } from "react";
+
+import { useAsyncData } from "@/hooks/shared/use-async-data";
+import type {
+  OrderStatus,
+  WorkbenchOrder,
+} from "@/lib/restaurant/workbench/types";
+import { fetchWorkbenchOrders } from "@/services/restaurant/workbench-service";
+import { getCurrentSession } from "@/services/shared/auth-service";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
+
+const activeOrderStatuses: OrderStatus[] = [
+  "PENDIENTE_CONFIRMACION_LOCAL",
+  "ACEPTADO_LOCAL",
+  "EN_CURSO_LOCAL",
+  "EN_CAMINO_LOCAL",
 ];
 
-const statusClassName = {
-  pending: "bg-orange-50 text-orange-600 dark:bg-orange-500/10",
-  accepted: "bg-blue-50 text-blue-600 dark:bg-blue-500/10",
-  inProgress: "bg-amber-50 text-amber-600 dark:bg-amber-500/10",
+const statusLabels: Record<OrderStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente",
+  ACEPTADO_LOCAL: "Aceptado",
+  EN_CURSO_LOCAL: "En curso",
+  EN_CAMINO_LOCAL: "En camino",
+  FINALIZADO: "Finalizado",
+  RECHAZADO_LOCAL: "Rechazado",
 };
 
+const statusClassName: Record<OrderStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL:
+    "bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
+  ACEPTADO_LOCAL:
+    "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
+  EN_CURSO_LOCAL:
+    "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
+  EN_CAMINO_LOCAL:
+    "bg-purple-50 text-purple-600 dark:bg-purple-500/10 dark:text-purple-400",
+  FINALIZADO:
+    "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
+  RECHAZADO_LOCAL: "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400",
+};
+
+function formatTime(dateStr: string) {
+  const date = new Date(dateStr);
+
+  if (Number.isNaN(date.getTime())) {
+    return dateStr;
+  }
+
+  return date.toLocaleTimeString("es-UY", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function formatPrice(price: number) {
+  return `$ ${price.toLocaleString("es-UY")}`;
+}
+
+function getPendingOrders(orders: WorkbenchOrder[]) {
+  return orders
+    .filter((order) => activeOrderStatuses.includes(order.status))
+    .slice(0, 3);
+}
+
 export default function RestaurantRecentOrders() {
+  const loadRecentOrders = useCallback(async () => {
+    const session = await getCurrentSession();
+    const restaurantId = session?.idTipoUsuario
+      ? String(session.idTipoUsuario)
+      : "";
+
+    if (!restaurantId) {
+      throw new Error("No se pudo obtener el ID del local.");
+    }
+
+    return fetchWorkbenchOrders(restaurantId, {
+      sortBy: "antiguedad",
+      direction: "desc",
+    });
+  }, []);
+
+  const {
+    data: orders,
+    error: loadError,
+    isLoading,
+    reload,
+  } = useAsyncData(loadRecentOrders);
+
+  // El card del home queda visible siempre; solo la bandeja de pedidos cambia
+  // entre loading, error, vacio o datos reales segun la respuesta del backend.
+  const pendingOrders = useMemo(() => getPendingOrders(orders ?? []), [orders]);
+  const loadErrorMessage =
+    loadError?.message ?? "No se pudieron cargar los pedidos pendientes.";
+
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
@@ -69,32 +128,57 @@ export default function RestaurantRecentOrders() {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm dark:divide-slate-800">
-            {orders.map((order) => (
+            {isLoading && (
+              <tr>
+                <td className="px-5 py-10" colSpan={6}>
+                  <LoadingIndicator label="Cargando pedidos pendientes..." />
+                </td>
+              </tr>
+            )}
+
+            {!isLoading && loadError && (
+              <tr>
+                <td className="px-5 py-5" colSpan={6}>
+                  <PanelError message={loadErrorMessage} onRetry={reload} />
+                </td>
+              </tr>
+            )}
+
+            {!isLoading && !loadError && pendingOrders.length === 0 && (
+              <tr>
+                <td
+                  className="px-5 py-10 text-center text-sm font-medium text-slate-400 dark:text-slate-500"
+                  colSpan={6}
+                >
+                  No hay pedidos pendientes por revisar.
+                </td>
+              </tr>
+            )}
+
+            {!isLoading && !loadError && pendingOrders.map((order) => (
               <tr key={order.id}>
                 <td className="px-5 py-4 font-bold text-slate-950 dark:text-white">
-                  {order.id}
+                  #{order.id}
                 </td>
                 <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                  {order.customer}
+                  Cliente #{order.customerId}
                 </td>
                 <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                  {order.time}
+                  {formatTime(order.createdAt)}
                 </td>
                 <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                  {order.items}
+                  -
                 </td>
                 <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                  {order.total}
+                  {formatPrice(order.total)}
                 </td>
                 <td className="px-5 py-4">
                   <span
                     className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      statusClassName[
-                        order.status as keyof typeof statusClassName
-                      ]
+                      statusClassName[order.status]
                     }`}
                   >
-                    {order.statusLabel}
+                    {statusLabels[order.status]}
                   </span>
                 </td>
               </tr>

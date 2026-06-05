@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   BuildingStorefrontIcon,
-  LockClosedIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
 
@@ -10,7 +9,7 @@ const actions = [
     title: "Usuarios registrados",
     description:
       "Consultar usuarios del sistema y aplicar filtros por tipo, nombre y estado de bloqueo.",
-    href: "/admin/users",
+    href: "/admin/usuarios",
     linkLabel: "Ver usuarios",
     icon: UsersIcon,
   },
@@ -22,14 +21,6 @@ const actions = [
     linkLabel: "Ver solicitudes",
     icon: BuildingStorefrontIcon,
   },
-  {
-    title: "Bloqueo de cuentas",
-    description:
-      "Bloquear o desbloquear cuentas de usuarios con perfil local o cliente.",
-    href: "/admin/blocks",
-    linkLabel: "Gestionar cuentas",
-    icon: LockClosedIcon,
-  },
 ];
 
 export default function AdminQuickActions() {
@@ -38,7 +29,7 @@ export default function AdminQuickActions() {
       <h2 className="mb-4 text-lg font-bold text-slate-950 dark:text-white">
         Funciones principales
       </h2>
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid gap-4 lg:grid-cols-2">
         {actions.map((action) => {
           const Icon = action.icon;
 
