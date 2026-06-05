@@ -2,6 +2,7 @@
 
 import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import Image from "next/image";
 import { useMemo, useRef, useState, useTransition } from "react";
 
 import {
@@ -10,8 +11,12 @@ import {
   toggleDishAvailabilityAction,
   updateDishAction,
 } from "@/app/restaurant/dishes/actions";
+import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type { DishStatus, RestaurantDish, RestaurantDishesResponse } from "@/lib/restaurant/dish/types";
 import { getRestaurantDishes } from "@/services/restaurant/dish-service";
+import { getCurrentSession } from "@/services/shared/auth-service";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
 
 type DishFilter = "all" | DishStatus;
 
@@ -52,18 +57,24 @@ function filterDishes(dishes: RestaurantDish[], filter: DishFilter) {
   return dishes.filter((dish) => dish.status === filter);
 }
 
-export default function RestaurantDishesPage({
-  initialData,
-}: {
-  initialData: RestaurantDishesResponse;
-}) {
-  const initialSelectedDish = initialData.dishes[0] ?? null;
+async function loadRestaurantDishes(): Promise<RestaurantDishesResponse> {
+  const session = await getCurrentSession();
+
+  if (!session) {
+    throw new Error("No se encontró una sesión activa.");
+  }
+
+  return getRestaurantDishes(String(session.idTipoUsuario));
+}
+
+export default function RestaurantDishesPage() {
+  // La pantalla se monta sin datos y cada panel muestra su loader propio hasta
+  // que llega el listado inicial desde backend.
+  const [restaurantId, setRestaurantId] = useState("");
   const [filter, setFilter] = useState<DishFilter>("all");
-  const [dishes, setDishes] = useState(initialData.dishes);
-  const [savedDishes, setSavedDishes] = useState(initialData.dishes);
-  const [selectedDishId, setSelectedDishId] = useState(
-    initialSelectedDish?.id ?? "",
-  );
+  const [dishes, setDishes] = useState<RestaurantDish[]>([]);
+  const [savedDishes, setSavedDishes] = useState<RestaurantDish[]>([]);
+  const [selectedDishId, setSelectedDishId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -73,11 +84,17 @@ export default function RestaurantDishesPage({
   const editImageInputRef = useRef<HTMLInputElement>(null);
 
   // Edit form state
-  const [editName, setEditName] = useState(initialSelectedDish?.name ?? "");
-  const [editPrice, setEditPrice] = useState(
-    initialSelectedDish ? String(initialSelectedDish.price) : "",
-  );
+  const [editName, setEditName] = useState("");
+  const [editPrice, setEditPrice] = useState("");
   const [hasEditImageChange, setHasEditImageChange] = useState(false);
+  const {
+    data: loadedData,
+    error: loadError,
+    isLoading,
+    reload,
+  } = useAsyncData(loadRestaurantDishes, {
+    onSuccess: (data) => applyDishesData(data, filter),
+  });
 
   const filteredDishes = useMemo(() => {
     return filterDishes(dishes, filter);
@@ -107,6 +124,22 @@ export default function RestaurantDishesPage({
     }
   }
 
+  function applyDishesData(
+    nextData: RestaurantDishesResponse,
+    currentFilter: DishFilter,
+  ) {
+    // Sincroniza listado, copia guardada y formulario de edicion con una misma
+    // respuesta del backend para que cancelar vuelva siempre al ultimo dato real.
+    const initialSelectedDish =
+      filterDishes(nextData.dishes, currentFilter)[0] ?? null;
+
+    setRestaurantId(nextData.restaurantId);
+    setDishes(nextData.dishes);
+    setSavedDishes(nextData.dishes);
+    resetEditForm(initialSelectedDish);
+    setShowCreateForm(!initialSelectedDish);
+  }
+
   function selectDish(dish: RestaurantDish) {
     resetEditForm(dish);
     setShowCreateForm(false);
@@ -132,6 +165,10 @@ export default function RestaurantDishesPage({
   }
 
   function handleCreate(formData: FormData) {
+    if (!restaurantId) {
+      return;
+    }
+
     const name = String(formData.get("name") ?? "").trim();
     const price = Number(formData.get("price") ?? 0);
 
@@ -142,7 +179,7 @@ export default function RestaurantDishesPage({
 
     setError(null);
     startTransition(async () => {
-      const result = await createDishAction(initialData.restaurantId, formData);
+      const result = await createDishAction(restaurantId, formData);
 
       if (result.error) {
         setError(result.error);
@@ -150,7 +187,7 @@ export default function RestaurantDishesPage({
         createFormRef.current?.reset();
         setShowCreateForm(false);
         // Refresh dish list without full page reload
-        const freshData = await getRestaurantDishes(initialData.restaurantId);
+        const freshData = await getRestaurantDishes(restaurantId);
         const nextDish = filterDishes(freshData.dishes, filter)[0] ?? null;
         setDishes(freshData.dishes);
         setSavedDishes(freshData.dishes);
@@ -161,7 +198,7 @@ export default function RestaurantDishesPage({
   }
 
   function handleUpdate() {
-    if (!selectedDish) return;
+    if (!selectedDish || !restaurantId) return;
 
     const price = editPrice ? Number(editPrice) : undefined;
     if (price != null && (isNaN(price) || price <= 0)) {
@@ -208,7 +245,7 @@ export default function RestaurantDishesPage({
   }
 
   function handleDelete() {
-    if (!selectedDish) return;
+    if (!selectedDish || !restaurantId) return;
 
     setError(null);
     startTransition(async () => {
@@ -229,7 +266,7 @@ export default function RestaurantDishesPage({
   }
 
   function handleToggleAvailability() {
-    if (!selectedDish) return;
+    if (!selectedDish || !restaurantId) return;
 
     setError(null);
     startTransition(async () => {
@@ -286,6 +323,10 @@ export default function RestaurantDishesPage({
     setError(null);
   }
 
+  const isDataReady = Boolean(loadedData) && !isLoading && !loadError;
+  const loadErrorMessage =
+    loadError?.message ?? "No se pudieron cargar los platos.";
+
   return (
     <section className="space-y-6">
       {error && (
@@ -302,10 +343,11 @@ export default function RestaurantDishesPage({
           <select
             id="dish-status-filter"
             value={filter}
+            disabled={!isDataReady}
             onChange={(event) =>
               handleFilterChange(event.target.value as DishFilter)
             }
-            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
           >
             <option value="all">Todos</option>
             <option value="available">Disponibles</option>
@@ -328,12 +370,13 @@ export default function RestaurantDishesPage({
             </div>
             <button
               type="button"
+              disabled={!isDataReady}
               onClick={() => {
                 setShowCreateForm(true);
                 setSelectedDishId("");
                 setError(null);
               }}
-              className="flex h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700"
+              className="flex h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <PlusIcon className="h-5 w-5" />
               Nuevo plato
@@ -341,12 +384,18 @@ export default function RestaurantDishesPage({
           </div>
 
           <div className="space-y-4 p-3">
-            {filteredDishes.length === 0 && (
+            {isLoading ? (
+              <div className="py-8">
+                <LoadingIndicator label="Cargando listado de platos..." />
+              </div>
+            ) : loadError ? (
+              <PanelError message={loadErrorMessage} onRetry={reload} />
+            ) : filteredDishes.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm font-medium text-slate-400 dark:text-slate-500">
                 No hay platos para mostrar.
               </p>
-            )}
-            {filteredDishes.map((dish) => {
+            ) : null}
+            {isDataReady && filteredDishes.map((dish) => {
               const isSelected =
                 dish.id === selectedDish?.id && !showCreateForm;
 
@@ -364,9 +413,12 @@ export default function RestaurantDishesPage({
                 >
                   <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 dark:bg-orange-500/10">
                     {dish.imageUrl ? (
-                      <img
+                      <Image
                         src={dish.imageUrl}
                         alt={dish.name}
+                        width={80}
+                        height={80}
+                        unoptimized
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -395,8 +447,40 @@ export default function RestaurantDishesPage({
           </div>
         </section>
 
+        {isLoading && (
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                Detalle del plato
+              </h2>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                Los datos del plato se cargan en segundo plano.
+              </p>
+            </div>
+            <div className="p-5 py-10">
+              <LoadingIndicator label="Cargando detalle de platos..." />
+            </div>
+          </section>
+        )}
+
+        {loadError && (
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                Detalle del plato
+              </h2>
+              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                No se pudieron cargar los datos para editar.
+              </p>
+            </div>
+            <div className="p-5">
+              <PanelError message={loadErrorMessage} onRetry={reload} />
+            </div>
+          </section>
+        )}
+
         {/* Create form panel */}
-        {showCreateForm && (
+        {isDataReady && showCreateForm && (
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
@@ -477,7 +561,7 @@ export default function RestaurantDishesPage({
         )}
 
         {/* Detail / Edit panel */}
-        {!showCreateForm && selectedDish && (
+        {isDataReady && !showCreateForm && selectedDish && (
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <div>

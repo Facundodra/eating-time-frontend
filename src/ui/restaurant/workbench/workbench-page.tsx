@@ -1,11 +1,14 @@
 "use client";
 
 import clsx from "clsx";
-import { useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 
+import { useAsyncData } from "@/hooks/shared/use-async-data";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import type { OrderStatus, WorkbenchFilters, WorkbenchOrder } from "@/lib/restaurant/workbench/types";
 import { fetchWorkbenchOrders } from "@/services/restaurant/workbench-service";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
 
 const statusLabels: Record<OrderStatus, string> = {
   PENDIENTE_CONFIRMACION_LOCAL: "Pendiente",
@@ -53,9 +56,8 @@ function formatPrice(price: number) {
 }
 
 export default function RestaurantWorkbenchPage() {
-  const [orders, setOrders] = useState<WorkbenchOrder[] | null>(null);
+  const [orders, setOrders] = useState<WorkbenchOrder[]>([]);
   const [selectedOrderId, setSelectedOrderId] = useState<number | null>(null);
-  const [error, setError] = useState<string | null>(null);
 
   // Filters
   const [sortBy, setSortBy] = useState<"antiguedad" | "items">("antiguedad");
@@ -64,58 +66,47 @@ export default function RestaurantWorkbenchPage() {
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
 
-  useEffect(() => {
-    let ignore = false;
+  // Cada cambio de filtro cambia loadOrders, y useAsyncData vuelve a consultar
+  // mostrando loaders dentro del listado/detalle sin desmontar la pagina.
+  const loadOrders = useCallback(async () => {
+    const session = await getCurrentSession();
+    const restaurantId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
 
-    async function fetchOrders() {
-      const session = await getCurrentSession();
-      const restaurantId = session?.idTipoUsuario ? String(session.idTipoUsuario) : "";
-
-      if (!restaurantId) {
-        if (!ignore) {
-          setError("No se pudo obtener el ID del local.");
-          setOrders([]);
-        }
-        return;
-      }
-
-      const workbenchFilters: WorkbenchFilters = {
-        sortBy,
-        direction,
-        orderId: orderId || undefined,
-        startDateTime: startDateTime || undefined,
-        endDateTime: endDateTime || undefined,
-      };
-
-      try {
-        const data = await fetchWorkbenchOrders(restaurantId, workbenchFilters);
-        if (ignore) return;
-        setOrders(data);
-        setError(null);
-      } catch {
-        if (ignore) return;
-        setError("Error al cargar los pedidos.");
-        setOrders([]);
-      }
+    if (!restaurantId) {
+      throw new Error("No se pudo obtener el ID del local.");
     }
 
-    void fetchOrders();
-
-    return () => {
-      ignore = true;
+    const workbenchFilters: WorkbenchFilters = {
+      sortBy,
+      direction,
+      orderId: orderId || undefined,
+      startDateTime: startDateTime || undefined,
+      endDateTime: endDateTime || undefined,
     };
+
+    return fetchWorkbenchOrders(restaurantId, workbenchFilters);
   }, [sortBy, direction, orderId, startDateTime, endDateTime]);
 
-  const selectedOrder = orders?.find((o) => o.id === selectedOrderId) ?? null;
+  const {
+    error: loadError,
+    isLoading,
+    reload,
+  } = useAsyncData(loadOrders, {
+    onSuccess: (data) => {
+      setOrders(data);
+      setSelectedOrderId((currentOrderId) =>
+        currentOrderId && data.some((order) => order.id === currentOrderId)
+          ? currentOrderId
+          : data[0]?.id ?? null,
+      );
+    },
+  });
+
+  const selectedOrder = orders.find((o) => o.id === selectedOrderId) ?? null;
+  const loadErrorMessage = loadError?.message ?? "Error al cargar los pedidos.";
 
   return (
     <section className="space-y-6">
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
-          {error}
-        </div>
-      )}
-
       {/* Filters */}
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
@@ -199,17 +190,18 @@ export default function RestaurantWorkbenchPage() {
           </div>
 
           <div className="space-y-4 p-3">
-            {orders === null && (
-              <p className="px-4 py-8 text-center text-sm font-medium text-slate-400">
-                Cargando...
-              </p>
-            )}
-            {orders !== null && orders.length === 0 && (
+            {isLoading ? (
+              <div className="py-8">
+                <LoadingIndicator label="Cargando pedidos..." />
+              </div>
+            ) : loadError ? (
+              <PanelError message={loadErrorMessage} onRetry={reload} />
+            ) : orders.length === 0 ? (
               <p className="px-4 py-8 text-center text-sm font-medium text-slate-400 dark:text-slate-500">
                 No hay pedidos para mostrar.
               </p>
-            )}
-            {orders?.map((order) => {
+            ) : null}
+            {!isLoading && !loadError && orders.map((order) => {
               const isSelected = order.id === selectedOrderId;
 
               return (
@@ -240,7 +232,33 @@ export default function RestaurantWorkbenchPage() {
         </section>
 
         {/* Detail panel */}
-        {selectedOrder && (
+        {isLoading && (
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                Detalle del pedido
+              </h2>
+            </div>
+            <div className="p-5 py-10">
+              <LoadingIndicator label="Cargando detalle del pedido..." />
+            </div>
+          </section>
+        )}
+
+        {loadError && (
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+              <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                Detalle del pedido
+              </h2>
+            </div>
+            <div className="p-5">
+              <PanelError message={loadErrorMessage} onRetry={reload} />
+            </div>
+          </section>
+        )}
+
+        {!isLoading && !loadError && selectedOrder && (
           <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
