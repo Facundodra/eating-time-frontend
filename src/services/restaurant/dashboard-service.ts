@@ -15,6 +15,8 @@ const activeStatuses = new Set<OrderStatus>([
 ]);
 
 const statusLabels: Record<OrderStatus, string> = {
+  EN_CARRITO: "En carrito",
+  ETAPA_DE_PAGO: "En pago",
   PENDIENTE_CONFIRMACION_LOCAL: "Pendiente",
   ACEPTADO_LOCAL: "Aceptado",
   EN_CURSO_LOCAL: "En curso",
@@ -113,6 +115,12 @@ export async function getRestaurantDashboardData(
     ordersResult.status === "fulfilled" ? ordersResult.value : [];
   const dishes =
     dishesResult.status === "fulfilled" ? dishesResult.value.dishes : [];
+  const ordersError =
+    ordersResult.status === "rejected"
+      ? ordersResult.reason instanceof Error
+        ? ordersResult.reason.message
+        : "No se pudieron cargar los pedidos."
+      : null;
   const recentOrders = [...orders]
     .sort(
       (a, b) =>
@@ -122,6 +130,7 @@ export async function getRestaurantDashboardData(
     .map(mapRecentOrder);
 
   return {
+    ordersError,
     recentOrders,
     stats: buildStats(orders, dishes),
   };

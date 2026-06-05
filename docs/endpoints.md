@@ -81,8 +81,9 @@ Supported query params for `GET /api/locales/platos`:
 | Method | Endpoint | Used for | Source |
 | --- | --- | --- | --- |
 | `GET` | `/api/local/{localId}/mesa-trabajo` | List local workbench orders | `src/services/restaurant/workbench-service.ts` |
-| `PATCH` | `/api/local/{localId}/pedido/{orderId}/confirmar` | Confirm order | `src/services/restaurant/workbench-service.ts` |
-| `PATCH` | `/api/local/{localId}/pedido/{orderId}/rechazar` | Reject order | `src/services/restaurant/workbench-service.ts` |
+| `PATCH` | `/api/local/{localId}/pedido/{orderId}` | Accept order with `estado` and `tiempoEstimado` | `src/services/restaurant/workbench-service.ts` |
+| `PATCH` | `/api/local/{localId}/pedido/{orderId}/estado` | Update accepted order status with `estado` | `src/services/restaurant/workbench-service.ts` |
+| `PATCH` | `/api/local/{localId}/pedido/{orderId}/rechazar` | Reject order with `estado` and `motivoRechazo` | `src/services/restaurant/workbench-service.ts` |
 
 Supported query params for `GET /api/local/{localId}/mesa-trabajo`:
 

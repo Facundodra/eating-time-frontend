@@ -4,6 +4,8 @@ import type { RestaurantDashboardOrder } from "@/lib/restaurant/dashboard/types"
 import type { OrderStatus } from "@/lib/restaurant/workbench/types";
 
 const statusClassName: Record<OrderStatus, string> = {
+  EN_CARRITO: "bg-slate-100 text-slate-600 dark:bg-slate-800",
+  ETAPA_DE_PAGO: "bg-cyan-50 text-cyan-600 dark:bg-cyan-500/10",
   PENDIENTE_CONFIRMACION_LOCAL:
     "bg-orange-50 text-orange-600 dark:bg-orange-500/10",
   ACEPTADO_LOCAL: "bg-blue-50 text-blue-600 dark:bg-blue-500/10",
@@ -14,11 +16,13 @@ const statusClassName: Record<OrderStatus, string> = {
 };
 
 type RestaurantRecentOrdersProps = {
+  error?: string | null;
   isLoading: boolean;
   orders: RestaurantDashboardOrder[];
 };
 
 export default function RestaurantRecentOrders({
+  error,
   isLoading,
   orders,
 }: RestaurantRecentOrdersProps) {
@@ -64,7 +68,18 @@ export default function RestaurantRecentOrders({
               </tr>
             ) : null}
 
-            {!isLoading && orders.length === 0 ? (
+            {!isLoading && error ? (
+              <tr>
+                <td
+                  className="px-5 py-8 text-center font-medium text-red-500"
+                  colSpan={5}
+                >
+                  {error}
+                </td>
+              </tr>
+            ) : null}
+
+            {!isLoading && !error && orders.length === 0 ? (
               <tr>
                 <td
                   className="px-5 py-8 text-center font-medium text-slate-400"
@@ -75,7 +90,7 @@ export default function RestaurantRecentOrders({
               </tr>
             ) : null}
 
-            {!isLoading
+            {!isLoading && !error
               ? orders.map((order) => (
                   <tr key={order.id}>
                     <td className="px-5 py-4 font-bold text-slate-950 dark:text-white">

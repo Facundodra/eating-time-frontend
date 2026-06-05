@@ -65,6 +65,7 @@ export default function RestaurantDashboard() {
       <RestaurantStats isLoading={isLoading} stats={data?.stats ?? []} />
       <RestaurantQuickActions />
       <RestaurantRecentOrders
+        error={data?.ordersError}
         isLoading={isLoading}
         orders={data?.recentOrders ?? []}
       />

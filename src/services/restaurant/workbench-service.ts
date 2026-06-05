@@ -3,6 +3,8 @@ import axios from "axios";
 import type {
   OrderStatus,
   WorkbenchFilters,
+  WorkbenchOrderItem,
+  WorkbenchOrderItemApiResponse,
   WorkbenchOrder,
   WorkbenchOrderApiResponse,
 } from "@/lib/restaurant/workbench/types";
@@ -14,23 +16,81 @@ type BackendErrorResponse = {
   detail?: string;
 };
 
-function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
+type WorkbenchOrdersApiResponse =
+  | WorkbenchOrderApiResponse[]
+  | {
+      content?: WorkbenchOrderApiResponse[];
+      data?: WorkbenchOrderApiResponse[];
+      items?: WorkbenchOrderApiResponse[];
+      pedidos?: WorkbenchOrderApiResponse[];
+      orders?: WorkbenchOrderApiResponse[];
+    };
+
+function mapWorkbenchOrderItem(
+  item: WorkbenchOrderItemApiResponse,
+): WorkbenchOrderItem {
   return {
-    id: order.id,
-    restaurantId: order.localId,
-    customerId: order.clienteId,
-    couponId: order.cuponId,
-    status: order.estado,
-    total: order.total,
-    discount: order.descuento,
-    estimatedTime: order.tiempoEstimado,
-    invoiceUrl: order.urlFactura,
-    comment: order.comentario,
-    address: order.direccion,
-    instructions: order.indicaciones,
-    createdAt: order.creacion,
-    deletedAt: order.eliminacion,
+    id: item.id ?? item.platoId ?? 0,
+    dishId: item.platoId ?? null,
+    name: item.nombrePlato ?? item.platoNombre ?? item.nombre ?? "Plato",
+    quantity: item.cantidad ?? 1,
+    unitPrice: item.costoUnitario ?? item.precio ?? null,
+    total: item.total ?? null,
   };
+}
+
+function getOrderItems(order: WorkbenchOrderApiResponse): WorkbenchOrderItem[] {
+  return (order.items ?? order.detalles ?? []).map(mapWorkbenchOrderItem);
+}
+
+function getItemCount(
+  order: WorkbenchOrderApiResponse,
+  items: WorkbenchOrderItem[],
+) {
+  return (
+    order.cantidadItems ??
+    order.cantidadPlatos ??
+    items.reduce((total, item) => total + item.quantity, 0)
+  );
+}
+
+function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
+  const items = getOrderItems(order);
+
+  return {
+    id: order.id ?? order.pedidoId ?? 0,
+    restaurantId: order.localId ?? order.idLocal ?? 0,
+    customerId: order.clienteId ?? order.idCliente ?? 0,
+    customerName: order.clienteNombre ?? order.nombreCliente ?? null,
+    couponId: order.cuponId ?? null,
+    status:
+      order.estado ??
+      order.estadoPedido ??
+      order.status ??
+      order.estadoPago ??
+      "PENDIENTE_CONFIRMACION_LOCAL",
+    total: order.total ?? order.montoTotal ?? 0,
+    itemCount: getItemCount(order, items),
+    items,
+    discount: order.descuento ?? null,
+    estimatedTime: order.tiempoEstimado ?? null,
+    invoiceUrl: order.urlFactura ?? null,
+    comment: order.comentario ?? null,
+    address: order.direccion ?? null,
+    instructions: order.indicaciones ?? null,
+    rejectionReason: order.motivoRechazo ?? null,
+    createdAt: order.creacion ?? order.fechaCreacion ?? order.createdAt ?? "",
+    deletedAt: order.eliminacion ?? null,
+  };
+}
+
+function getWorkbenchOrders(
+  data: WorkbenchOrdersApiResponse | null | undefined,
+): WorkbenchOrderApiResponse[] {
+  if (!data) return [];
+  if (Array.isArray(data)) return data;
+
+  return data.content ?? data.data ?? data.items ?? data.pedidos ?? data.orders ?? [];
 }
 
 function getBackendErrorMessage(error: unknown, fallback: string): string {
@@ -53,16 +113,24 @@ export async function fetchWorkbenchOrders(
   if (filters?.sortBy) params.set("orden", filters.sortBy);
   if (filters?.direction) params.set("sentido", filters.direction);
   if (filters?.orderId) params.set("identificador", filters.orderId);
-  if (filters?.startDateTime) params.set("rangoInicio", filters.startDateTime);
-  if (filters?.endDateTime) params.set("rangoFin", filters.endDateTime);
+  if (filters?.startDateTime && filters?.endDateTime) {
+    params.set("rangoInicio", filters.startDateTime);
+    params.set("rangoFin", filters.endDateTime);
+  }
 
   const query = params.toString() ? `?${params.toString()}` : "";
 
   try {
-    const response = await api.get<WorkbenchOrderApiResponse[]>(
+    const response = await api.get<WorkbenchOrdersApiResponse>(
       `/api/local/${encodeURIComponent(restaurantId)}/mesa-trabajo${query}`,
+      { timeout: 15000 },
     );
-    return response.data.map(mapWorkbenchOrder);
+    return getWorkbenchOrders(response.data)
+      .map(mapWorkbenchOrder)
+      .filter(
+        (order) =>
+          order.status !== "EN_CARRITO" && order.status !== "ETAPA_DE_PAGO",
+      );
   } catch (error) {
     throw new Error(
       getBackendErrorMessage(error, "No se pudieron cargar los pedidos."),
@@ -72,41 +140,82 @@ export async function fetchWorkbenchOrders(
 
 type WorkbenchOrderAction = "confirmar" | "rechazar";
 
-const orderActionStatus: Record<WorkbenchOrderAction, OrderStatus> = {
-  confirmar: "ACEPTADO_LOCAL",
-  rechazar: "RECHAZADO_LOCAL",
+type WorkbenchActionBody = {
+  estado?: OrderStatus;
+  motivoRechazo?: string;
+  tiempoEstimado?: string;
 };
 
 export async function updateWorkbenchOrderStatus(
   localId: string,
   orderId: number,
   action: WorkbenchOrderAction,
-): Promise<OrderStatus> {
+  body: WorkbenchActionBody,
+): Promise<WorkbenchOrder | null> {
+  const encodedLocalId = encodeURIComponent(localId);
+  const encodedOrderId = encodeURIComponent(orderId.toString());
+  const endpoint =
+    action === "confirmar"
+      ? `/api/local/${encodedLocalId}/pedido/${encodedOrderId}`
+      : `/api/local/${encodedLocalId}/pedido/${encodedOrderId}/rechazar`;
+
   try {
-    await api.patch(
-      `/api/local/${encodeURIComponent(localId)}/pedido/${encodeURIComponent(
-        orderId.toString(),
-      )}/${action}`,
+    const response = await api.patch<WorkbenchOrderApiResponse | null>(
+      endpoint,
+      body,
+      {
+        headers: { "Content-Type": "application/json" },
+      },
     );
+    return response.data ? mapWorkbenchOrder(response.data) : null;
   } catch (error) {
     throw new Error(
       getBackendErrorMessage(error, `No se pudo ${action} el pedido.`),
     );
   }
-
-  return orderActionStatus[action];
 }
 
 export async function confirmWorkbenchOrder(
   localId: string,
   orderId: number,
-): Promise<OrderStatus> {
-  return updateWorkbenchOrderStatus(localId, orderId, "confirmar");
+  estimatedTime: string,
+): Promise<WorkbenchOrder | null> {
+  return updateWorkbenchOrderStatus(localId, orderId, "confirmar", {
+    estado: "ACEPTADO_LOCAL",
+    tiempoEstimado: estimatedTime,
+  });
 }
 
 export async function rejectWorkbenchOrder(
   localId: string,
   orderId: number,
-): Promise<OrderStatus> {
-  return updateWorkbenchOrderStatus(localId, orderId, "rechazar");
+  rejectionReason: string,
+): Promise<WorkbenchOrder | null> {
+  return updateWorkbenchOrderStatus(localId, orderId, "rechazar", {
+    estado: "RECHAZADO_LOCAL",
+    motivoRechazo: rejectionReason,
+  });
+}
+
+export async function changeWorkbenchOrderStatus(
+  localId: string,
+  orderId: number,
+  status: OrderStatus,
+): Promise<WorkbenchOrder | null> {
+  const encodedLocalId = encodeURIComponent(localId);
+  const encodedOrderId = encodeURIComponent(orderId.toString());
+
+  try {
+    const response = await api.patch<WorkbenchOrderApiResponse | null>(
+      `/api/local/${encodedLocalId}/pedido/${encodedOrderId}/estado`,
+      { estado: status },
+      { headers: { "Content-Type": "application/json" } },
+    );
+
+    return response.data ? mapWorkbenchOrder(response.data) : null;
+  } catch (error) {
+    throw new Error(
+      getBackendErrorMessage(error, "No se pudo actualizar el estado del pedido."),
+    );
+  }
 }
