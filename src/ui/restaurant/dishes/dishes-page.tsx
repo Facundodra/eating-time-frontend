@@ -39,17 +39,20 @@ function formatPrice(price: number) {
   return `$${price.toLocaleString("es-UY")}`;
 }
 
-function formatDate(dateStr: string) {
-  try {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString("es-UY", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-    });
-  } catch {
+function formatDateTimeLabel(dateStr: string) {
+  const date = new Date(dateStr);
+
+  if (Number.isNaN(date.getTime())) {
     return dateStr;
   }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  const hour = String(date.getHours()).padStart(2, "0");
+  const minute = String(date.getMinutes()).padStart(2, "0");
+
+  return `${year}/${month}/${day} ${hour}:${minute}`;
 }
 
 function filterDishes(dishes: RestaurantDish[], filter: DishFilter) {
@@ -436,7 +439,7 @@ export default function RestaurantDishesPage() {
                     </p>
                     <div className="mt-3 flex flex-wrap gap-2">
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        Creado: {formatDate(dish.createdAt)}
+                        Creado: {formatDateTimeLabel(dish.createdAt)}
                       </span>
                     </div>
                   </div>
@@ -638,7 +641,7 @@ export default function RestaurantDishesPage() {
                   Fecha de creacion
                 </span>
                 <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 text-sm font-extrabold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
-                  {formatDate(selectedDish.createdAt)}
+                  {formatDateTimeLabel(selectedDish.createdAt)}
                 </div>
               </div>
             </div>
