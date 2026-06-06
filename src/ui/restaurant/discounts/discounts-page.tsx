@@ -753,6 +753,15 @@ export default function RestaurantDiscountsPage() {
                     className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                   />
                 </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                    Estado
+                  </span>
+                  <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 dark:border-slate-800 dark:bg-slate-950">
+                    <StatusBadge status={editStatus} />
+                  </div>
+                </label>
               </div>
 
               <div>
@@ -903,15 +912,6 @@ export default function RestaurantDiscountsPage() {
                     }
                     className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                   />
-                </label>
-
-                <label className="block">
-                  <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                    Estado
-                  </span>
-                  <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 dark:border-slate-800 dark:bg-slate-950">
-                    <StatusBadge status={editStatus} />
-                  </div>
                 </label>
               </div>
 
