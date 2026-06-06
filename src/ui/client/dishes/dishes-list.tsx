@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MinusIcon, PlusIcon, TagIcon } from "@heroicons/react/24/outline";
 
@@ -50,6 +50,8 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
 
   // ID del plato que está siendo actualizado en el carrito (para mostrar spinner)
   const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
+  // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
+  const cartUpdateInFlight = useRef(false);
 
   useEffect(() => {
     const isNewSearch = page === 1;
@@ -114,6 +116,8 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
 
   async function handleCartUpdate(dishId: string, delta: number) {
     if (!idLocal || !onCartUpdate) return;
+    if (cartUpdateInFlight.current) return;
+    cartUpdateInFlight.current = true;
     const platoId = Number(dishId);
     setUpdatingDishId(platoId);
     try {
@@ -126,6 +130,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
     } catch (err) {
       console.error("[carrito] error en updateCartItem:", err);
     } finally {
+      cartUpdateInFlight.current = false;
       setUpdatingDishId(null);
     }
   }

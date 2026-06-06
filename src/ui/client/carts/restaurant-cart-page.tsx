@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -287,6 +287,8 @@ export default function RestaurantCartPage({
   const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
   const [deletingCart, setDeletingCart] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
+  const cartUpdateInFlight = useRef(false);
 
   useEffect(() => {
     async function load() {
@@ -304,6 +306,8 @@ export default function RestaurantCartPage({
   }, [restaurantId]);
 
   async function handleUpdateItem(platoId: number, delta: number) {
+    if (cartUpdateInFlight.current) return;
+    cartUpdateInFlight.current = true;
     setUpdatingDishId(platoId);
     try {
       const updated = await updateCartItem(restaurantId, platoId, delta);
@@ -314,6 +318,7 @@ export default function RestaurantCartPage({
     } catch {
       // Falla silenciosa; el usuario puede reintentar
     } finally {
+      cartUpdateInFlight.current = false;
       setUpdatingDishId(null);
     }
   }
