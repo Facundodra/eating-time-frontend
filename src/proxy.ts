@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { FRONTEND_SESSION_COOKIE_NAME } from "@/lib/shared/auth/session-cookies";
+import { BACKEND_SESSION_COOKIE_NAME } from "@/lib/shared/auth/session-cookies";
 
 const publicRoutes = [
   "/register",
@@ -13,7 +13,7 @@ const publicRoutes = [
 
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
-  const hasSession = request.cookies.has(FRONTEND_SESSION_COOKIE_NAME);
+  const hasSession = request.cookies.has(BACKEND_SESSION_COOKIE_NAME);
   const isPublicRoute = publicRoutes.some(
     (route) => pathname === route || pathname.startsWith(`${route}/`),
   );

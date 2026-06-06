@@ -1,10 +1,9 @@
-"use client";
-
-import useAccountProfile from "@/hooks/use-account-profile";
-
-export default function UserName({ className }: { className?: string }) {
-  const { profile } = useAccountProfile();
-  const name = profile?.nombre || "Usuario";
-
+export default function UserName({
+  className,
+  name = "Usuario",
+}: {
+  className?: string;
+  name?: string;
+}) {
   return <span className={`user-name ${className ?? ""}`.trim()}>{name}</span>;
 }

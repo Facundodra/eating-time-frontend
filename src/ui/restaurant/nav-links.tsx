@@ -21,28 +21,32 @@ import { usePathname } from "next/navigation";
 const operationsNavLinks = [
   { name: "Inicio", href: "/restaurant", icon: HomeIcon },
   { name: "Mesa de trabajo", href: "/restaurant/workbench", icon: Squares2X2Icon },
-  { name: "Pedidos", href: "/restaurant/orders", icon: InboxIcon },
-  { name: "Platos", href: "/restaurant/dishes", icon: BuildingStorefrontIcon },
-];
-
-const commercialNavLinks = [
-  { name: "Cupones", href: "/restaurant/coupons", icon: GiftIcon },
-  { name: "Descuentos", href: "/restaurant/discounts", icon: PercentBadgeIcon },
-  { name: "Clientes", href: "/restaurant/customers", icon: UsersIcon },
   { name: "Reclamos", href: "/restaurant/claims", icon: ChatBubbleLeftIcon },
 ];
 
 const managementNavLinks = [
-  { name: "Estadisticas", href: "/restaurant/statistics", icon: ArrowTrendingUpIcon },
+  { name: "Platos", href: "/restaurant/dishes", icon: BuildingStorefrontIcon },
+  { name: "Cupones", href: "/restaurant/coupons", icon: GiftIcon },
+  { name: "Descuentos", href: "/restaurant/discounts", icon: PercentBadgeIcon },
   { name: "Horarios", href: "/restaurant/schedules", icon: ClockIcon },
+];
+
+const commercialNavLinks = [
+  { name: "Pedidos", href: "/restaurant/orders", icon: InboxIcon },
+  { name: "Clientes", href: "/restaurant/customers", icon: UsersIcon },
+  { name: "Estadísticas", href: "/restaurant/statistics", icon: ArrowTrendingUpIcon },
+];
+
+const accountNavLinks = [
   { name: "Mis datos", href: "/restaurant/my-data", icon: UserIcon },
   { name: "Cambiar contraseña", href: "/restaurant/change-password", icon: KeyIcon },
 ];
 
 const navGroups = [
-  { label: "Operacion", className: "restaurant-operations", links: operationsNavLinks },
+  { label: "Operación", className: "restaurant-operations", links: operationsNavLinks },
+  { label: "Gestión", className: "restaurant-management", links: managementNavLinks },
   { label: "Comercial", className: "restaurant-commercial", links: commercialNavLinks },
-  { label: "Gestion", className: "restaurant-management", links: managementNavLinks },
+  { label: "Cuenta", className: "restaurant-account", links: accountNavLinks },
 ];
 
 export default function NavLinksRestaurant() {

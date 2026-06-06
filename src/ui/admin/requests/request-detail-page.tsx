@@ -7,6 +7,8 @@ import {
   obtenerSolicitudRegistroRestaurantPorId as getRestaurantRegistrationRequestById,
   type SolicitudRegistroResponse as RestaurantRegistrationRequestResponse,
 } from "@/services/admin/gestion-service";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
 
 import type { RestaurantRequest } from "./requests-data";
 import {
@@ -152,9 +154,7 @@ export default function RequestDetailPage({ id }: Props) {
         <BackLink />
 
         <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-            Cargando solicitud...
-          </p>
+          <LoadingIndicator label="Cargando solicitud..." />
         </div>
       </section>
     );
@@ -172,9 +172,15 @@ export default function RequestDetailPage({ id }: Props) {
               : "Solicitud no encontrada"}
           </h1>
 
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-            {detailError ?? "No existe una solicitud asociada al id recibido."}
-          </p>
+          <div className="mt-4">
+            {detailError ? (
+              <PanelError message={detailError} onRetry={() => void loadRequest()} />
+            ) : (
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                No existe una solicitud asociada al id recibido.
+              </p>
+            )}
+          </div>
         </div>
       </section>
     );

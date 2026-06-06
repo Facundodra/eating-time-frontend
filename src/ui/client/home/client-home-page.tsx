@@ -51,12 +51,14 @@ export default function ClientHomePage() {
   useEffect(() => {
     getRestaurants({ ordenarPor: "calificacion", direccion: "desc", size: 8 })
       .then(({ restaurants }) => setRestaurants(restaurants))
+      .catch(() => setRestaurants([]))
       .finally(() => setLoadingRestaurants(false));
   }, []);
 
   useEffect(() => {
     getDishes({ tamano: 8 })
       .then(setDishes)
+      .catch(() => setDishes([]))
       .finally(() => setLoadingDishes(false));
   }, []);
 

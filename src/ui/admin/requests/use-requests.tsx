@@ -72,8 +72,6 @@ export function useRequests(options: UseRequestsOptions = {}) {
       const message =
         err instanceof Error ? err.message : "Error al cargar solicitudes";
 
-      console.error("Error al cargar solicitudes:", err);
-
       setError(message);
       setRequests([]);
     } finally {
@@ -114,7 +112,6 @@ export function useRequests(options: UseRequestsOptions = {}) {
             ? err
             : new Error("Error al aprobar solicitud");
 
-        console.error("Error al aprobar solicitud:", err);
         setError(requestError.message);
         throw requestError;
       }
@@ -135,7 +132,6 @@ export function useRequests(options: UseRequestsOptions = {}) {
             ? err
             : new Error("Error al rechazar solicitud");
 
-        console.error("Error al rechazar solicitud:", err);
         setError(requestError.message);
         throw requestError;
       }

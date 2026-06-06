@@ -1,4 +1,4 @@
-import { api } from "../shared/api-client";
+import { clientApi as api } from "../shared/api-client";
 
 type RestaurantServiceStatusResponse = {
   estadoServicio: boolean;

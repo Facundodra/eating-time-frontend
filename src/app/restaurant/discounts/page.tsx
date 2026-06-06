@@ -1,5 +1,5 @@
-import RestaurantDiscountsLoader from "@/ui/restaurant/discounts/discounts-loader";
+import RestaurantDiscountsPage from "@/ui/restaurant/discounts/discounts-page";
 
 export default function DiscountsPage() {
-  return <RestaurantDiscountsLoader />;
+  return <RestaurantDiscountsPage />;
 }

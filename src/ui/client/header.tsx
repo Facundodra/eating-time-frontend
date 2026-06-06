@@ -1,63 +1,56 @@
 "use client";
 
 import {
-  ArrowLeftEndOnRectangleIcon,
   MagnifyingGlassIcon,
   ShoppingCartIcon,
 } from "@heroicons/react/24/outline";
 import Form from "next/form";
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { useState } from "react";
+import { usePathname } from "next/navigation";
 
-import { clearSessionCookies, clearStoredSession } from "@/lib/shared/auth/session-store";
-import { logout } from "@/services/shared/auth-service";
-import EatingTimeBrand from "@/ui/shared/brand/eating-time-brand";
+import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
+import type { LoginWebResponse } from "@/lib/shared/auth/types";
+import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 
-export default function Header() {
-  const router = useRouter();
+export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const { imageUrl, profileAlt } = getSessionDisplayData(session);
 
-  async function handleLogout() {
-    setIsLoggingOut(true);
-
-    try {
-      await logout();
-    } finally {
-      clearStoredSession();
-      await clearSessionCookies();
-      router.replace("/login");
-      router.refresh();
-    }
-  }
-
+  // Si estamos en un restaurante, el ícono del carrito apunta a su carrito
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
   const cartHref = restaurantMatch
     ? `/client/restaurant/${restaurantMatch[1]}/cart`
     : "/client/cart";
 
   return (
-    <div className="client-header fixed inset-x-0 top-0 z-40 flex flex-wrap items-center gap-3 border-b border-gray-200 bg-white px-4 py-4 text-slate-950 shadow-sm dark:border-slate-800 dark:bg-slate-950 dark:text-white sm:px-6 lg:flex-nowrap lg:px-10">
+    <div className="client-header flex items-center justify-between px-10 py-5">
       <Link href="/" className="logo flex items-center gap-4">
-        <EatingTimeBrand
-          iconSize={46}
-          iconClassName="h-10 w-10 sm:h-[50px] sm:w-[50px]"
-          textClassName="text-xl drop-shadow-sm sm:text-[24px] lg:text-[28px]"
+        <Image
+          src={EatingTimeLogo}
+          alt="Eating Time Logo"
+          width={50}
+          height={50}
+          className="w-[50px]"
         />
+        <div className="logo_content">
+          <span className="logo_content_name block text-xl font-bold">
+            Eating Time
+          </span>
+        </div>
       </Link>
 
-      <div className="search order-last hidden w-full md:block lg:order-none lg:ml-auto lg:max-w-xl lg:flex-1">
+      <div className="search ml-auto hidden md:block">
         <Form
           action="/search"
-          className="flex w-full items-center rounded-full border border-gray-100 bg-gray-100 px-3 py-2 transition hover:bg-white dark:border-slate-800 dark:bg-slate-900 dark:hover:bg-slate-800"
+          className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white"
         >
           <input
             type="text"
             placeholder="Buscar..."
-            className="min-w-0 flex-1 bg-transparent pr-2 text-sm text-slate-800 placeholder:text-slate-400 focus:outline-none dark:text-slate-100 dark:placeholder:text-slate-500"
+            className="min-w-[400px] pr-2 text-sm focus:outline-none"
           />
           <button
             type="submit"
@@ -68,35 +61,29 @@ export default function Header() {
         </Form>
       </div>
 
-      <div className="theme ml-auto lg:ml-3">
+      <div className="theme ml-auto mr-3">
         <ThemeToggle />
       </div>
 
-      <div className="cart">
+      <div className="cart mr-3 relative top-[3px]">
         <Link
           href={cartHref}
-          className="group inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800 dark:border-slate-800"
+          className="group h-[37px] w-[37px]   inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800"
         >
-          <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition group-hover:text-white dark:text-slate-100" />
+          <ShoppingCartIcon className="text-gray-800 transition group-hover:text-white" />
         </Link>
       </div>
 
-      <div className="account">
-        <Link href="/client/mi-cuenta" className="block">
-          <ProfilePicture />
-        </Link>
+      <div className="account relative cursor-pointer group">
+        {/* <Link href="/client/mi-cuenta" className="relative bottom-[3px]"> */}
+        <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+        {/* </Link> */}
+        <ul className="sub-menu absolute bg-white py-5 px-6 right-0 w-max rounded-md shadow-md hidden group-hover:block">
+          <li><Link href="/client/mi-cuenta" className="text-sm text-gray-800 hover:text-orange-700 transition">Mi cuenta</Link></li>
+          <li><Link href="/client/order-history" className="text-sm text-gray-800 hover:text-orange-700 transition">Historial de Pedidos</Link></li>
+          <li><Link href="/logout" className="text-sm text-gray-800 hover:text-orange-700 transition">Salir</Link></li>
+        </ul>
       </div>
-
-      <button
-        type="button"
-        title="Cerrar sesion"
-        aria-label="Cerrar sesion"
-        onClick={handleLogout}
-        disabled={isLoggingOut}
-        className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-gray-200 text-slate-700 transition hover:border-orange-300 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:text-slate-200 dark:hover:border-orange-500/50 dark:hover:text-orange-300"
-      >
-        <ArrowLeftEndOnRectangleIcon className="h-5 w-5" />
-      </button>
     </div>
   );
 }

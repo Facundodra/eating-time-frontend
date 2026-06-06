@@ -22,9 +22,9 @@ export default function LoadingButton({
       className={className}
     >
       {isLoading ? (
-        <span className="flex items-center justify-center gap-2">
-          <span className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-          {loadingText ? <span>{loadingText}</span> : null}
+        <span className="flex min-w-0 items-center justify-center gap-2">
+          <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-current border-t-transparent" />
+          {loadingText ? <span className="min-w-0 truncate">{loadingText}</span> : null}
         </span>
       ) : (
         children

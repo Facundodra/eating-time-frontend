@@ -65,5 +65,5 @@ export default function RestaurantDiscountsLoader() {
     );
   }
 
-  return <RestaurantDiscountsPage initialData={data} />;
+  return <RestaurantDiscountsPage />;
 }

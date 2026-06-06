@@ -109,3 +109,29 @@ export type Cart = {
   eliminacion: string | null;
   items: CartItem[];
 };
+
+// Estados de un pedido ya cerrado que aparecen en el historial del cliente
+export type OrderHistoryStatus =
+  | "FINALIZADO"
+  | "RECHAZADO_LOCAL"
+  | "CANCELADO_CLIENTE";
+
+// Pedido cerrado del historial del cliente (mapea PedidoDto del backend)
+export type Order = {
+  id: number;
+  restaurantId: number;
+  clienteId: number;
+  cuponId: number | null;
+  estado: OrderHistoryStatus;
+  total: number;
+  descuento: number | null;
+  tiempoEstimado: string | null;
+  urlFactura: string | null;
+  comentario: string | null;
+  direccion: string | null;
+  indicaciones: string | null;
+  motivoRechazo: string | null;
+  creacion: string;
+  eliminacion: string | null;
+  items: CartItem[];
+};

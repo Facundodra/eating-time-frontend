@@ -44,6 +44,8 @@ When modifying code:
 - Modify only files directly related to the requested task.
 - Do not refactor unrelated code.
 - Do not rename/move large parts of the project unless explicitly requested.
+- New documents and features must respect the folder structure (e.g. admin, client, register, restaurant, etc.)
+- All new functions and procedures must be in English and consistent with already-implemented ones. 
 
 If a task requires modifying many files:
 - Stop and ask for confirmation first.

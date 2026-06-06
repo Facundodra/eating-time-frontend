@@ -1,18 +1,21 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import RequestsFilters from "./requests-filters";
-import RequestsTable from "./requests-table";
-import { useRequests } from "./use-requests";
+
 import {
   matchesRequestStatusFilter,
   type RequestStatusFilter,
 } from "./requests-data";
+import RequestsFilters from "./requests-filters";
+import RequestsTable from "./requests-table";
+import { useRequests } from "./use-requests";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
+import PanelError from "@/ui/shared/feedback/panel-error";
 
 type SortBy = "recent" | "oldest" | "name-asc";
 
 export default function AdminRequestsPage() {
-  const { requests, totals, loading, error } = useRequests();
+  const { requests, loading, error, loadRequests } = useRequests();
 
   const [filterRestaurant, setFilterRestaurant] = useState("");
   const [filterEmail, setFilterEmail] = useState("");
@@ -31,9 +34,7 @@ export default function AdminRequestsPage() {
         .includes(restaurantQuery);
 
       const matchesEmail = request.email.toLowerCase().includes(emailQuery);
-
       const matchesStatus = matchesRequestStatusFilter(request, filterStatus);
-
       const requestDate = request.date.slice(0, 10);
       const matchesDate = filterDate ? requestDate === filterDate : true;
 
@@ -63,38 +64,8 @@ export default function AdminRequestsPage() {
     sortBy,
   ]);
 
-  if (loading) {
-    return (
-      <RequestsLayout>
-        <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <p className="text-center text-sm text-slate-500 dark:text-slate-400">
-            Cargando solicitudes...
-          </p>
-        </div>
-      </RequestsLayout>
-    );
-  }
-
-  if (error) {
-    return (
-      <RequestsLayout>
-        <div className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm dark:border-red-900 dark:bg-red-950">
-          <p className="text-sm font-semibold text-red-700 dark:text-red-200">
-            Error: {error}
-          </p>
-        </div>
-      </RequestsLayout>
-    );
-  }
-
   return (
     <RequestsLayout>
-      <div className="grid gap-4 md:grid-cols-3">
-        <StatusCard label="Pendientes" value={totals.pending} />
-        <StatusCard label="Aceptadas" value={totals.approved} />
-        <StatusCard label="Rechazadas" value={totals.rejected} />
-      </div>
-
       <RequestsFilters
         resultCount={filteredRequests.length}
         filterRestaurant={filterRestaurant}
@@ -109,7 +80,19 @@ export default function AdminRequestsPage() {
         onSortByChange={setSortBy}
       />
 
-      <RequestsTable requests={filteredRequests} />
+      {loading ? (
+        <section className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <div className="py-8">
+            <LoadingIndicator label="Cargando solicitudes..." />
+          </div>
+        </section>
+      ) : error ? (
+        <section className="rounded-2xl border border-red-200 bg-red-50 p-4 shadow-sm dark:border-red-900 dark:bg-red-950">
+          <PanelError message={error} onRetry={() => void loadRequests()} />
+        </section>
+      ) : (
+        <RequestsTable requests={filteredRequests} />
+      )}
     </RequestsLayout>
   );
 }
@@ -120,36 +103,8 @@ function RequestsLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <section className="mx-auto w-full max-w-6xl space-y-6 px-4 py-6">
-      <header>
-        <h1 className="text-2xl font-bold text-slate-950 dark:text-white">
-          Solicitudes de locales
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          Gestión y revisión de solicitudes de registro de locales pendientes,
-          aceptadas o rechazadas.
-        </p>
-      </header>
-
+    <section className="mx-auto w-full space-y-6 px-4 py-6">
       {children}
     </section>
-  );
-}
-
-function StatusCard({
-  label,
-  value,
-}: Readonly<{ label: string; value: number }>) {
-  return (
-    <article className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">
-        {label}
-      </p>
-
-      <p className="mt-3 text-3xl font-bold text-slate-950 dark:text-white">
-        {value}
-      </p>
-    </article>
   );
 }

@@ -1,0 +1,353 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ReceiptPercentIcon } from "@heroicons/react/24/outline";
+
+import {
+  getOrderHistory,
+  getOrderHistoryRestaurants,
+  type OrderHistoryFilter,
+  type OrderHistoryRestaurant,
+} from "@/services/client/client-service";
+import type { Order, OrderHistoryStatus } from "@/lib/client/types";
+
+const PAGE_SIZE = 10;
+
+type SortKey = "fecha-desc" | "fecha-asc" | "precio-desc" | "precio-asc";
+
+const statusLabels: Record<OrderHistoryStatus, string> = {
+  FINALIZADO: "Finalizado",
+  RECHAZADO_LOCAL: "Rechazado",
+  CANCELADO_CLIENTE: "Cancelado",
+};
+
+const statusColors: Record<OrderHistoryStatus, string> = {
+  FINALIZADO: "bg-green-100 text-green-800",
+  RECHAZADO_LOCAL: "bg-red-100 text-red-700",
+  CANCELADO_CLIENTE: "bg-gray-200 text-gray-600",
+};
+
+function StatusBadge({ status }: { status: OrderHistoryStatus }) {
+  return (
+    <span
+      className={`rounded-full px-3 py-1 text-xs font-bold ${
+        statusColors[status] ?? "bg-gray-100 text-gray-600"
+      }`}
+    >
+      {statusLabels[status] ?? status}
+    </span>
+  );
+}
+
+function formatDate(dateStr: string) {
+  try {
+    return new Date(dateStr).toLocaleString("es-UY", {
+      day: "2-digit",
+      month: "2-digit",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  } catch {
+    return dateStr;
+  }
+}
+
+function formatPrice(price: number) {
+  return `$${price.toLocaleString("es-UY")}`;
+}
+
+function itemCount(order: Order) {
+  return order.items
+    .filter((item) => item.eliminacion == null)
+    .reduce((sum, item) => sum + item.cantidad, 0);
+}
+
+function OrderCardSkeleton() {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="h-4 bg-gray-200 rounded w-1/4" />
+        <div className="h-5 bg-gray-100 rounded-full w-20" />
+      </div>
+      <div className="h-3 bg-gray-100 rounded w-1/3" />
+      <div className="flex items-center justify-between pt-1">
+        <div className="h-3 bg-gray-100 rounded w-1/4" />
+        <div className="h-4 bg-gray-200 rounded w-1/5" />
+      </div>
+    </div>
+  );
+}
+
+const sortMap: Record<SortKey, { ordenarPor: "fecha" | "precio"; direccion: "asc" | "desc" }> = {
+  "fecha-desc": { ordenarPor: "fecha", direccion: "desc" },
+  "fecha-asc": { ordenarPor: "fecha", direccion: "asc" },
+  "precio-desc": { ordenarPor: "precio", direccion: "desc" },
+  "precio-asc": { ordenarPor: "precio", direccion: "asc" },
+};
+
+function toStartOfDay(date: string) {
+  return `${date}T00:00:00`;
+}
+
+function toEndOfDay(date: string) {
+  return `${date}T23:59:59`;
+}
+
+export default function OrderHistoryPage() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+
+  // Filtros
+  const [sort, setSort] = useState<SortKey>("fecha-desc");
+  const [localId, setLocalId] = useState("");
+  const [desde, setDesde] = useState("");
+  const [hasta, setHasta] = useState("");
+  const [appliedFilter, setAppliedFilter] = useState<OrderHistoryFilter>({});
+
+  // Locales con pedidos en el historial (para filtro y nombres en tarjetas)
+  const [restaurants, setRestaurants] = useState<OrderHistoryRestaurant[]>([]);
+
+  useEffect(() => {
+    getOrderHistoryRestaurants()
+      .then(setRestaurants)
+      .catch(() => setRestaurants([]));
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadOrders() {
+      const isNewSearch = page === 0;
+      if (isNewSearch) setLoading(true);
+      else setLoadingMore(true);
+      setError(null);
+
+      try {
+        const { orders: data, totalPages: total } = await getOrderHistory({
+          ...appliedFilter,
+          ...sortMap[sort],
+          page,
+          size: PAGE_SIZE,
+        });
+
+        if (ignore) return;
+
+        setOrders((prev) => (isNewSearch ? data : [...prev, ...data]));
+        setTotalPages(total);
+      } catch (err) {
+        if (!ignore) {
+          setError(
+            err instanceof Error
+              ? err.message
+              : "No se pudieron cargar los pedidos.",
+          );
+        }
+      } finally {
+        if (!ignore) {
+          if (isNewSearch) setLoading(false);
+          else setLoadingMore(false);
+        }
+      }
+    }
+
+    void loadOrders();
+
+    return () => {
+      ignore = true;
+    };
+  }, [appliedFilter, sort, page]);
+
+  function applyFilters() {
+    const next: OrderHistoryFilter = {};
+    if (localId !== "") next.localId = Number(localId);
+    if (desde) next.desde = toStartOfDay(desde);
+    if (hasta) next.hasta = toEndOfDay(hasta);
+
+    setPage(0);
+    setAppliedFilter(next);
+  }
+
+  function getRestaurantName(id: number) {
+    return restaurants.find((r) => r.id === id)?.name ?? `Local #${id}`;
+  }
+
+  const hasMore = page < totalPages - 1;
+
+  return (
+    <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-6">
+      <section>
+        <h1 className="text-2xl font-bold text-gray-900">Historial de pedidos</h1>
+        <p className="text-sm text-gray-500 mt-1">
+          Consultá tus pedidos anteriores.
+        </p>
+      </section>
+
+      {/* Barra de filtros */}
+      <div className="rounded-xl border border-gray-100 bg-white p-4 space-y-4">
+        <div className="grid gap-4 sm:grid-cols-2">
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">Ordenar por</span>
+            <select
+              value={sort}
+              onChange={(e) => {
+                setPage(0);
+                setSort(e.target.value as SortKey);
+              }}
+              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            >
+              <option value="fecha-desc">Fecha: más recientes</option>
+              <option value="fecha-asc">Fecha: más antiguos</option>
+              <option value="precio-desc">Precio total: mayor a menor</option>
+              <option value="precio-asc">Precio total: menor a mayor</option>
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">Local</span>
+            <select
+              value={localId}
+              onChange={(e) => setLocalId(e.target.value)}
+              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            >
+              <option value="">Todos los locales</option>
+              {restaurants.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+
+        <div className="flex flex-wrap items-end gap-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-gray-700">Desde</span>
+              <input
+                type="date"
+                value={desde}
+                onChange={(e) => setDesde(e.target.value)}
+                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-gray-700">Hasta</span>
+              <input
+                type="date"
+                value={hasta}
+                onChange={(e) => setHasta(e.target.value)}
+                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              />
+            </label>
+          </div>
+
+          <button
+            type="button"
+            onClick={applyFilters}
+            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800"
+          >
+            Aplicar filtros
+          </button>
+        </div>
+      </div>
+
+      {/* Resultados */}
+      {loading ? (
+        <div className="space-y-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <OrderCardSkeleton key={i} />
+          ))}
+        </div>
+      ) : error ? (
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>
+      ) : orders.length === 0 ? (
+        <div className="rounded-xl border border-gray-100 bg-white px-4 py-16 text-center">
+          <ReceiptPercentIcon className="mx-auto h-10 w-10 text-gray-300" />
+          <p className="mt-3 text-sm text-gray-500">
+            No se encontraron pedidos para los filtros aplicados.
+          </p>
+        </div>
+      ) : (
+        <>
+          <div className="space-y-4">
+            {orders.map((order) => (
+              <div
+                key={order.id}
+                className="rounded-xl border border-gray-200 bg-white p-5 transition-colors hover:border-orange-300"
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                      <h2 className="font-bold text-gray-900">Pedido #{order.id}</h2>
+                      <Link
+                        href={`/client/order-history/${order.id}`}
+                        className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
+                      >
+                        Ver detalles
+                      </Link>
+                    </div>
+                    <p className="mt-0.5 text-sm text-gray-500">
+                      {getRestaurantName(order.restaurantId)}
+                    </p>
+                  </div>
+                  <StatusBadge status={order.estado} />
+                </div>
+
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
+                  <span className="text-xs text-gray-400">{formatDate(order.creacion)}</span>
+                  <div className="flex items-center gap-4">
+                    <span className="text-xs text-gray-400">
+                      {itemCount(order)} {itemCount(order) === 1 ? "ítem" : "ítems"}
+                    </span>
+                    <span className="text-sm font-bold text-orange-700">
+                      {formatPrice(order.total)}
+                    </span>
+                  </div>
+                </div>
+
+                {order.urlFactura && (
+                  <div className="mt-3">
+                    <Link
+                      href={order.urlFactura}
+                      target="_blank"
+                      className="text-xs font-semibold text-orange-700 hover:underline"
+                    >
+                      Ver factura
+                    </Link>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+
+          {hasMore && (
+            <div className="flex justify-center pt-2">
+              <button
+                type="button"
+                onClick={() => setPage((p) => p + 1)}
+                disabled={loadingMore}
+                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {loadingMore ? (
+                  <>
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-orange-600" />
+                    Cargando...
+                  </>
+                ) : (
+                  "Cargar más"
+                )}
+              </button>
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}

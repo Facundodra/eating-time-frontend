@@ -1,70 +1,21 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-import useAccountProfile from "@/hooks/use-account-profile";
+import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
+import type { LoginWebResponse } from "@/lib/shared/auth/types";
+import { getPageMetadata } from "@/lib/shared/page-metadata";
 import ThemeToggle from "../shared/theme/theme-toggle";
+import ProfilePicture from "../shared/widgets/profile-picture";
 import RestaurantRating from "../shared/widgets/rating";
 import RestaurantStatus from "../shared/widgets/restaurant-status";
+import UserName from "../shared/widgets/user-name";
 
-const pageHeaders = [
-  {
-    path: "/restaurant/workbench",
-    breadcrumb: "Operacion del local",
-    title: "Mesa de trabajo",
-  },
-  {
-    path: "/restaurant/orders",
-    breadcrumb: "Operacion del local",
-    title: "Pedidos",
-  },
-  {
-    path: "/restaurant/dishes",
-    breadcrumb: "Gestion del menu",
-    title: "Platos del local",
-  },
-  {
-    path: "/restaurant/discounts",
-    breadcrumb: "Gestion comercial",
-    title: "Descuentos del local",
-  },
-  {
-    path: "/restaurant/schedules",
-    breadcrumb: "Disponibilidad del local",
-    title: "Horarios y estado de servicio",
-  },
-  {
-    path: "/restaurant/change-password",
-    breadcrumb: "Cuenta del local",
-    title: "Cambiar contrasena",
-  },
-  {
-    path: "/restaurant/my-data",
-    breadcrumb: "Cuenta del local",
-    title: "Mis datos",
-  },
-  {
-    path: "/restaurant",
-    breadcrumb: "Bienvenido/a al sistema",
-    title: "Inicio",
-  },
-];
-
-function getPageHeader(pathname: string) {
-  return (
-    pageHeaders.find((header) => pathname.startsWith(header.path)) ??
-    pageHeaders[pageHeaders.length - 1]
-  );
-}
-
-export default function Topnav() {
+export default function Topnav({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
-  const { profile } = useAccountProfile();
-  const pageHeader = getPageHeader(pathname);
-  const title =
-    pathname === "/restaurant" && profile?.nombre
-      ? profile.nombre
-      : pageHeader.title;
+  const pageHeader = getPageMetadata(pathname);
+  const { imageUrl, name, profileAlt } = getSessionDisplayData(session);
 
   return (
     <div className="restaurant-top-nav mb-5 flex items-center justify-between gap-4 py-1">
@@ -73,7 +24,7 @@ export default function Topnav() {
           {pageHeader.breadcrumb}
         </p>
         <h1 className="mt-1 text-3xl font-bold tracking-tight text-slate-950 dark:text-white">
-          {title}
+          {pageHeader.title}
         </h1>
       </div>
 
@@ -81,6 +32,19 @@ export default function Topnav() {
         <ThemeToggle />
         <RestaurantStatus />
         <RestaurantRating />
+        <div className="user">
+          <Link
+            href="/restaurant/my-data"
+            className="flex w-fit items-center gap-2 rounded-3xl bg-white px-3 py-2 shadow-sm ring-1 ring-gray-100 dark:bg-slate-900 dark:ring-slate-800"
+          >
+            <ProfilePicture
+              alt={profileAlt}
+              imageUrl={imageUrl}
+              className="h-8 w-8"
+            />
+            <UserName name={name} className="text-sm font-semibold" />
+          </Link>
+        </div>
       </div>
     </div>
   );

@@ -1,25 +1,27 @@
 import axios from "axios";
 
-import { api } from "../shared/api-client";
-import { getStoredSession } from "@/lib/shared/auth/session-store";
+import { clientApi, publicApi } from "../shared/api-client";
+import { requireCurrentSession } from "@/services/shared/auth-service";
 
 import type {
     RestaurantList,
+    LocalList,
     Restaurant,
     DeliveryPointCredentials,
     DeliveryPoint,
     ClientDish,
     Cart,
+    CartItem,
+    Order,
+    OrderHistoryStatus,
     OrderRequest,
     PaymentResponse,
-    LocalList,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, OrderRequest, PaymentResponse };
+export type { RestaurantList, LocalList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     const body: Record<string, string> = {
         localidad: credentials.loc,
@@ -36,7 +38,7 @@ export async function addDeliveryPoint(credentials: DeliveryPointCredentials): P
     }
 
     try{
-        await api.post(`/api/clientes/${session.idTipoUsuario}/puntos-entrega`, body);
+        await clientApi.post(`/api/clientes/${session.idTipoUsuario}/puntos-entrega`, body);
     } catch(error){
         if (axios.isAxiosError(error)) {
             const data = error.response?.data;
@@ -49,11 +51,10 @@ export async function addDeliveryPoint(credentials: DeliveryPointCredentials): P
 }
 
 export async function getDeliveryPoints(): Promise<DeliveryPoint[]> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
-        const response = await api.get<DeliveryPoint[]>(
+        const response = await clientApi.get<DeliveryPoint[]>(
             `/api/clientes/${session.idTipoUsuario}/puntos-entrega`
         );
         return response.data;
@@ -96,6 +97,7 @@ function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
 
 
 export type DishFilter = {
+    q?: string;
     idLocal?: number;
     precioMin?: number;
     precioMax?: number;
@@ -104,14 +106,11 @@ export type DishFilter = {
     sentido?: "asc" | "desc";
     pagina?: number;
     tamano?: number;
-    q?: string;
 };
 
 export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
-
     const params = new URLSearchParams();
+    if (filter?.q)                  params.set("q",            filter.q);
     if (filter?.idLocal != null)    params.set("idLocal",      String(filter.idLocal));
     if (filter?.precioMin != null)  params.set("precioMin",    String(filter.precioMin));
     if (filter?.precioMax != null)  params.set("precioMax",    String(filter.precioMax));
@@ -120,13 +119,12 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
     if (filter?.sentido)            params.set("sentido",      filter.sentido);
     if (filter?.pagina != null)     params.set("pagina",       String(filter.pagina));
     if (filter?.tamano != null)     params.set("tamano",       String(filter.tamano));
-    if (filter?.q)                  params.set("q",            filter.q);
 
     const query = params.toString();
     const url = `/api/locales/platos${query ? `?${query}` : ""}`;
 
     try{
-        const response = await api.get<PlatoDtoFromApi[]>(url);
+        const response = await clientApi.get<PlatoDtoFromApi[]>(url);
         return response.data.map(mapPlatoToClientDish);
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -139,13 +137,8 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
 }
 
 export async function getDish(id: string): Promise<ClientDish> {
-    if (typeof window !== 'undefined') {
-        const session = getStoredSession();
-        if (!session) throw new Error("Sesión no encontrada");
-    }
-
     try {
-        const response = await api.get<PlatoDtoFromApi>(`/api/platos/${id}`);
+        const response = await publicApi.get<PlatoDtoFromApi>(`/api/platos/${id}`);
         return mapPlatoToClientDish(response.data);
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -154,20 +147,6 @@ export async function getDish(id: string): Promise<ClientDish> {
             throw new Error(message);
         }
         throw new Error("No se pudo cargar el plato.");
-    }
-}
-
-export async function getLocales(): Promise<LocalList[]> {
-    try {
-        const response = await api.get<LocalList[]>(`/api/locales`);
-        return response.data;
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const data = error.response?.data;
-            const message = data?.error ?? data?.message ?? `Error al obtener locales (${error.response?.status})`;
-            throw new Error(message);
-        }
-        throw new Error("No se pudieron cargar los locales.");
     }
 }
 
@@ -212,11 +191,8 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
 export async function getRestaurants(
     filter: RestaurantFilter = {}
 ): Promise<{ restaurants: RestaurantList[]; totalPages: number }> {
-    const session = getStoredSession();
-    if(!session) throw new Error("Sesión no encontrada");
-
     try {
-        const response = await api.get<RestaurantPageResponse>(`/api/locales`, { params: filter });
+        const response = await clientApi.get<RestaurantPageResponse>(`/api/locales`, { params: filter });
         return {
             restaurants: response.data.content.map(mapRestaurantDtoApiToRestaurantType),
             totalPages: response.data.totalPages,
@@ -229,6 +205,17 @@ export async function getRestaurants(
         }
         throw new Error("No se pudieron cargar los locales.");
     }
+}
+
+export async function getLocales(): Promise<LocalList[]> {
+    const { restaurants } = await getRestaurants({ size: 100 });
+
+    return restaurants.map((restaurant) => ({
+        id: restaurant.id,
+        nombre: restaurant.name,
+        urlFoto: restaurant.url_photo,
+        estadoServicio: restaurant.state,
+    }));
 }
 
 
@@ -263,12 +250,11 @@ export async function getRestaurantName(id: number): Promise<string> {
 
 export async function getRestaurant(id: string): Promise<Restaurant> {
     if (typeof window !== 'undefined') {
-        const session = getStoredSession();
-        if (!session) throw new Error("Sesión no encontrada");
+        await requireCurrentSession();
     }
 
     try {
-        const response = await api.get<RestaurantSingleDtoFromApi>(`/api/locales/${id}`);
+        const response = await clientApi.get<RestaurantSingleDtoFromApi>(`/api/locales/${id}`);
         return mapRestaurantDtoApiToRestaurant(response.data);
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -292,11 +278,10 @@ function mapCartFromApi(cart: CartFromApi): Cart {
 
 // Devuelve todos los carritos activos (EN_CARRITO) del cliente, uno por restaurante
 export async function getCarts(): Promise<Cart[]> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
-        const response = await api.get<CartFromApi[]>(
+        const response = await clientApi.get<CartFromApi[]>(
             `/api/clientes/${session.idTipoUsuario}/carritos`
         );
         return response.data.map(mapCartFromApi);
@@ -313,11 +298,10 @@ export async function getCarts(): Promise<Cart[]> {
 // Devuelve el carrito activo del cliente para un restaurante específico
 // Lanza error con status 404 si no hay carrito para ese restaurante
 export async function getCart(restaurantId: number): Promise<Cart | null> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
-        const response = await api.get<CartFromApi>(
+        const response = await clientApi.get<CartFromApi>(
             `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`
         );
         return mapCartFromApi(response.data);
@@ -342,11 +326,10 @@ export async function updateCartItem(
     platoId: number,
     cantidad: number
 ): Promise<Cart> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
-        const response = await api.post<CartFromApi>(
+        const response = await clientApi.post<CartFromApi>(
             `/api/clientes/${session.idTipoUsuario}/local/${restaurantId}/agregar-plato/${platoId}/cantidad/${cantidad}`
         );
         return mapCartFromApi(response.data);
@@ -362,11 +345,10 @@ export async function updateCartItem(
 
 // Elimina (soft delete) el carrito activo de un restaurante
 export async function deleteCart(restaurantId: number): Promise<void> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
-        await api.delete(`/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`);
+        await clientApi.delete(`/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`);
     } catch (error) {
         if (axios.isAxiosError(error)) {
             const data = error.response?.data;
@@ -380,11 +362,10 @@ export async function deleteCart(restaurantId: number): Promise<void> {
 // Realiza el pedido: envía la dirección de entrega, cambia el carrito a ETAPA_DE_PAGO
 // y devuelve el link de pago de Mercado Pago
 export async function placeOrder(restaurantId: number, body: OrderRequest): Promise<PaymentResponse> {
-    const session = getStoredSession();
-    if (!session) throw new Error("Sesión no encontrada");
+    const session = await requireCurrentSession();
 
     try {
-        const response = await api.patch<PaymentResponse>(
+        const response = await clientApi.patch<PaymentResponse>(
             `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}`,
             body
         );
@@ -397,4 +378,128 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
         }
         throw new Error("No se pudo realizar el pedido.");
     }
+}
+
+// ── Historial de pedidos ────────────────────────────────────────────────────────
+
+export type OrderHistoryFilter = {
+    localId?: number;
+    desde?: string; // ISO datetime enviado al backend, ej "2026-06-01T00:00:00"
+    hasta?: string;
+    ordenarPor?: "fecha" | "precio";
+    direccion?: "asc" | "desc";
+    page?: number;
+    size?: number;
+};
+
+interface PedidoDtoFromApi {
+    id: number;
+    localId: number;
+    clienteId: number;
+    cuponId: number | null;
+    estado: OrderHistoryStatus;
+    total: number;
+    descuento: number | null;
+    tiempoEstimado: string | null;
+    urlFactura: string | null;
+    comentario: string | null;
+    direccion: string | null;
+    indicaciones: string | null;
+    motivoRechazo: string | null;
+    creacion: string;
+    eliminacion: string | null;
+    items: CartItem[] | null;
+}
+
+interface OrderHistoryPageResponse {
+    content: PedidoDtoFromApi[];
+    totalPages: number;
+    totalElements: number;
+    number: number;
+}
+
+function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
+    const { localId, items, ...rest } = dto;
+    return { ...rest, restaurantId: localId, items: items ?? [] };
+}
+
+// Historial de pedidos cerrados del cliente, paginado en el backend.
+export async function getOrderHistory(
+    filter: OrderHistoryFilter = {}
+): Promise<{ orders: Order[]; totalPages: number; totalElements: number }> {
+    const session = await requireCurrentSession();
+
+    const params: Record<string, string | number> = {};
+    if (filter.localId != null) params.localId = filter.localId;
+    if (filter.desde) params.desde = filter.desde;
+    if (filter.hasta) params.hasta = filter.hasta;
+    if (filter.ordenarPor) params.ordenarPor = filter.ordenarPor;
+    if (filter.direccion) params.direccion = filter.direccion;
+    params.page = filter.page ?? 0;
+    params.size = filter.size ?? 10;
+
+    try {
+        const response = await clientApi.get<OrderHistoryPageResponse>(
+            `/api/clientes/${session.idTipoUsuario}/pedidos`,
+            { params }
+        );
+        return {
+            orders: response.data.content.map(mapOrderFromApi),
+            totalPages: response.data.totalPages,
+            totalElements: response.data.totalElements,
+        };
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const status = error.response?.status;
+            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+
+            if (status === 404) {
+                throw new Error(
+                    "El historial de pedidos no está disponible en el servidor. El backend desplegado aún no incluye este endpoint; pedile al equipo que actualice el backend o probá apuntando NEXT_PUBLIC_API_BASE_URL a un backend local actualizado.",
+                );
+            }
+
+            const message =
+                typeof data === "string"
+                    ? data
+                    : data?.error ?? data?.message ?? `Error al obtener pedidos (${status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudieron cargar los pedidos.");
+    }
+}
+
+export type OrderHistoryRestaurant = {
+    id: number;
+    name: string;
+};
+
+// Locales distintos con al menos un pedido en el historial del cliente (para el filtro).
+export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaurant[]> {
+    const restaurantIds = new Set<number>();
+    let page = 0;
+    let totalPages = 1;
+
+    while (page < totalPages) {
+        const { orders, totalPages: pages } = await getOrderHistory({
+            page,
+            size: 100,
+            ordenarPor: "fecha",
+            direccion: "desc",
+        });
+        totalPages = pages;
+        for (const order of orders) {
+            restaurantIds.add(order.restaurantId);
+        }
+        page += 1;
+    }
+
+    const restaurants = await Promise.all(
+        [...restaurantIds].map(async (id) => ({
+            id,
+            name: await getRestaurantName(id).catch(() => `Local #${id}`),
+        })),
+    );
+
+    return restaurants.sort((a, b) => a.name.localeCompare(b.name, "es"));
 }

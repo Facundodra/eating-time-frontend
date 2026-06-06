@@ -1,17 +1,34 @@
+import { redirect } from "next/navigation";
+
+import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
+import { getServerSession } from "@/lib/shared/auth/server-session";
 import SideNav from "@/ui/restaurant/sidenav";
 import Topnav from "@/ui/restaurant/topnav";
 
-export default function RestaurantLayout({
+export default async function RestaurantLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Este layout es la barrera de entrada para todo /restaurant/*.
+  // Valida la cookie JSESSIONID contra /api/auth/me una sola vez para el
+  // render server, controla el rol y reutiliza esa sesión en el menú lateral.
+  const session = await getServerSession();
+
+  if (!session) {
+    redirect("/login?reason=auth-required");
+  }
+
+  if (session.tipoUsuario !== "LOCAL") {
+    redirect(getBackendRoleHomePath(session.tipoUsuario));
+  }
+
   return (
-    <div className="flex min-h-screen flex-wrap bg-gray-50 text-slate-950 dark:bg-slate-950 dark:text-white">
-      <SideNav />
+    <div className="flex min-h-screen flex-wrap">
+      <SideNav session={session} />
 
       <main className="min-w-0 flex-1 p-6 lg:p-10">
-        <Topnav />
+        <Topnav session={session} />
         {children}
       </main>
     </div>
