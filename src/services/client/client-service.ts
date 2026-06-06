@@ -14,11 +14,13 @@ import type {
     CartItem,
     Order,
     OrderHistoryStatus,
+    OrderRating,
+    OrderRatingValue,
     OrderRequest,
     PaymentResponse,
 } from "@/lib/client/types";
 
-export type { RestaurantList, LocalList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRequest, PaymentResponse };
+export type { RestaurantList, LocalList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = await requireCurrentSession();
@@ -167,7 +169,7 @@ interface RestaurantDtoFromApi {
     id: number;
     nombre: string;
     urlFoto: string | null;
-    estadoServicio: boolean;
+    estadoServicio?: boolean | string | null;
     calificacion: number | null;
 }
 
@@ -182,8 +184,16 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
         name: r.nombre,
         url_photo: r.urlFoto ?? "",
         stars: r.calificacion ?? 0,
-        state: r.estadoServicio,
+        state: mapRestaurantServiceState(r.estadoServicio),
     };
+}
+
+function mapRestaurantServiceState(value: boolean | string | null | undefined): boolean {
+    if (typeof value === "boolean") return value;
+    if (typeof value !== "string") return false;
+
+    const normalized = value.trim().toUpperCase();
+    return ["ACTIVO", "ABIERTO", "TRUE", "S", "SI", "1"].includes(normalized);
 }
 
 
@@ -224,7 +234,7 @@ interface RestaurantSingleDtoFromApi {
     id: number;
     nombre: string;
     urlFoto: string | null;
-    estadoServicio: boolean;
+    estadoServicio?: boolean | string | null;
     calificacion: number | null;
     direccion: string | null;
     descripcion: string | null;
@@ -236,7 +246,7 @@ function mapRestaurantDtoApiToRestaurant(r: RestaurantSingleDtoFromApi): Restaur
         name: r.nombre,
         url_photo: r.urlFoto ?? "",
         stars: r.calificacion ?? 0,
-        state: r.estadoServicio,
+        state: mapRestaurantServiceState(r.estadoServicio),
         address : r.direccion,
         description: r.descripcion
     };
@@ -383,6 +393,7 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
 // ── Historial de pedidos ────────────────────────────────────────────────────────
 
 export type OrderHistoryFilter = {
+    orderId?: number;
     localId?: number;
     desde?: string; // ISO datetime enviado al backend, ej "2026-06-01T00:00:00"
     hasta?: string;
@@ -390,6 +401,7 @@ export type OrderHistoryFilter = {
     direccion?: "asc" | "desc";
     page?: number;
     size?: number;
+    includeRatings?: boolean;
 };
 
 interface PedidoDtoFromApi {
@@ -409,6 +421,18 @@ interface PedidoDtoFromApi {
     creacion: string;
     eliminacion: string | null;
     items: CartItem[] | null;
+    calificacionLocal?: unknown;
+    localCalificacion?: unknown;
+    tieneCalificacionLocal?: unknown;
+    calificadoLocal?: unknown;
+}
+
+interface OrderRatingDtoFromApi {
+    id?: number;
+    pedidoId?: number;
+    calificacion?: OrderRatingValue | string | null;
+    comentario?: string | null;
+    creacion?: string | null;
 }
 
 interface OrderHistoryPageResponse {
@@ -419,8 +443,184 @@ interface OrderHistoryPageResponse {
 }
 
 function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
-    const { localId, items, ...rest } = dto;
-    return { ...rest, restaurantId: localId, items: items ?? [] };
+    const {
+        localId,
+        items,
+        calificacionLocal,
+        localCalificacion,
+        tieneCalificacionLocal,
+        calificadoLocal,
+        ...rest
+    } = dto;
+    const rating = mapOrderRatingFromApi(
+        calificacionLocal ?? localCalificacion ?? null,
+        dto.id,
+    );
+
+    return {
+        ...rest,
+        restaurantId: localId,
+        items: items ?? [],
+        calificacionLocal: rating,
+        hasLocalRating:
+            Boolean(rating) ||
+            hasOrderRatingFromApi(
+                calificacionLocal,
+                localCalificacion,
+                tieneCalificacionLocal,
+                calificadoLocal,
+            ),
+    };
+}
+
+function mapOrderRatingFromApi(
+    rating: unknown,
+    orderId: number,
+): OrderRating | null {
+    if (!rating) return null;
+
+    if (typeof rating === "string" || typeof rating === "number") {
+        const calificacion = normalizeRatingValue(rating);
+        if (!calificacion) return null;
+
+        return {
+            pedidoId: orderId,
+            calificacion,
+            comentario: null,
+            creacion: null,
+        };
+    }
+
+    if (typeof rating !== "object") return null;
+
+    const record = rating as Record<string, unknown>;
+    const nestedRating =
+        record.calificacionLocal ??
+        record.localCalificacion ??
+        record.rating ??
+        record.data;
+
+    if (nestedRating && nestedRating !== rating) {
+        const mappedNestedRating = mapOrderRatingFromApi(nestedRating, orderId);
+        if (mappedNestedRating) return mappedNestedRating;
+    }
+
+    const calificacion = normalizeRatingValue(record.calificacion);
+    if (!calificacion) return null;
+
+    return {
+        id: typeof record.id === "number" ? record.id : undefined,
+        pedidoId: typeof record.pedidoId === "number" ? record.pedidoId : orderId,
+        calificacion,
+        comentario: typeof record.comentario === "string" ? record.comentario : null,
+        creacion: typeof record.creacion === "string" ? record.creacion : null,
+    };
+}
+
+function normalizeRatingValue(value: unknown): string | null {
+    if (typeof value === "string") {
+        const normalized = value.trim();
+        return normalized.length > 0 ? normalized : null;
+    }
+
+    if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5) {
+        return value === 1 ? "1_ESTRELLA" : `${value}_ESTRELLAS`;
+    }
+
+    return null;
+}
+
+function hasOrderRatingFromApi(...values: unknown[]): boolean {
+    return values.some((value) => {
+        if (value == null) return false;
+        if (typeof value === "boolean") return value;
+        if (typeof value === "number") return value > 0;
+
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            return normalized !== "" && normalized !== "false" && normalized !== "0";
+        }
+
+        if (typeof value !== "object") return false;
+
+        const record = value as Record<string, unknown>;
+        return (
+            Boolean(normalizeRatingValue(record.calificacion)) ||
+            hasOrderRatingFromApi(
+                record.id,
+                record.pedidoId,
+                record.calificacionLocal,
+                record.localCalificacion,
+                record.rating,
+                record.data,
+            )
+        );
+    });
+}
+
+async function fetchOrderLocalRating(
+    clientId: number,
+    orderId: number,
+): Promise<OrderRating | null> {
+    try {
+        const response = await clientApi.get<unknown>(
+            `/api/clientes/${clientId}/pedidos/${orderId}/calificacion-local`,
+        );
+        return mapOrderRatingFromApi(response.data, orderId);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const status = error.response?.status;
+
+            if (status === 404 || status === 405) {
+                return null;
+            }
+
+            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+            const message =
+                typeof data === "string"
+                    ? data
+                    : data?.error ?? data?.message ?? `Error al obtener calificacion (${status})`;
+            throw new Error(message);
+        }
+
+        throw new Error("No se pudo cargar la calificacion del pedido.");
+    }
+}
+
+async function hydrateOrdersWithLocalRatings(
+    clientId: number,
+    orders: Order[],
+): Promise<Order[]> {
+    const ordersToHydrate = orders.filter(
+        (order) => order.estado === "FINALIZADO" && !order.calificacionLocal,
+    );
+
+    if (ordersToHydrate.length === 0) return orders;
+
+    const ratingResults = await Promise.all(
+        ordersToHydrate.map(async (order) => ({
+            orderId: order.id,
+            rating: await fetchOrderLocalRating(clientId, order.id).catch(() => null),
+        })),
+    );
+
+    const ratingsByOrderId = new Map(
+        ratingResults
+            .filter((result): result is { orderId: number; rating: OrderRating } =>
+                Boolean(result.rating),
+            )
+            .map((result) => [result.orderId, result.rating]),
+    );
+
+    if (ratingsByOrderId.size === 0) return orders;
+
+    return orders.map((order) => {
+        const rating = ratingsByOrderId.get(order.id);
+
+        return rating
+            ? { ...order, calificacionLocal: rating, hasLocalRating: true }
+            : order;
+    });
 }
 
 // Historial de pedidos cerrados del cliente, paginado en el backend.
@@ -430,6 +630,7 @@ export async function getOrderHistory(
     const session = await requireCurrentSession();
 
     const params: Record<string, string | number> = {};
+    if (filter.orderId != null) params.identificador = filter.orderId;
     if (filter.localId != null) params.localId = filter.localId;
     if (filter.desde) params.desde = filter.desde;
     if (filter.hasta) params.hasta = filter.hasta;
@@ -443,8 +644,13 @@ export async function getOrderHistory(
             `/api/clientes/${session.idTipoUsuario}/pedidos`,
             { params }
         );
+        const mappedOrders = response.data.content.map(mapOrderFromApi);
+        const orders = filter.includeRatings === false
+            ? mappedOrders
+            : await hydrateOrdersWithLocalRatings(session.idTipoUsuario, mappedOrders);
+
         return {
-            orders: response.data.content.map(mapOrderFromApi),
+            orders,
             totalPages: response.data.totalPages,
             totalElements: response.data.totalElements,
         };
@@ -486,6 +692,7 @@ export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaura
             size: 100,
             ordenarPor: "fecha",
             direccion: "desc",
+            includeRatings: false,
         });
         totalPages = pages;
         for (const order of orders) {
@@ -502,4 +709,74 @@ export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaura
     );
 
     return restaurants.sort((a, b) => a.name.localeCompare(b.name, "es"));
+}
+
+export async function getPendingOrderRatingsCount(): Promise<number> {
+    let page = 0;
+    let totalPages = 1;
+    let pendingRatings = 0;
+
+    while (page < totalPages) {
+        const { orders, totalPages: pages } = await getOrderHistory({
+            page,
+            size: 100,
+            ordenarPor: "fecha",
+            direccion: "desc",
+        });
+
+        totalPages = pages;
+        pendingRatings += orders.filter(
+            (order) => order.estado === "FINALIZADO" && !order.hasLocalRating,
+        ).length;
+        page += 1;
+    }
+
+    return pendingRatings;
+}
+
+export type SubmitOrderRatingRequest = {
+    calificacion: OrderRatingValue;
+    comentario?: string;
+};
+
+export async function getOrderLocalRating(orderId: number): Promise<OrderRating | null> {
+    const session = await requireCurrentSession();
+    return fetchOrderLocalRating(session.idTipoUsuario, orderId);
+}
+
+export async function submitOrderLocalRating(
+    orderId: number,
+    request: SubmitOrderRatingRequest,
+): Promise<OrderRating> {
+    const session = await requireCurrentSession();
+    const body = {
+        pedidoId: orderId,
+        calificacion: request.calificacion,
+        comentario: request.comentario?.trim() || null,
+    };
+
+    try {
+        const response = await clientApi.post<OrderRatingDtoFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/pedidos/${orderId}/calificacion-local`,
+            body,
+            { headers: { "Content-Type": "application/json" } },
+        );
+
+        return mapOrderRatingFromApi(response.data, orderId) ?? {
+            pedidoId: orderId,
+            calificacion: request.calificacion,
+            comentario: body.comentario,
+        };
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+            const message =
+                typeof data === "string"
+                    ? data
+                    : data?.error ?? data?.message ?? `Error al calificar pedido (${error.response?.status})`;
+            throw new Error(message);
+        }
+
+        throw new Error("No se pudo registrar la calificacion del pedido.");
+    }
 }

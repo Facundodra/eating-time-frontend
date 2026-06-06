@@ -8,9 +8,11 @@ import Form from "next/form";
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 
 import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
 import type { LoginWebResponse } from "@/lib/shared/auth/types";
+import { getPendingOrderRatingsCount } from "@/services/client/client-service";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
@@ -18,12 +20,42 @@ import ProfilePicture from "../shared/widgets/profile-picture";
 export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
   const { imageUrl, profileAlt } = getSessionDisplayData(session);
+  const [pendingRatingCount, setPendingRatingCount] = useState(0);
 
   // Si estamos en un restaurante, el ícono del carrito apunta a su carrito
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
   const cartHref = restaurantMatch
     ? `/client/restaurant/${restaurantMatch[1]}/cart`
     : "/client/cart";
+
+  useEffect(() => {
+    let ignore = false;
+
+    async function loadPendingRatingCount() {
+      try {
+        const count = await getPendingOrderRatingsCount();
+        if (!ignore) setPendingRatingCount(count);
+      } catch {
+        if (!ignore) setPendingRatingCount(0);
+      }
+    }
+
+    void loadPendingRatingCount();
+
+    function handleOrderRatingUpdated() {
+      void loadPendingRatingCount();
+    }
+
+    window.addEventListener("order-rating-updated", handleOrderRatingUpdated);
+
+    return () => {
+      ignore = true;
+      window.removeEventListener(
+        "order-rating-updated",
+        handleOrderRatingUpdated,
+      );
+    };
+  }, []);
 
   return (
     <div className="client-header flex items-center justify-between px-10 py-5">
@@ -36,8 +68,8 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           className="w-[50px]"
         />
         <div className="logo_content">
-          <span className="logo_content_name block text-xl font-bold">
-            Eating Time
+          <span className="logo_content_name block text-xl font-bold text-slate-950 dark:text-slate-50">
+            Eating<span className="text-red-600 dark:text-red-500">Time</span>
           </span>
         </div>
       </Link>
@@ -76,11 +108,29 @@ export default function Header({ session }: { session: LoginWebResponse }) {
 
       <div className="account relative cursor-pointer group">
         {/* <Link href="/client/mi-cuenta" className="relative bottom-[3px]"> */}
-        <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+        <span className="relative inline-block">
+          <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+          {pendingRatingCount > 0 ? (
+            <span
+              aria-label={`${pendingRatingCount} pedidos pendientes de calificacion`}
+              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
+            >
+              {pendingRatingCount > 9 ? "9+" : pendingRatingCount}
+            </span>
+          ) : null}
+        </span>
         {/* </Link> */}
         <ul className="sub-menu absolute bg-white py-5 px-6 right-0 w-max rounded-md shadow-md hidden group-hover:block">
           <li><Link href="/client/mi-cuenta" className="text-sm text-gray-800 hover:text-orange-700 transition">Mi cuenta</Link></li>
-          <li><Link href="/client/order-history" className="text-sm text-gray-800 hover:text-orange-700 transition">Historial de Pedidos</Link></li>
+          <li>
+            <Link
+              href="/client/order-history"
+              className="text-sm text-gray-800 hover:text-orange-700 transition"
+            >
+              Historial de Pedidos
+              {pendingRatingCount > 0 ? ` (${pendingRatingCount})` : ""}
+            </Link>
+          </li>
           <li><Link href="/logout" className="text-sm text-gray-800 hover:text-orange-700 transition">Salir</Link></li>
         </ul>
       </div>

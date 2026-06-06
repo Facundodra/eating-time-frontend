@@ -1,4 +1,6 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import { notFound } from "next/navigation";
+
+import OrderHistoryDetailPage from "@/ui/client/orders/order-history-detail-page";
 
 export default async function OrderDetailPage({
   params,
@@ -6,13 +8,11 @@ export default async function OrderDetailPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const orderId = Number(id);
 
-  return (
-    <ComingSoonPage
-      backHref="/client/order-history"
-      backLabel="Volver al historial"
-      title={`Detalle del pedido #${id}`}
-      description="Próximamente vas a poder ver acá el detalle completo del pedido, los platos y el resto de la información."
-    />
-  );
+  if (!Number.isFinite(orderId)) {
+    notFound();
+  }
+
+  return <OrderHistoryDetailPage orderId={orderId} />;
 }

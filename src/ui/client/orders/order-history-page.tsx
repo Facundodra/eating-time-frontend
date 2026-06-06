@@ -5,12 +5,15 @@ import Link from "next/link";
 import { ReceiptPercentIcon } from "@heroicons/react/24/outline";
 
 import {
+  getOrderLocalRating,
   getOrderHistory,
   getOrderHistoryRestaurants,
   type OrderHistoryFilter,
   type OrderHistoryRestaurant,
 } from "@/services/client/client-service";
-import type { Order, OrderHistoryStatus } from "@/lib/client/types";
+import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
+import OrderDetailModal from "@/ui/client/orders/order-detail-modal";
+import OrderRatingModal from "@/ui/client/ratings/order-rating-modal";
 
 const PAGE_SIZE = 10;
 
@@ -112,6 +115,16 @@ export default function OrderHistoryPage() {
 
   // Locales con pedidos en el historial (para filtro y nombres en tarjetas)
   const [restaurants, setRestaurants] = useState<OrderHistoryRestaurant[]>([]);
+  const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(
+    null,
+  );
+  const [selectedRatingOrder, setSelectedRatingOrder] = useState<Order | null>(
+    null,
+  );
+  const [loadingRatingOrderId, setLoadingRatingOrderId] = useState<
+    number | null
+  >(null);
+  const [ratingLoadError, setRatingLoadError] = useState<string | null>(null);
 
   useEffect(() => {
     getOrderHistoryRestaurants()
@@ -177,10 +190,81 @@ export default function OrderHistoryPage() {
     return restaurants.find((r) => r.id === id)?.name ?? `Local #${id}`;
   }
 
+  function mergeOrderRating(order: Order, rating: OrderRating): Order {
+    return {
+      ...order,
+      calificacionLocal: rating,
+      hasLocalRating: true,
+    };
+  }
+
+  function handleRatingSaved(orderId: number, rating: OrderRating) {
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId ? mergeOrderRating(order, rating) : order,
+      ),
+    );
+
+    window.dispatchEvent(new Event("order-rating-updated"));
+  }
+
+  async function handleOpenRating(order: Order) {
+    setRatingLoadError(null);
+
+    if (!order.hasLocalRating || order.calificacionLocal) {
+      setSelectedRatingOrder(order);
+      return;
+    }
+
+    setLoadingRatingOrderId(order.id);
+
+    try {
+      const rating = await getOrderLocalRating(order.id);
+
+      if (!rating) {
+        throw new Error("No se encontro la calificacion guardada.");
+      }
+
+      const ratedOrder = mergeOrderRating(order, rating);
+
+      setOrders((currentOrders) =>
+        currentOrders.map((currentOrder) =>
+          currentOrder.id === order.id ? ratedOrder : currentOrder,
+        ),
+      );
+      setSelectedRatingOrder(ratedOrder);
+    } catch (error) {
+      setRatingLoadError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo cargar la calificacion guardada.",
+      );
+    } finally {
+      setLoadingRatingOrderId(null);
+    }
+  }
+
   const hasMore = page < totalPages - 1;
 
   return (
     <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-6">
+      {selectedRatingOrder ? (
+        <OrderRatingModal
+          key={selectedRatingOrder.id}
+          onClose={() => setSelectedRatingOrder(null)}
+          onSaved={(rating) => handleRatingSaved(selectedRatingOrder.id, rating)}
+          order={selectedRatingOrder}
+        />
+      ) : null}
+
+      {selectedDetailOrder ? (
+        <OrderDetailModal
+          onClose={() => setSelectedDetailOrder(null)}
+          order={selectedDetailOrder}
+          restaurantName={getRestaurantName(selectedDetailOrder.restaurantId)}
+        />
+      ) : null}
+
       <section>
         <h1 className="text-2xl font-bold text-gray-900">Historial de pedidos</h1>
         <p className="text-sm text-gray-500 mt-1">
@@ -258,6 +342,12 @@ export default function OrderHistoryPage() {
         </div>
       </div>
 
+      {ratingLoadError ? (
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {ratingLoadError}
+        </p>
+      ) : null}
+
       {/* Resultados */}
       {loading ? (
         <div className="space-y-4">
@@ -286,12 +376,28 @@ export default function OrderHistoryPage() {
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
                       <h2 className="font-bold text-gray-900">Pedido #{order.id}</h2>
-                      <Link
-                        href={`/client/order-history/${order.id}`}
+                      <button
                         className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
+                        onClick={() => setSelectedDetailOrder(order)}
+                        type="button"
                       >
                         Ver detalles
-                      </Link>
+                      </button>
+
+                      {order.estado === "FINALIZADO" ? (
+                        <button
+                          className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
+                          disabled={loadingRatingOrderId === order.id}
+                          onClick={() => void handleOpenRating(order)}
+                          type="button"
+                        >
+                          {loadingRatingOrderId === order.id
+                            ? "Cargando..."
+                            : order.hasLocalRating
+                            ? "Ver calificacion"
+                            : "Calificar"}
+                        </button>
+                      ) : null}
                     </div>
                     <p className="mt-0.5 text-sm text-gray-500">
                       {getRestaurantName(order.restaurantId)}

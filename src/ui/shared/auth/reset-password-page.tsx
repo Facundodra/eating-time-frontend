@@ -225,7 +225,7 @@ function PageShell({ children }: { children: React.JSX.Element | React.JSX.Eleme
         <Link href="/" className="flex w-fit items-center gap-3 mb-8">
           <Image src={EatingTimeLogo} alt="Eating Time" width={36} height={36} className="h-9 w-9 rounded-xl shadow-sm" />
           <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Eating Time
+            Eating<span className="text-red-600 dark:text-red-500">Time</span>
           </span>
         </Link>
         {children}

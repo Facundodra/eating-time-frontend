@@ -51,6 +51,8 @@ These endpoints are tried according to the authenticated user's role.
 | `GET` | `/api/platos/{id}` | Dish detail | `src/services/client/client-service.ts` |
 | `GET` | `/api/clientes/{clientId}/puntos-entrega` | List delivery points | `src/services/client/client-service.ts` |
 | `POST` | `/api/clientes/{clientId}/puntos-entrega` | Add delivery point | `src/services/client/client-service.ts` |
+| `GET` | `/api/clientes/{clientId}/pedidos/{orderId}/calificacion-local` | Load saved local rating for a finalized order when available | `src/services/client/client-service.ts` |
+| `POST` | `/api/clientes/{clientId}/pedidos/{orderId}/calificacion-local` | Rate a finalized order/local with `calificacion` and optional `comentario` | `src/services/client/client-service.ts` |
 
 Supported query params for `GET /api/locales/platos`:
 
