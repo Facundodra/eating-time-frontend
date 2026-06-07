@@ -460,32 +460,29 @@ export type OrderHistoryRestaurant = {
     name: string;
 };
 
+interface LocalResumenDtoFromApi {
+    id: number;
+    nombre: string;
+}
+
 // Locales distintos con al menos un pedido en el historial del cliente (para el filtro).
+// El backend resuelve los locales distintos con un único query (endpoint dedicado).
 export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaurant[]> {
-    const restaurantIds = new Set<number>();
-    let page = 0;
-    let totalPages = 1;
+    const session = await requireCurrentSession();
 
-    while (page < totalPages) {
-        const { orders, totalPages: pages } = await getOrderHistory({
-            page,
-            size: 100,
-            ordenarPor: "fecha",
-            direccion: "desc",
-        });
-        totalPages = pages;
-        for (const order of orders) {
-            restaurantIds.add(order.restaurantId);
+    try {
+        const response = await clientApi.get<LocalResumenDtoFromApi[]>(
+            `/api/clientes/${session.idTipoUsuario}/pedidos/locales`
+        );
+        return response.data
+            .map((local) => ({ id: local.id, name: local.nombre }))
+            .sort((a, b) => a.name.localeCompare(b.name, "es"));
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener locales (${error.response?.status})`;
+            throw new Error(message);
         }
-        page += 1;
+        throw new Error("No se pudieron cargar los locales del historial.");
     }
-
-    const restaurants = await Promise.all(
-        [...restaurantIds].map(async (id) => ({
-            id,
-            name: await getRestaurantName(id).catch(() => `Local #${id}`),
-        })),
-    );
-
-    return restaurants.sort((a, b) => a.name.localeCompare(b.name, "es"));
 }
