@@ -43,8 +43,9 @@ export default function PaymentResultPage() {
   const localId = params.get("localId");
   const pedidoId = params.get("pedidoId");
 
-  // El backend puede enviar el valor duplicado (ej: "approved,approved"), tomamos el primero
-  const parsedStatus = (rawStatus?.split(",")[0] ?? "") as PaymentStatus;
+  // MercadoPago envía "rejected" para pagos fallidos; lo normalizamos a "failure"
+  const normalized = rawStatus?.split(",")[0] ?? "";
+  const parsedStatus = (normalized === "rejected" ? "failure" : normalized) as PaymentStatus;
   const status = parsedStatus in STATUS_CONFIG ? parsedStatus : null;
 
   if (!status) {

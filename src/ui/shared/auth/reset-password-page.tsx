@@ -52,6 +52,11 @@ export default function ResetPasswordPage({ token }: Props) {
     );
   }
 
+  function handleContinue() {
+    window.location.href = "eatingtime://auth/login";
+    setTimeout(() => { window.location.href = "/login"; }, 1500);
+  }
+
   if (done) {
     return (
       <PageShell>
@@ -68,10 +73,10 @@ export default function ResetPasswordPage({ token }: Props) {
             Tu contraseña fue restablecida correctamente. Ya podés iniciar sesión.
           </p>
           <button
-            onClick={() => router.push("/login")}
+            onClick={handleContinue}
             className="mt-7 h-[48px] px-8 cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700"
           >
-            Ir al inicio de sesión
+            Continuar
           </button>
         </div>
       </PageShell>

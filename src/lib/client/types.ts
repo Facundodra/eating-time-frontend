@@ -22,6 +22,7 @@ export type DeliveryPoint = {
 export type ClientDish = {
   id: string;
   name: string;
+  description: string;
   price: number;
   imageUrl: string | null;
   status: DishStatus;
@@ -102,8 +103,12 @@ export type Cart = {
   items: CartItem[];
 };
 
-// Estados de un pedido ya cerrado que aparecen en el historial del cliente
+// Estados de un pedido que aparecen en el historial del cliente
+// (ya confirmados por el local: en curso o terminados, más los cerrados)
 export type OrderHistoryStatus =
+  | "ACEPTADO_LOCAL"
+  | "EN_CURSO_LOCAL"
+  | "EN_CAMINO_LOCAL"
   | "FINALIZADO"
   | "RECHAZADO_LOCAL"
   | "CANCELADO_CLIENTE";

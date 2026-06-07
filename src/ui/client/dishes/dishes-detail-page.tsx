@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import {
   ChevronLeftIcon,
@@ -19,6 +19,8 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
   const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
+  const cartUpdateInFlight = useRef(false);
 
   useEffect(() => {
     getCart(dish.localId).then(setCart).catch(() => setCart(null));
@@ -35,6 +37,8 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
       .reduce((sum, i) => sum + i.cantidad, 0) ?? 0;
 
   async function handleCartUpdate(delta: number) {
+    if (cartUpdateInFlight.current) return;
+    cartUpdateInFlight.current = true;
     setIsUpdating(true);
     try {
       const updated = await updateCartItem(dish.localId, Number(dish.id), delta);
@@ -43,6 +47,7 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
     } catch (err) {
       console.error("[carrito] error:", err);
     } finally {
+      cartUpdateInFlight.current = false;
       setIsUpdating(false);
     }
   }
