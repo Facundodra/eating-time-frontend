@@ -708,6 +708,7 @@ export async function getOrderHistory(
     }
 }
 
+<<<<<<< HEAD
 export async function getPendingOrderRatingsCount(): Promise<number> {
     let page = 0;
     let totalPages = 1;
@@ -823,6 +824,8 @@ export async function submitOrderLocalRating(
     }
 }
 
+=======
+>>>>>>> 88417f8 (Merge pull request #37 from Facundodra/feature/historial-pedidos)
 export type OrderHistoryRestaurant = {
     id: number;
     name: string;
@@ -839,7 +842,11 @@ export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaura
     const session = await requireCurrentSession();
 
     try {
+<<<<<<< HEAD
         const response = await api.get<LocalResumenDtoFromApi[]>(
+=======
+        const response = await clientApi.get<LocalResumenDtoFromApi[]>(
+>>>>>>> 88417f8 (Merge pull request #37 from Facundodra/feature/historial-pedidos)
             `/api/clientes/${session.idTipoUsuario}/pedidos/locales`
         );
         return response.data
@@ -853,6 +860,7 @@ export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaura
         }
         throw new Error("No se pudieron cargar los locales del historial.");
     }
+<<<<<<< HEAD
 }
 
 export class AccountDeletionError extends Error {
@@ -1007,4 +1015,6 @@ async function fetchLocalRatings(localId: number): Promise<unknown[]> {
 
         throw new Error("No se pudieron cargar las calificaciones del local.");
     }
+=======
+>>>>>>> 88417f8 (Merge pull request #37 from Facundodra/feature/historial-pedidos)
 }
