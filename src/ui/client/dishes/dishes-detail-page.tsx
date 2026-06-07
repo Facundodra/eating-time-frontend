@@ -7,24 +7,39 @@ import {
   MinusIcon,
   PlusIcon,
   ShoppingCartIcon,
+  TagIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import type { Cart, ClientDish } from "@/lib/client/types";
-import { getCart, updateCartItem } from "@/services/client/client-service";
+import type { Cart, ClientDish, Discount } from "@/lib/client/types";
+import { getCart, getDishDiscount, updateCartItem } from "@/services/client/client-service";
 import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 
 export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
   const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
+  const [discount, setDiscount] = useState<Discount | null>(null);
+  const [discountLoading, setDiscountLoading] = useState(true);
   // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
   const cartUpdateInFlight = useRef(false);
 
   useEffect(() => {
     getCart(dish.localId).then(setCart).catch(() => setCart(null));
   }, [dish.localId]);
+
+  useEffect(() => {
+    setDiscountLoading(true);
+    getDishDiscount(dish.id)
+      .then(setDiscount)
+      .catch(() => setDiscount(null))
+      .finally(() => setDiscountLoading(false));
+  }, [dish.id]);
+
+  const discountedPrice = discount
+    ? Math.round(dish.price * (1 - discount.porcentaje / 100) * 100) / 100
+    : null;
 
   const currentQty =
     cart?.items
@@ -67,7 +82,13 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
 
         <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
           {/* Imagen */}
-          <div className="flex items-center justify-center bg-orange-50 h-64">
+          <div className="relative flex items-center justify-center bg-orange-50 h-64">
+            {!discountLoading && discount && (
+              <span className="absolute top-3 left-3 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-3 py-1 text-sm font-bold text-white shadow">
+                <TagIcon className="h-4 w-4" />
+                -{discount.porcentaje}%
+              </span>
+            )}
             {dish.imageUrl ? (
               <img
                 src={dish.imageUrl}
@@ -98,9 +119,22 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
               </span>
             </div>
 
-            <p className="mt-3 text-3xl font-black text-orange-600">
-              ${dish.price}
-            </p>
+            {discountLoading ? (
+              <div className="mt-3 h-9 w-32 animate-pulse rounded-md bg-gray-200" />
+            ) : discountedPrice != null ? (
+              <div className="mt-3 flex items-baseline gap-3">
+                <p className="text-3xl font-black text-orange-600">
+                  ${discountedPrice}
+                </p>
+                <p className="text-lg text-gray-400 line-through">
+                  ${dish.price}
+                </p>
+              </div>
+            ) : (
+              <p className="mt-3 text-3xl font-black text-orange-600">
+                ${dish.price}
+              </p>
+            )}
 
             <div className="mt-2">
               <LocalNameWidget localId={dish.localId} />

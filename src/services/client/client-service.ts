@@ -9,6 +9,7 @@ import type {
     DeliveryPointCredentials,
     DeliveryPoint,
     ClientDish,
+    Discount,
     Cart,
     CartItem,
     Order,
@@ -84,7 +85,7 @@ interface PlatoDtoFromApi {
 
 function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
     return {
-        id: String(plato.id),
+        id: plato.id,
         name: plato.nombre,
         description: plato.descripcion ?? "",
         price: plato.precio,
@@ -147,6 +148,29 @@ export async function getDish(id: string): Promise<ClientDish> {
         }
         throw new Error("No se pudo cargar el plato.");
     }
+}
+
+
+// Descuentos de plato
+export async function getDishDiscount(dishId: number): Promise<Discount | null> {
+    try {
+        const response = await clientApi.get<Discount>(`/api/descuentos/plato/${dishId}`);
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            if (error.response?.status === 404) return null;
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener descuento (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo cargar el descuento.");
+    }
+}
+
+// Devuelve los IDs de los platos con descuento activo, reutilizando el filtro conDescuento ya soportado por /api/locales/platos
+export async function getDiscountedDishIds(idLocal?: number): Promise<Set<number>> {
+    const dishes = await getDishes({ idLocal, conDescuento: true, tamano: 100 });
+    return new Set(dishes.map((dish) => dish.id));
 }
 
 
