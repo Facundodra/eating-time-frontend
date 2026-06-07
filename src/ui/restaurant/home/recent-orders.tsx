@@ -28,6 +28,7 @@ const statusLabels: Record<OrderStatus, string> = {
   FINALIZADO: "Finalizado",
   RECHAZADO_LOCAL: "Rechazado",
   CANCELADO_CLIENTE: "Cancelado",
+  CANCELADO_CLIENTE: "Cancelado",
 };
 
 const statusClassName: Record<OrderStatus, string> = {
@@ -42,7 +43,6 @@ const statusClassName: Record<OrderStatus, string> = {
   FINALIZADO:
     "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
   RECHAZADO_LOCAL: "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400",
-  CANCELADO_CLIENTE: "bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400",
 };
 
 function formatTime(dateStr: string) {

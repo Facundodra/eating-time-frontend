@@ -22,6 +22,7 @@ export type DeliveryPoint = {
 export type ClientDish = {
   id: string;
   name: string;
+  description: string;
   price: number;
   imageUrl: string | null;
   status: DishStatus;

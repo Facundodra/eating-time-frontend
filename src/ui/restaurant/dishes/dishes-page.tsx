@@ -12,8 +12,13 @@ import {
   updateDishAction,
 } from "@/app/restaurant/dishes/actions";
 import { useAsyncData } from "@/hooks/shared/use-async-data";
-import type { DishStatus, RestaurantDish, RestaurantDishesResponse } from "@/lib/restaurant/dish/types";
-import { getRestaurantDishes } from "@/services/restaurant/dish-service";
+import type {
+  DishCategory,
+  DishStatus,
+  RestaurantDish,
+  RestaurantDishesResponse,
+} from "@/lib/restaurant/dish/types";
+import { getDishCategories, getRestaurantDishes } from "@/services/restaurant/dish-service";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
@@ -60,14 +65,105 @@ function filterDishes(dishes: RestaurantDish[], filter: DishFilter) {
   return dishes.filter((dish) => dish.status === filter);
 }
 
-async function loadRestaurantDishes(): Promise<RestaurantDishesResponse> {
+function getCategoryLabels(categoryIds: string[], categories: DishCategory[]) {
+  return categoryIds
+    .map((categoryId) => categories.find((category) => category.id === categoryId)?.name)
+    .filter((name): name is string => Boolean(name));
+}
+
+function sameCategoryIds(left: string[], right: string[]) {
+  if (left.length !== right.length) {
+    return false;
+  }
+
+  const sortedLeft = [...left].sort();
+  const sortedRight = [...right].sort();
+
+  return sortedLeft.every((categoryId, index) => categoryId === sortedRight[index]);
+}
+
+function CategorySelector({
+  categories,
+  selectedIds,
+  onToggle,
+  inputName,
+}: {
+  categories: DishCategory[];
+  selectedIds?: string[];
+  onToggle?: (categoryId: string) => void;
+  inputName?: string;
+}) {
+  if (categories.length === 0) {
+    return (
+      <p className="rounded-xl border border-dashed border-gray-200 px-4 py-3 text-sm font-medium text-slate-500 dark:border-slate-800 dark:text-slate-400">
+        No hay categorías disponibles.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {categories.map((category) => {
+        const isSelected = selectedIds?.includes(category.id) ?? false;
+
+        if (onToggle) {
+          return (
+            <button
+              key={category.id}
+              type="button"
+              onClick={() => onToggle(category.id)}
+              className={clsx(
+                "rounded-full px-3 py-1.5 text-xs font-extrabold transition",
+                isSelected
+                  ? "bg-orange-600 text-white"
+                  : "bg-slate-100 text-slate-700 hover:bg-orange-50 hover:text-orange-600 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-orange-500/10 dark:hover:text-orange-400",
+              )}
+            >
+              {category.name}
+            </button>
+          );
+        }
+
+        return (
+          <label
+            key={category.id}
+            className="cursor-pointer rounded-full bg-slate-100 px-3 py-1.5 text-xs font-extrabold text-slate-700 transition has-[:checked]:bg-orange-600 has-[:checked]:text-white dark:bg-slate-800 dark:text-slate-200 dark:has-[:checked]:bg-orange-600"
+          >
+            <input
+              type="checkbox"
+              name={inputName}
+              value={category.id}
+              className="sr-only"
+            />
+            {category.name}
+          </label>
+        );
+      })}
+    </div>
+  );
+}
+
+type RestaurantDishesPageData = RestaurantDishesResponse & {
+  categories: DishCategory[];
+};
+
+async function loadRestaurantDishes(): Promise<RestaurantDishesPageData> {
   const session = await getCurrentSession();
 
   if (!session) {
     throw new Error("No se encontró una sesión activa.");
   }
 
-  return getRestaurantDishes(String(session.idTipoUsuario));
+  const restaurantId = String(session.idTipoUsuario);
+  const [dishesData, categories] = await Promise.all([
+    getRestaurantDishes(restaurantId),
+    getDishCategories(),
+  ]);
+
+  return {
+    ...dishesData,
+    categories,
+  };
 }
 
 export default function RestaurantDishesPage() {
@@ -77,6 +173,7 @@ export default function RestaurantDishesPage() {
   const [filter, setFilter] = useState<DishFilter>("all");
   const [dishes, setDishes] = useState<RestaurantDish[]>([]);
   const [savedDishes, setSavedDishes] = useState<RestaurantDish[]>([]);
+  const [categories, setCategories] = useState<DishCategory[]>([]);
   const [selectedDishId, setSelectedDishId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isPending, startTransition] = useTransition();
@@ -88,7 +185,9 @@ export default function RestaurantDishesPage() {
 
   // Edit form state
   const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [editPrice, setEditPrice] = useState("");
+  const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
   const [hasEditImageChange, setHasEditImageChange] = useState(false);
   const {
     data: loadedData,
@@ -113,22 +212,34 @@ export default function RestaurantDishesPage() {
   const hasSelectedDishChanges =
     Boolean(selectedDish && savedSelectedDishData) &&
     (editName !== savedSelectedDishData?.name ||
+      editDescription !== savedSelectedDishData?.description ||
       editPrice !==
         (savedSelectedDishData ? String(savedSelectedDishData.price) : "") ||
+      !sameCategoryIds(editCategoryIds, savedSelectedDishData?.categoryIds ?? []) ||
       hasEditImageChange);
 
   function resetEditForm(dish: RestaurantDish | null) {
     setSelectedDishId(dish?.id ?? "");
     setEditName(dish?.name ?? "");
+    setEditDescription(dish?.description ?? "");
     setEditPrice(dish ? String(dish.price) : "");
+    setEditCategoryIds(dish?.categoryIds ?? []);
     setHasEditImageChange(false);
     if (editImageInputRef.current) {
       editImageInputRef.current.value = "";
     }
   }
 
+  function toggleEditCategory(categoryId: string) {
+    setEditCategoryIds((current) =>
+      current.includes(categoryId)
+        ? current.filter((id) => id !== categoryId)
+        : [...current, categoryId],
+    );
+  }
+
   function applyDishesData(
-    nextData: RestaurantDishesResponse,
+    nextData: RestaurantDishesPageData,
     currentFilter: DishFilter,
   ) {
     // Sincroniza listado, copia guardada y formulario de edicion con una misma
@@ -139,6 +250,7 @@ export default function RestaurantDishesPage() {
     setRestaurantId(nextData.restaurantId);
     setDishes(nextData.dishes);
     setSavedDishes(nextData.dishes);
+    setCategories(nextData.categories);
     resetEditForm(initialSelectedDish);
     setShowCreateForm(!initialSelectedDish);
   }
@@ -173,10 +285,22 @@ export default function RestaurantDishesPage() {
     }
 
     const name = String(formData.get("name") ?? "").trim();
+    const description = String(formData.get("description") ?? "").trim();
     const price = Number(formData.get("price") ?? 0);
+    const categoryIds = formData.getAll("categoryIds");
 
     if (!name || price <= 0) {
       setError("Nombre y precio son obligatorios");
+      return;
+    }
+
+    if (!description) {
+      setError("La descripción es obligatoria");
+      return;
+    }
+
+    if (categoryIds.length === 0) {
+      setError("Debe seleccionar al menos una categoría");
       return;
     }
 
@@ -190,10 +314,14 @@ export default function RestaurantDishesPage() {
         createFormRef.current?.reset();
         setShowCreateForm(false);
         // Refresh dish list without full page reload
-        const freshData = await getRestaurantDishes(restaurantId);
+        const [freshData, freshCategories] = await Promise.all([
+          getRestaurantDishes(restaurantId),
+          getDishCategories(),
+        ]);
         const nextDish = filterDishes(freshData.dishes, filter)[0] ?? null;
         setDishes(freshData.dishes);
         setSavedDishes(freshData.dishes);
+        setCategories(freshCategories);
         resetEditForm(nextDish);
         setShowCreateForm(!nextDish);
       }
@@ -209,10 +337,24 @@ export default function RestaurantDishesPage() {
       return;
     }
 
+    if (!editDescription.trim()) {
+      setError("La descripción es obligatoria");
+      return;
+    }
+
+    if (editCategoryIds.length === 0) {
+      setError("Debe seleccionar al menos una categoría");
+      return;
+    }
+
     setError(null);
     const formData = new FormData();
     if (editName.trim()) formData.append("name", editName.trim());
+    formData.append("description", editDescription.trim());
     if (price != null) formData.append("price", String(price));
+    editCategoryIds.forEach((categoryId) => {
+      formData.append("categoryIds", categoryId);
+    });
 
     const fileInput = editImageInputRef.current;
     if (fileInput?.files?.[0]) {
@@ -231,7 +373,9 @@ export default function RestaurantDishesPage() {
               ? {
                   ...d,
                   name: editName.trim() || d.name,
+                  description: editDescription.trim(),
                   price: price ?? d.price,
+                  categoryIds: editCategoryIds,
                 }
               : d,
           );
@@ -318,7 +462,9 @@ export default function RestaurantDishesPage() {
       ),
     );
     setEditName(savedSelectedDishData.name);
+    setEditDescription(savedSelectedDishData.description);
     setEditPrice(String(savedSelectedDishData.price));
+    setEditCategoryIds(savedSelectedDishData.categoryIds);
     setHasEditImageChange(false);
     if (editImageInputRef.current) {
       editImageInputRef.current.value = "";
@@ -437,7 +583,20 @@ export default function RestaurantDishesPage() {
                     <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
                       {formatPrice(dish.price)}
                     </p>
+                    {dish.description && (
+                      <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                        {dish.description}
+                      </p>
+                    )}
                     <div className="mt-3 flex flex-wrap gap-2">
+                      {getCategoryLabels(dish.categoryIds, categories).map((categoryName) => (
+                        <span
+                          key={`${dish.id}-${categoryName}`}
+                          className="rounded-full bg-orange-50 px-3 py-1 text-xs font-extrabold text-orange-600 dark:bg-orange-500/10 dark:text-orange-400"
+                        >
+                          {categoryName}
+                        </span>
+                      ))}
                       <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                         Creado: {formatDateTimeLabel(dish.createdAt)}
                       </span>
@@ -511,6 +670,29 @@ export default function RestaurantDishesPage() {
                   className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
               </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                  Descripción
+                </span>
+                <textarea
+                  name="description"
+                  required
+                  rows={4}
+                  placeholder="Describe el plato para tus clientes"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                />
+              </label>
+
+              <div>
+                <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                  Categorías
+                </span>
+                <CategorySelector
+                  categories={categories}
+                  inputName="categoryIds"
+                />
+              </div>
 
               <label className="block">
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
@@ -598,6 +780,29 @@ export default function RestaurantDishesPage() {
                   className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
               </label>
+
+              <label className="block">
+                <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                  Descripción
+                </span>
+                <textarea
+                  value={editDescription}
+                  onChange={(e) => setEditDescription(e.target.value)}
+                  rows={4}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                />
+              </label>
+
+              <div>
+                <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                  Categorías
+                </span>
+                <CategorySelector
+                  categories={categories}
+                  selectedIds={editCategoryIds}
+                  onToggle={toggleEditCategory}
+                />
+              </div>
 
               <label className="block">
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
