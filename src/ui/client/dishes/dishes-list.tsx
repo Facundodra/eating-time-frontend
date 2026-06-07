@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { MinusIcon, PlusIcon, TagIcon } from "@heroicons/react/24/outline";
 
-import { getDishes, updateCartItem, type DishFilter } from "@/services/client/client-service";
-import type { Cart, ClientDish } from "@/lib/client/types";
+import { getDishes, getDiscountedDishIds, getDishDiscount, updateCartItem, type DishFilter } from "@/services/client/client-service";
+import type { Cart, ClientDish, Discount } from "@/lib/client/types";
 
 const PAGE_SIZE = 20;
 
@@ -48,10 +48,38 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
 
+  // IDs de platos con descuento activo (para este local) y detalle de cada descuento ya consultado.
+  // El Map guarda `null` para los que ya se consultaron pero no tienen descuento vigente — así
+  // podemos distinguir "todavía no se consultó" (afecta el skeleton) de "se consultó, no hay descuento".
+  const [discountedIds, setDiscountedIds] = useState<Set<number> | null>(null);
+  const [discounts, setDiscounts] = useState<Map<number, Discount | null>>(new Map());
+  // IDs cuyo detalle de descuento ya fue solicitado (evita pedirlo de nuevo aunque la respuesta haya sido null)
+  const requestedDiscountIds = useRef<Set<number>>(new Set());
+
   // ID del plato que está siendo actualizado en el carrito (para mostrar spinner)
   const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
   // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
   const cartUpdateInFlight = useRef(false);
+
+  // IDs con descuento activo: se recalculan solo cuando cambia el local, y limpian el cache de detalles
+  useEffect(() => {
+    setDiscountedIds(null);
+    setDiscounts(new Map());
+    requestedDiscountIds.current = new Set();
+
+    let cancelled = false;
+    getDiscountedDishIds(idLocal)
+      .then((ids) => {
+        if (!cancelled) setDiscountedIds(ids);
+      })
+      .catch(() => {
+        if (!cancelled) setDiscountedIds(new Set());
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [idLocal]);
 
   useEffect(() => {
     const isNewSearch = page === 1;
@@ -72,6 +100,35 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
         else setLoadingMore(false);
       });
   }, [filters, page, idLocal]);
+
+  // Para los platos recién cargados que tienen descuento activo y aún no fueron consultados, pedimos el detalle en paralelo
+  useEffect(() => {
+    if (!discountedIds) return;
+
+    const idsToFetch = dishes
+      .map((dish) => dish.id)
+      .filter((id) => discountedIds.has(id) && !requestedDiscountIds.current.has(id));
+
+    if (idsToFetch.length === 0) return;
+    // Marcamos los IDs como solicitados de inmediato: el ref persiste entre el doble efecto
+    // de Strict Mode (monta → limpia → vuelve a montar), así la segunda pasada no reintenta
+    // y la promesa de la primera pasada queda como única responsable de actualizar el estado
+    // (si usáramos también un flag "cancelled" por efecto, esa promesa quedaría descartada
+    // y el listado se quedaría esperando el descuento para siempre).
+    idsToFetch.forEach((id) => requestedDiscountIds.current.add(id));
+
+    Promise.allSettled(idsToFetch.map(getDishDiscount)).then((results) => {
+      setDiscounts((prev) => {
+        const next = new Map(prev);
+        results.forEach((result, i) => {
+          // Guardamos null también ante rechazo/"sin descuento": marca el ID como resuelto
+          // para no reintentar en loop y para que el skeleton deje de esperarlo.
+          next.set(idsToFetch[i], result.status === "fulfilled" ? result.value : null);
+        });
+        return next;
+      });
+    });
+  }, [dishes, discountedIds]);
 
   function updateFilters(patch: Partial<Filters>) {
     setPage(1);
@@ -103,6 +160,12 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   const ordenValue: OrdenValue = filters.orden
     ? `${filters.orden}-${filters.sentido ?? "asc"}`
     : "";
+
+  // Mientras no sepamos qué platos de la página actual tienen descuento (o aún falten consultar
+  // su detalle), seguimos mostrando el skeleton para evitar el "flash" del precio sin descontar.
+  const discountsPending =
+    discountedIds === null ||
+    dishes.some((d) => discountedIds.has(d.id) && !discounts.has(d.id));
 
   // Devuelve la cantidad del plato en el carrito actual (0 si no está)
   function getCartQty(dishId: string): number {
@@ -199,7 +262,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
       </div>
 
       {/* Resultados */}
-      {loading ? (
+      {loading || (page === 1 && discountsPending) ? (
         <DishSkeleton />
       ) : error ? (
         <p className="text-sm text-red-500">{error}</p>
@@ -213,11 +276,21 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
             {dishes.map((dish) => {
               const qty = getCartQty(dish.id);
               const isUpdating = updatingDishId === Number(dish.id);
+              const discount = discounts.get(dish.id);
+              const discountedPrice = discount
+                ? Math.round(dish.price * (1 - discount.porcentaje / 100) * 100) / 100
+                : null;
               return (
                 <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
                   <div className="rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden flex flex-col">
                     <Link href={`/client/platos/${dish.id}`} className="block">
-                      <div className="flex items-center justify-center bg-orange-50 h-[150px]">
+                      <div className="relative flex items-center justify-center bg-orange-50 h-[150px]">
+                        {discount && (
+                          <span className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white shadow">
+                            <TagIcon className="h-3 w-3" />
+                            -{discount.porcentaje}%
+                          </span>
+                        )}
                         {dish.imageUrl ? (
                           <img
                             alt={dish.name}
@@ -234,10 +307,21 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                         <span className="inline-block font-bold text-gray-800">
                           {dish.name}
                         </span>
-                        <div className="mt-1">
-                          <span className="text-md text-orange-700 font-bold">
-                            ${dish.price}
-                          </span>
+                        <div className="mt-1 flex items-center gap-2">
+                          {discountedPrice != null ? (
+                            <>
+                              <span className="text-md text-orange-700 font-bold">
+                                ${discountedPrice}
+                              </span>
+                              <span className="text-sm text-gray-400 line-through">
+                                ${dish.price}
+                              </span>
+                            </>
+                          ) : (
+                            <span className="text-md text-orange-700 font-bold">
+                              ${dish.price}
+                            </span>
+                          )}
                         </div>
                       </div>
                     </Link>

@@ -7,10 +7,11 @@ import {
   CheckCircleIcon,
   MoonIcon,
   StarIcon,
+  TagIcon,
 } from "@heroicons/react/24/outline";
 
-import { getRestaurants, getDishes } from "@/services/client/client-service";
-import type { RestaurantList, ClientDish } from "@/lib/client/types";
+import { getRestaurants, getDishes, getDiscountedDishIds, getDishDiscount } from "@/services/client/client-service";
+import type { RestaurantList, ClientDish, Discount } from "@/lib/client/types";
 
 function RestaurantCardSkeleton() {
   return (
@@ -45,6 +46,7 @@ function DishCardSkeleton() {
 export default function ClientHomePage() {
   const [restaurants, setRestaurants] = useState<RestaurantList[]>([]);
   const [dishes, setDishes] = useState<ClientDish[]>([]);
+  const [discounts, setDiscounts] = useState<Map<number, Discount>>(new Map());
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const [loadingDishes, setLoadingDishes] = useState(true);
 
@@ -56,10 +58,34 @@ export default function ClientHomePage() {
   }, []);
 
   useEffect(() => {
-    getDishes({ tamano: 8 })
-      .then(setDishes)
+    let cancelled = false;
+
+    Promise.all([getDishes({ tamano: 8 }), getDiscountedDishIds()])
+      .then(async ([dishesData, discountedIds]) => {
+        if (cancelled) return;
+        setDishes(dishesData);
+
+        const idsToFetch = dishesData.map((d) => d.id).filter((id) => discountedIds.has(id));
+        if (idsToFetch.length === 0) return;
+
+        const results = await Promise.allSettled(idsToFetch.map(getDishDiscount));
+        if (cancelled) return;
+        const map = new Map<number, Discount>();
+        results.forEach((result, i) => {
+          if (result.status === "fulfilled" && result.value != null) {
+            map.set(idsToFetch[i], result.value);
+          }
+        });
+        setDiscounts(map);
+      })
       .catch(() => setDishes([]))
-      .finally(() => setLoadingDishes(false));
+      .finally(() => {
+        if (!cancelled) setLoadingDishes(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   return (
@@ -147,33 +173,58 @@ export default function ClientHomePage() {
             ? Array.from({ length: 8 }).map((_, i) => (
                 <DishCardSkeleton key={i} />
               ))
-            : dishes.map((d) => (
-                <Link
-                  key={d.id}
-                  href={`/client/platos/${d.id}`}
-                  className="block rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden"
-                >
-                  <div className="flex items-center justify-center bg-orange-50 h-[150px]">
-                    {d.imageUrl ? (
-                      <img
-                        alt={d.name}
-                        src={d.imageUrl}
-                        className="object-cover w-full h-full"
-                      />
-                    ) : (
-                      <span className="text-4xl font-black text-orange-600">
-                        {d.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <span className="font-bold text-gray-800 block">{d.name}</span>
-                    <span className="text-orange-700 font-bold text-sm mt-1 block">
-                      ${d.price}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+            : dishes.map((d) => {
+                const discount = discounts.get(d.id);
+                const discountedPrice = discount
+                  ? Math.round(d.price * (1 - discount.porcentaje / 100) * 100) / 100
+                  : null;
+                return (
+                  <Link
+                    key={d.id}
+                    href={`/client/platos/${d.id}`}
+                    className="block rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden"
+                  >
+                    <div className="relative flex items-center justify-center bg-orange-50 h-[150px]">
+                      {discount && (
+                        <span className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white shadow">
+                          <TagIcon className="h-3 w-3" />
+                          -{discount.porcentaje}%
+                        </span>
+                      )}
+                      {d.imageUrl ? (
+                        <img
+                          alt={d.name}
+                          src={d.imageUrl}
+                          className="object-cover w-full h-full"
+                        />
+                      ) : (
+                        <span className="text-4xl font-black text-orange-600">
+                          {d.name.charAt(0).toUpperCase()}
+                        </span>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <span className="font-bold text-gray-800 block">{d.name}</span>
+                      <div className="mt-1 flex items-center gap-2">
+                        {discountedPrice != null ? (
+                          <>
+                            <span className="text-orange-700 font-bold text-sm">
+                              ${discountedPrice}
+                            </span>
+                            <span className="text-gray-400 text-xs line-through">
+                              ${d.price}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-orange-700 font-bold text-sm">
+                            ${d.price}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
         </div>
       </section>
     </div>
