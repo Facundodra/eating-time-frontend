@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
 import { getServerSession } from "@/lib/shared/auth/server-session";
+import RestaurantNotificationStream from "@/ui/restaurant/notifications/restaurant-notification-stream";
 import SideNav from "@/ui/restaurant/sidenav";
 import Topnav from "@/ui/restaurant/topnav";
 
@@ -31,6 +32,7 @@ export default async function RestaurantLayout({
         <Topnav session={session} />
         {children}
       </main>
+      <RestaurantNotificationStream restaurantId={session.idTipoUsuario} />
     </div>
   );
 }
