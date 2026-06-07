@@ -9,22 +9,41 @@ import {
   updateDish,
 } from "@/services/restaurant/dish-service";
 
+function parseCategoryIds(formData: FormData): string[] {
+  return formData
+    .getAll("categoryIds")
+    .map((value) => String(value).trim())
+    .filter(Boolean);
+}
+
 export async function createDishAction(
   restaurantId: string,
   formData: FormData,
 ): Promise<{ error?: string }> {
   const name = String(formData.get("name") ?? "").trim();
+  const description = String(formData.get("description") ?? "").trim();
   const price = Number(formData.get("price") ?? 0);
+  const categoryIds = parseCategoryIds(formData);
   const image = formData.get("image") as File | null;
 
   if (!name || price <= 0) {
     return { error: "Nombre y precio son obligatorios" };
   }
 
+  if (!description) {
+    return { error: "La descripción es obligatoria" };
+  }
+
+  if (categoryIds.length === 0) {
+    return { error: "Debe seleccionar al menos una categoría" };
+  }
+
   try {
     await createDish(restaurantId, {
       name,
+      description,
       price,
+      categoryIds,
       image: image && image.size > 0 ? image : null,
     });
     revalidatePath("/restaurant/dishes");
@@ -39,14 +58,26 @@ export async function updateDishAction(
   formData: FormData,
 ): Promise<{ error?: string }> {
   const name = String(formData.get("name") ?? "").trim() || undefined;
+  const description = String(formData.get("description") ?? "").trim();
   const priceRaw = formData.get("price");
   const price = priceRaw ? Number(priceRaw) : undefined;
+  const categoryIds = parseCategoryIds(formData);
   const image = formData.get("image") as File | null;
+
+  if (!description) {
+    return { error: "La descripción es obligatoria" };
+  }
+
+  if (categoryIds.length === 0) {
+    return { error: "Debe seleccionar al menos una categoría" };
+  }
 
   try {
     await updateDish(dishId, {
       name,
+      description,
       price,
+      categoryIds,
       image: image && image.size > 0 ? image : null,
     });
     revalidatePath("/restaurant/dishes");

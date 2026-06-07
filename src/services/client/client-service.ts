@@ -73,6 +73,7 @@ export async function getDeliveryPoints(): Promise<DeliveryPoint[]> {
 interface PlatoDtoFromApi {
     id: number;
     nombre: string;
+    descripcion: string | null;
     fotoUrl: string | null;
     precio: number;
     disponible: boolean;
@@ -85,6 +86,7 @@ function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
     return {
         id: String(plato.id),
         name: plato.nombre,
+        description: plato.descripcion ?? "",
         price: plato.precio,
         imageUrl: plato.fotoUrl,
         status: plato.disponible ? "available" : "unavailable",
