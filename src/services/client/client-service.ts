@@ -16,6 +16,7 @@ import type {
     OrderHistoryStatus,
     OrderRequest,
     PaymentResponse,
+    LocalRating,
 } from "@/lib/client/types";
 
 export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRequest, PaymentResponse };
@@ -514,4 +515,22 @@ export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaura
     );
 
     return restaurants.sort((a, b) => a.name.localeCompare(b.name, "es"));
+}
+
+
+
+
+// ── Calificaciones ─────────────────────────────────────────────────────────────
+export async function getLocalRatings(restaurantId: number): Promise<LocalRating[]> {
+    try {
+        const response = await clientApi.get<LocalRating[]>(`/api/locales/${restaurantId}/comentarios`);
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener comentarios (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo cargar los comentarios.");
+    }
 }
