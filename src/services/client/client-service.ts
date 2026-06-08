@@ -512,3 +512,80 @@ export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaura
         throw new Error("No se pudieron cargar los locales del historial.");
     }
 }
+
+export class AccountDeletionError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly hasPendingOrders = false,
+  ) {
+    super(message);
+    this.name = "AccountDeletionError";
+  }
+}
+
+function getApiErrorMessage(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") {
+    return undefined;
+  }
+
+  const payload = data as Record<string, unknown>;
+
+  if (typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  if (typeof payload.error === "string") {
+    return payload.error;
+  }
+
+  if (typeof payload.detail === "string") {
+    return payload.detail;
+  }
+
+  return undefined;
+}
+
+export async function deleteClientAccount(): Promise<void> {
+  const session = await requireCurrentSession();
+
+  try {
+    await clientApi.delete(`/api/clientes/${session.idTipoUsuario}/cuenta`);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = getApiErrorMessage(error.response?.data);
+
+      if (status === 403) {
+        throw new AccountDeletionError(
+          message ?? "No tenés permiso para eliminar esta cuenta.",
+          403,
+        );
+      }
+
+      if (status === 404) {
+        throw new AccountDeletionError(
+          message ?? "Cuenta no encontrada.",
+          404,
+        );
+      }
+
+      if (status === 409) {
+        throw new AccountDeletionError(
+          message ?? "No podés eliminar la cuenta en este momento.",
+          409,
+          true,
+        );
+      }
+
+      throw new AccountDeletionError(
+        message ?? `Error al eliminar la cuenta (${status})`,
+        status,
+      );
+    }
+
+    throw new AccountDeletionError(
+      "No se pudo eliminar la cuenta. Intentalo nuevamente.",
+    );
+  }
+}
