@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
 import { getServerSession } from "@/lib/shared/auth/server-session";
 import Header from "@/ui/client/header";
+import ClientNotificationStream from "@/ui/client/notifications/client-notification-stream";
 
 export default async function ClientLayout({
   children,
@@ -23,6 +24,7 @@ export default async function ClientLayout({
     <>
       <Header session={session} />
       <main className="px-5 md:px-10 py-10  bg-gray-100 min-h-[100vh]">{children}</main>
+      <ClientNotificationStream clientId={session.idTipoUsuario} />
     </>
   );
 }

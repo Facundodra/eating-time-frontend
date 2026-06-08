@@ -1,5 +1,5 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import RestaurantClaimsPage from "@/ui/restaurant/claims/claims-page";
 
 export default function ClaimsPage() {
-  return <ComingSoonPage backHref="/restaurant" title="Reclamos" />;
+  return <RestaurantClaimsPage />;
 }

@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { useCallback, useEffect, useState } from "react";
 
 import { useAsyncData } from "@/hooks/shared/use-async-data";
+import { RESTAURANT_WORKBENCH_REFRESH_EVENT } from "@/lib/restaurant/notifications";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import type {
   OrderStatus,
@@ -761,6 +762,14 @@ export default function RestaurantWorkbenchPage() {
       );
     },
   });
+
+  useEffect(() => {
+    window.addEventListener(RESTAURANT_WORKBENCH_REFRESH_EVENT, reload);
+
+    return () => {
+      window.removeEventListener(RESTAURANT_WORKBENCH_REFRESH_EVENT, reload);
+    };
+  }, [reload]);
 
   const ordersByColumn = KANBAN_COLUMNS.map((col) => ({    column: col,
     orders: orders.filter((o) =>
