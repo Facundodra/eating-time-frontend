@@ -111,22 +111,22 @@ export default function RestaurantRecentOrders() {
           </p>
         </div>
         <Link
-          className="w-fit rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10"
+          className="w-fit rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
           href="/restaurant/workbench"
         >
           Ver mesa completa
         </Link>
       </div>
 
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[820px] text-left">
+      <div>
+        <table className="w-full text-left">
           <thead className="bg-gray-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-950/40 dark:text-slate-400">
             <tr>
               <th className="px-5 py-4 font-bold">Pedido</th>
-              <th className="px-5 py-4 font-bold">Cliente</th>
+              <th className="hidden px-5 py-4 font-bold md:table-cell">Cliente</th>
               <th className="px-5 py-4 font-bold">Hora</th>
-              <th className="px-5 py-4 font-bold">Items</th>
-              <th className="px-5 py-4 font-bold">Total</th>
+              <th className="hidden px-5 py-4 font-bold md:table-cell">Items</th>
+              <th className="hidden px-5 py-4 font-bold md:table-cell">Total</th>
               <th className="px-5 py-4 font-bold">Estado</th>
             </tr>
           </thead>
@@ -163,16 +163,16 @@ export default function RestaurantRecentOrders() {
                 <td className="px-5 py-4 font-bold text-slate-950 dark:text-white">
                   #{order.id}
                 </td>
-                <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
+                <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
                   Cliente #{order.customerId}
                 </td>
                 <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
                   {formatTime(order.createdAt)}
                 </td>
-                <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
+                <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
                   -
                 </td>
-                <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
+                <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
                   {formatPrice(order.total)}
                 </td>
                 <td className="px-5 py-4">
