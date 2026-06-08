@@ -106,7 +106,5 @@ export async function deleteRestaurantCoupon(
 ): Promise<void> {
   const store = getStore(restaurantId);
 
-  store.coupons = store.coupons.map((item) =>
-    item.id === couponId ? { ...item, status: "inactive" } : item,
-  );
+  store.coupons = store.coupons.filter((item) => item.id !== couponId);
 }
