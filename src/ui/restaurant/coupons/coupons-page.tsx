@@ -2,6 +2,7 @@
 
 import {
   CheckIcon,
+  PencilIcon,
   PlusIcon,
   TrashIcon,
   XMarkIcon,
@@ -166,7 +167,7 @@ function DishRows({
           </div>
         ))}
         {isAddingDishRow ? (
-          <div className="grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 sm:grid-cols-[minmax(0,1fr)_auto_auto] dark:border-slate-800">
+          <div className="grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 dark:border-slate-800">
             <select
               value={pendingDishId}
               onChange={(event) => onPendingChange(event.target.value)}
@@ -178,24 +179,26 @@ function DishRows({
                 </option>
               ))}
             </select>
-            <button
-              type="button"
-              onClick={onConfirm}
-              disabled={isAddingDish || disabled}
-              aria-label="Confirmar plato"
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
-            >
-              <CheckIcon className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={onCancel}
-              disabled={isAddingDish || disabled}
-              aria-label="Cancelar plato"
-              className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
-            >
-              <XMarkIcon className="h-4 w-4" />
-            </button>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={isAddingDish || disabled}
+                aria-label="Confirmar plato"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+              >
+                <CheckIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={isAddingDish || disabled}
+                aria-label="Cancelar plato"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         ) : null}
       </div>
@@ -243,6 +246,7 @@ export default function RestaurantCouponsPage() {
   const [isAddingDish, setIsAddingDish] = useState(false);
   const [isSavingChanges, setIsSavingChanges] = useState(false);
   const [isDeletingCoupon, setIsDeletingCoupon] = useState(false);
+  const [mobileEditingCouponId, setMobileEditingCouponId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const {
     data: loadedData,
@@ -323,6 +327,7 @@ export default function RestaurantCouponsPage() {
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
     setFormError(null);
   }
 
@@ -388,6 +393,7 @@ export default function RestaurantCouponsPage() {
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
     setFormError(null);
   }
 
@@ -404,6 +410,7 @@ export default function RestaurantCouponsPage() {
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
     setFormError(null);
   }
 
@@ -428,6 +435,7 @@ export default function RestaurantCouponsPage() {
       setIsAddingDish(false);
       setIsSavingChanges(false);
       setIsDeletingCoupon(false);
+      setMobileEditingCouponId("");
       setFormError(null);
       return;
     }
@@ -442,6 +450,7 @@ export default function RestaurantCouponsPage() {
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
     setFormError(null);
   }
 
@@ -452,6 +461,11 @@ export default function RestaurantCouponsPage() {
 
     if (!dish) {
       setFormError("Selecciona un plato valido.");
+      return;
+    }
+
+    if (createCoupon.dishes.some((selectedDish) => selectedDish.id === dish.id)) {
+      setFormError("Ese plato ya esta asociado al cupon.");
       return;
     }
 
@@ -477,6 +491,11 @@ export default function RestaurantCouponsPage() {
 
     if (!dish) {
       setFormError("Selecciona un plato valido.");
+      return;
+    }
+
+    if (editDishes.some((selectedDish) => selectedDish.id === dish.id)) {
+      setFormError("Ese plato ya esta asociado al cupon.");
       return;
     }
 
@@ -527,17 +546,44 @@ export default function RestaurantCouponsPage() {
     setIsAddingDish(false);
     setIsSavingChanges(false);
     setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
     setFormError(null);
   }
 
-  function markSelectedCouponInactive() {
+  async function toggleSelectedCouponStatus() {
     if (!editableSelectedCoupon) {
       return;
     }
 
-    setFilter("all");
-    setFormError(null);
-    updateSelectedCoupon({ status: "inactive" });
+    const nextStatus: CouponStatus =
+      editableSelectedCoupon.status === "active" ? "inactive" : "active";
+    const nextCoupon = {
+      ...editableSelectedCoupon,
+      status: nextStatus,
+    };
+    const validationError = validateCouponForm(nextCoupon);
+
+    if (validationError) {
+      setFormError(validationError);
+      return;
+    }
+
+    try {
+      setIsSavingChanges(true);
+      setFormError(null);
+      await updateRestaurantCoupon(restaurantId, nextCoupon);
+      setFilter("all");
+      await refreshCouponsData("all");
+      setMobileEditingCouponId("");
+    } catch (error) {
+      setFormError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo cambiar el estado del cupon. Intentalo nuevamente.",
+      );
+    } finally {
+      setIsSavingChanges(false);
+    }
   }
 
   function validateCouponForm(coupon: RestaurantCoupon) {
@@ -574,6 +620,7 @@ export default function RestaurantCouponsPage() {
       await createRestaurantCoupon(restaurantId, createCoupon);
       setShowCreateForm(false);
       await refreshCouponsData(filter);
+      setMobileEditingCouponId("");
     } catch (error) {
       setFormError(
         error instanceof Error
@@ -592,28 +639,20 @@ export default function RestaurantCouponsPage() {
       return;
     }
 
-    const isDeletingOnSave = editableSelectedCoupon.status === "inactive";
+    const validationError = validateCouponForm(editableSelectedCoupon);
 
-    if (!isDeletingOnSave) {
-      const validationError = validateCouponForm(editableSelectedCoupon);
-
-      if (validationError) {
-        setFormError(validationError);
-        return;
-      }
+    if (validationError) {
+      setFormError(validationError);
+      return;
     }
 
     try {
       setIsSavingChanges(true);
       setFormError(null);
-
-      if (editableSelectedCoupon.status === "inactive") {
-        await deleteRestaurantCoupon(restaurantId, editableSelectedCoupon.id);
-      } else {
-        await updateRestaurantCoupon(restaurantId, editableSelectedCoupon);
-      }
+      await updateRestaurantCoupon(restaurantId, editableSelectedCoupon);
 
       await refreshCouponsData(filter);
+      setMobileEditingCouponId("");
     } catch (error) {
       setFormError(
         error instanceof Error
@@ -632,11 +671,20 @@ export default function RestaurantCouponsPage() {
       return;
     }
 
+    await deleteCouponAndReloadList(selectedCoupon.id);
+  }
+
+  async function handleDeleteCouponById(couponId: string) {
+    await deleteCouponAndReloadList(couponId);
+  }
+
+  async function deleteCouponAndReloadList(couponId: string) {
     try {
       setIsDeletingCoupon(true);
       setFormError(null);
-      await deleteRestaurantCoupon(restaurantId, selectedCoupon.id);
+      await deleteRestaurantCoupon(restaurantId, couponId);
       await refreshCouponsData(filter);
+      setMobileEditingCouponId("");
     } catch (error) {
       setFormError(
         error instanceof Error
@@ -712,47 +760,117 @@ export default function RestaurantCouponsPage() {
             {isDataReady && filteredCoupons.map((coupon) => {
               const isSelected =
                 coupon.id === selectedCoupon?.id && !showCreateForm;
+              const isEditingInline =
+                mobileEditingCouponId === coupon.id &&
+                editableSelectedCoupon?.id === coupon.id;
 
               return (
-                <button
-                  type="button"
+                <article
                   key={coupon.id}
-                  onClick={() => selectCoupon(coupon.id)}
                   className={clsx(
-                    "grid w-full cursor-pointer gap-4 rounded-2xl border p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/40 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-start dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10",
+                    "rounded-2xl border transition hover:border-orange-200 hover:bg-orange-50/40 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10",
                     isSelected
                       ? "border-orange-200 bg-orange-50/40 dark:border-orange-500/30 dark:bg-orange-500/10"
                       : "border-transparent bg-white dark:bg-slate-900",
                   )}
                 >
-                  <div className="flex h-20 w-20 items-center justify-center rounded-2xl bg-orange-50 text-3xl font-black text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
-                    {coupon.percentage}%
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
-                      {coupon.code}
-                    </h3>
-                    <p className="mt-2 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {coupon.description}
-                    </p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        Creado: {formatDateTimeLabel(coupon.createdAt)}
-                      </span>
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        Vence: {formatDateTimeLabel(coupon.expiresAt)}
-                      </span>
+                  {!isEditingInline && (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => selectCoupon(coupon.id)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          selectCoupon(coupon.id);
+                        }
+                      }}
+                      className="grid w-full cursor-pointer grid-cols-[96px_minmax(0,1fr)] gap-4 p-4 text-left sm:grid-cols-[96px_minmax(0,1fr)_auto] sm:items-start"
+                    >
+                      <div className="col-start-1 row-start-1 flex h-20 w-20 shrink-0 items-center justify-center rounded-2xl bg-orange-50 text-3xl font-black text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
+                        {coupon.percentage}%
+                      </div>
+                      <div className="col-start-2 row-start-1 flex items-start justify-end gap-2 sm:col-start-3">
+                        <StatusBadge status={coupon.status} />
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            selectCoupon(coupon.id);
+                            setMobileEditingCouponId(coupon.id);
+                          }}
+                          aria-label="Editar cupon"
+                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-gray-100 transition hover:text-orange-600 xl:hidden dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800 dark:hover:text-orange-400"
+                        >
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            void handleDeleteCouponById(coupon.id);
+                          }}
+                          disabled={isDeletingCoupon}
+                          aria-label="Eliminar cupon"
+                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white text-red-500 shadow-sm ring-1 ring-gray-100 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 xl:hidden dark:bg-slate-950 dark:text-red-400 dark:ring-slate-800 dark:hover:bg-red-500/10"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="col-span-2 row-start-2 min-w-0 sm:col-span-1 sm:col-start-2 sm:row-start-1">
+                        <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                          {coupon.code}
+                        </h3>
+                        <p className="mt-2 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-slate-500 dark:text-slate-400">
+                          {coupon.description}
+                        </p>
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            Creado: {formatDateTimeLabel(coupon.createdAt)}
+                          </span>
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            Vence: {formatDateTimeLabel(coupon.expiresAt)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <StatusBadge status={coupon.status} />
-                </button>
+                  )}
+
+                  {isEditingInline && editableSelectedCoupon && (
+                    <CouponFormPanel
+                      availableDishes={availableDishes}
+                      coupon={editableSelectedCoupon}
+                      error={formError}
+                      hasChanges={hasSelectedCouponChanges}
+                      isAddingDish={isAddingDish}
+                      isAddingDishRow={isAddingDishRow}
+                      isDeleting={isDeletingCoupon}
+                      isSaving={isSavingChanges}
+                      mode="edit"
+                      onAddDish={() => startAddingDishRow(editableSelectedCoupon)}
+                      onCancel={() => {
+                        handleCancelChanges();
+                        setMobileEditingCouponId("");
+                      }}
+                      onCancelDish={cancelAddingDishRow}
+                      onChange={updateSelectedCoupon}
+                      onCloseError={() => setFormError(null)}
+                      onConfirmDish={addDishToSelectedCoupon}
+                      onPendingDishChange={setPendingDishId}
+                      onRemoveDish={removeDishFromSelectedCoupon}
+                      onSave={handleSaveChanges}
+                      onToggleStatus={toggleSelectedCouponStatus}
+                      pendingDishId={pendingDishId}
+                      variant="inline"
+                    />
+                  )}
+                </article>
               );
             })}
           </div>
         </section>
 
         {isLoading && (
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
                 Detalle del cupon
@@ -768,7 +886,7 @@ export default function RestaurantCouponsPage() {
         )}
 
         {loadError && (
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
                 Detalle del cupon
@@ -823,10 +941,10 @@ export default function RestaurantCouponsPage() {
             onCloseError={() => setFormError(null)}
             onConfirmDish={addDishToSelectedCoupon}
             onDelete={handleDeleteCoupon}
-            onMarkInactive={markSelectedCouponInactive}
             onPendingDishChange={setPendingDishId}
             onRemoveDish={removeDishFromSelectedCoupon}
             onSave={handleSaveChanges}
+            onToggleStatus={toggleSelectedCouponStatus}
             pendingDishId={pendingDishId}
           />
         )}
@@ -852,11 +970,12 @@ function CouponFormPanel({
   onCloseError,
   onConfirmDish,
   onDelete,
-  onMarkInactive,
   onPendingDishChange,
   onRemoveDish,
   onSave,
+  onToggleStatus,
   pendingDishId,
+  variant = "panel",
 }: {
   availableDishes: CouponDish[];
   coupon: RestaurantCoupon;
@@ -874,41 +993,52 @@ function CouponFormPanel({
   onCloseError: () => void;
   onConfirmDish: () => void;
   onDelete?: () => void;
-  onMarkInactive?: () => void;
   onPendingDishChange: (dishId: string) => void;
   onRemoveDish: (dishId: string) => void;
   onSave: () => void;
+  onToggleStatus?: () => void;
   pendingDishId: string;
+  variant?: "panel" | "inline";
 }) {
   const isCreate = mode === "create";
+  const isInline = variant === "inline";
 
   return (
-    <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-5 dark:border-slate-800">
-        <div>
-          <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
-            {isCreate ? "Nuevo cupon" : "Detalle del cupon"}
-          </h2>
-          <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-            {isCreate
-              ? "Completa los datos para dar de alta un nuevo cupon."
-              : "Edita los datos o da de baja el cupon."}
-          </p>
+    <section
+      className={clsx(
+        isInline
+          ? "space-y-4 p-4 xl:hidden"
+          : "overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900",
+        !isCreate && !isInline && "hidden xl:block",
+      )}
+    >
+      {!isInline && (
+        <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+          <div>
+            <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+              {isCreate ? "Nuevo cupon" : "Detalle del cupon"}
+            </h2>
+            <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+              {isCreate
+                ? "Completa los datos para dar de alta un nuevo cupon."
+                : "Edita los datos o da de baja el cupon."}
+            </p>
+          </div>
+          {!isCreate && onDelete ? (
+            <button
+              type="button"
+              onClick={onDelete}
+              disabled={isSaving || isDeleting}
+              className="flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+            >
+              <TrashIcon className="h-4 w-4" />
+              {isDeleting ? "Eliminando..." : "Eliminar"}
+            </button>
+          ) : null}
         </div>
-        {!isCreate && onDelete ? (
-          <button
-            type="button"
-            onClick={onDelete}
-            disabled={isSaving || isDeleting}
-            className="flex h-10 cursor-pointer items-center gap-2 rounded-xl bg-red-50 px-4 text-sm font-extrabold text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
-          >
-            <TrashIcon className="h-4 w-4" />
-            {isDeleting ? "Eliminando..." : "Eliminar"}
-          </button>
-        ) : null}
-      </div>
+      )}
 
-      <div className="space-y-4 p-5">
+      <div className={clsx("space-y-4", !isInline && "p-5")}>
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
@@ -953,7 +1083,7 @@ function CouponFormPanel({
         </label>
 
         <div className="grid gap-4 md:grid-cols-2">
-          {!isCreate ? (
+          {!isCreate && !isInline ? (
             <div>
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                 Fecha de creacion
@@ -1013,8 +1143,13 @@ function CouponFormPanel({
         </div>
       </div>
 
-      <div className="flex flex-col-reverse gap-3 border-t border-gray-200 px-5 py-5 sm:flex-row sm:justify-end dark:border-slate-800">
-        {(isCreate || hasChanges) && (
+      <div
+        className={clsx(
+          "flex flex-col-reverse gap-3 border-t border-gray-200 sm:flex-row sm:justify-end dark:border-slate-800",
+          isInline ? "pt-4" : "px-5 py-5",
+        )}
+      >
+        {(isCreate || hasChanges || isInline) && (
           <button
             type="button"
             onClick={onCancel}
@@ -1024,14 +1159,18 @@ function CouponFormPanel({
             Cancelar
           </button>
         )}
-        {!isCreate && onMarkInactive ? (
+        {!isCreate && onToggleStatus ? (
           <button
             type="button"
-            onClick={onMarkInactive}
+            onClick={onToggleStatus}
             disabled={isSaving || isDeleting}
             className="h-11 cursor-pointer rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
           >
-            Marcar inactivo
+            {isSaving
+              ? "Marcando..."
+              : coupon.status === "inactive"
+                ? "Marcar activo"
+                : "Marcar inactivo"}
           </button>
         ) : null}
         <button
