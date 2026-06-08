@@ -71,24 +71,24 @@ export default function RestaurantQuickActions() {
         </p>
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
         {actions.map((action) => {
           const Icon = action.icon;
 
           return (
             <article
-              className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900"
+              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6 dark:border-slate-800 dark:bg-slate-900"
               key={action.title}
             >
               <Icon className="h-5 w-5 text-orange-600" />
-              <h3 className="mt-6 text-base font-bold text-slate-950 dark:text-white">
+              <h3 className="mt-4 text-sm font-bold text-slate-950 sm:mt-6 sm:text-base dark:text-white">
                 {action.title}
               </h3>
-              <p className="mt-3 min-h-12 text-sm leading-6 text-slate-500 dark:text-slate-400">
+              <p className="mt-2 min-h-12 text-xs leading-5 text-slate-500 sm:mt-3 sm:text-sm sm:leading-6 dark:text-slate-400">
                 {action.description}
               </p>
               <Link
-                className="mt-6 inline-flex text-sm font-bold text-orange-600 transition hover:text-orange-700"
+                className="mt-4 inline-flex text-xs font-bold text-orange-600 transition hover:text-orange-700 sm:mt-6 sm:text-sm"
                 href={action.href}
               >
                 {action.linkLabel}
