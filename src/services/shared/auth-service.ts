@@ -86,6 +86,7 @@ export async function getCurrentSession(): Promise<LoginWebResponse | null> {
   });
 
   if (response.status === 401) {
+    redirectToLoginWhenSessionExpires();
     return null;
   }
 
@@ -94,6 +95,23 @@ export async function getCurrentSession(): Promise<LoginWebResponse | null> {
   }
 
   return (await response.json()) as LoginWebResponse;
+}
+
+function redirectToLoginWhenSessionExpires() {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const isPrivateRoute =
+    window.location.pathname.startsWith("/admin") ||
+    window.location.pathname.startsWith("/client") ||
+    window.location.pathname.startsWith("/restaurant");
+
+  if (!isPrivateRoute) {
+    return;
+  }
+
+  window.location.assign("/login?reason=session-expired");
 }
 
 export async function requireCurrentSession(): Promise<LoginWebResponse> {
