@@ -168,23 +168,22 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
     dishes.some((d) => discountedIds.has(d.id) && !discounts.has(d.id));
 
   // Devuelve la cantidad del plato en el carrito actual (0 si no está)
-  function getCartQty(dishId: string): number {
+  function getCartQty(dishId: number): number {
     if (!cart) return 0;
     const item = cart.items.find(
       // Usamos != null para cubrir tanto null como undefined (Jackson puede omitir el campo)
-      (i) => i.platoId === Number(dishId) && i.eliminacion == null
+      (i) => i.platoId === dishId && i.eliminacion == null
     );
     return item?.cantidad ?? 0;
   }
 
-  async function handleCartUpdate(dishId: string, delta: number) {
+  async function handleCartUpdate(dishId: number, delta: number) {
     if (!idLocal || !onCartUpdate) return;
     if (cartUpdateInFlight.current) return;
     cartUpdateInFlight.current = true;
-    const platoId = Number(dishId);
-    setUpdatingDishId(platoId);
+    setUpdatingDishId(dishId);
     try {
-      const updated = await updateCartItem(idLocal, platoId, delta);
+      const updated = await updateCartItem(idLocal, dishId, delta);
       // El carrito está activo si tiene al menos un ítem sin eliminar.
       // No usamos `eliminacion` del cart porque el backend puede devolverlo
       // con timestamp aunque el carrito siga activo (registro reutilizado).
@@ -275,7 +274,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
           <div className="flex flex-wrap">
             {dishes.map((dish) => {
               const qty = getCartQty(dish.id);
-              const isUpdating = updatingDishId === Number(dish.id);
+              const isUpdating = updatingDishId === dish.id;
               const discount = discounts.get(dish.id);
               const discountedPrice = discount
                 ? Math.round(dish.price * (1 - discount.porcentaje / 100) * 100) / 100
