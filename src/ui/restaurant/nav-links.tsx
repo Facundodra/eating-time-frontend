@@ -39,7 +39,7 @@ const commercialNavLinks = [
 
 const accountNavLinks = [
   { name: "Mis datos", href: "/restaurant/my-data", icon: UserIcon },
-  { name: "Cambiar contraseña", href: "/restaurant/change-password", icon: KeyIcon },
+  { name: "Cambiar contraseña", href: "/restaurant/cambiar-contrasena", icon: KeyIcon },
 ];
 
 export const restaurantNavGroups = [

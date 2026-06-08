@@ -22,6 +22,10 @@
     @apply max-w-[1440px] w-[85%] mx-auto;
 }
 
+button, a{
+    @apply cursor-pointer;
+}
+
 
 /* Navbar animation */ 
 .sidenav{
@@ -130,3 +134,6 @@
 .field{
     @apply h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20;
 }
+
+
+
