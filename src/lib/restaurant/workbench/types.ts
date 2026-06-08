@@ -20,6 +20,18 @@ export const WORKBENCH_VISIBLE_STATUSES = new Set<string>([
   "CANCELADO_CLIENTE",
 ]);
 
+export const ORDER_ADVANCEABLE_STATUSES = new Set<OrderStatus>([
+  "ACEPTADO_LOCAL",
+  "EN_CURSO_LOCAL",
+  "EN_CAMINO_LOCAL",
+]);
+
+export const ORDER_NEXT_STATUS: Partial<Record<OrderStatus, OrderStatus>> = {
+  ACEPTADO_LOCAL: "EN_CURSO_LOCAL",
+  EN_CURSO_LOCAL: "EN_CAMINO_LOCAL",
+  EN_CAMINO_LOCAL: "FINALIZADO",
+};
+
 export type OrderItemApiResponse = {
   id: number;
   pedidoId: number;

@@ -79,6 +79,34 @@ export async function acceptOrder(
   return mapWorkbenchOrder(order);
 }
 
+export async function advanceOrder(
+  restaurantId: string,
+  orderId: number,
+): Promise<WorkbenchOrder> {
+  const response = await fetch(
+    `${apiBaseUrl}/api/local/${restaurantId}/pedido/${orderId}/avanzar`,
+    {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+    },
+  );
+
+  if (!response.ok) {
+    const errorMessages: Record<number, string> = {
+      403: "El pedido no pertenece a este local.",
+      404: "Pedido no encontrado.",
+      409: "El pedido no está en un estado que permita avanzar.",
+    };
+    throw new Error(
+      errorMessages[response.status] ??
+        `Error al avanzar el pedido (${response.status})`,
+    );
+  }
+
+  const order = (await response.json()) as WorkbenchOrderApiResponse;
+  return mapWorkbenchOrder(order);
+}
+
 export async function rejectOrder(
   restaurantId: string,
   orderId: number,
