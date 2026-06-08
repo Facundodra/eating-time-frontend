@@ -1,4 +1,9 @@
-import type { StatisticsFilters, StatisticsGranularity } from "./types";
+import type {
+  OrderStatusCategory,
+  OrderStatusSlice,
+  StatisticsFilters,
+  StatisticsGranularity,
+} from "./types";
 
 function pad(value: number) {
   return String(value).padStart(2, "0");
@@ -64,6 +69,71 @@ export function formatPeriodLabel(
 
 export function getUniqueSortedPeriods(periods: string[]) {
   return [...new Set(periods)].sort();
+}
+
+// Labels aligned with the workbench kanban columns (mesa de trabajo).
+export const WORKBENCH_ORDER_STATUS_LABELS: Record<OrderStatusCategory, string> =
+  {
+    PENDIENTES: "Pendiente",
+    ACEPTADOS: "Aceptado",
+    EN_CURSO: "En curso",
+    EN_CAMINO: "En camino",
+    COMPLETADOS: "Finalizado",
+    RECHAZADOS: "Rechazado o Cancelado",
+    CANCELADOS: "Rechazado o Cancelado",
+  };
+
+const WORKBENCH_ORDER_STATUS_CHART_ORDER = [
+  "PENDIENTES",
+  "ACEPTADOS",
+  "EN_CURSO",
+  "EN_CAMINO",
+  "COMPLETADOS",
+  "REJECTED_OR_CANCELLED",
+] as const;
+
+type WorkbenchChartSlice = {
+  id: string;
+  label: string;
+  count: number;
+  category: OrderStatusCategory | "REJECTED_OR_CANCELLED";
+};
+
+export function buildWorkbenchAlignedOrderStatusSlices(
+  slices: OrderStatusSlice[],
+): WorkbenchChartSlice[] {
+  const aggregated = new Map<string, WorkbenchChartSlice>();
+
+  for (const slice of slices) {
+    if (slice.count <= 0) {
+      continue;
+    }
+
+    const isClosedStatus =
+      slice.category === "RECHAZADOS" || slice.category === "CANCELADOS";
+    const chartId = isClosedStatus ? "REJECTED_OR_CANCELLED" : slice.category;
+    const label = isClosedStatus
+      ? WORKBENCH_ORDER_STATUS_LABELS.RECHAZADOS
+      : WORKBENCH_ORDER_STATUS_LABELS[slice.category];
+
+    const existing = aggregated.get(chartId);
+    if (existing) {
+      existing.count += slice.count;
+      continue;
+    }
+
+    aggregated.set(chartId, {
+      id: chartId,
+      label,
+      count: slice.count,
+      category: isClosedStatus ? "REJECTED_OR_CANCELLED" : slice.category,
+    });
+  }
+
+  return WORKBENCH_ORDER_STATUS_CHART_ORDER.flatMap((chartId) => {
+    const slice = aggregated.get(chartId);
+    return slice ? [slice] : [];
+  });
 }
 
 export function getPromotionLabel(item: {

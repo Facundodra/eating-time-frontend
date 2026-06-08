@@ -13,6 +13,7 @@ import type {
   TopSellingDishesReport,
 } from "@/lib/restaurant/statistics/types";
 import {
+  buildWorkbenchAlignedOrderStatusSlices,
   formatCurrency,
   formatPeriodLabel,
   getUniqueSortedPeriods,
@@ -35,6 +36,7 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   COMPLETADOS: "#64748b",
   RECHAZADOS: "#ef4444",
   CANCELADOS: "#94a3b8",
+  REJECTED_OR_CANCELLED: "#ef4444",
 };
 
 const chartSx = {
@@ -149,14 +151,14 @@ type OrderStatusChartProps = {
 };
 
 export function OrderStatusChart({ report }: OrderStatusChartProps) {
-  const pieData = report.slices
-    .filter((slice) => slice.count > 0)
-    .map((slice) => ({
-      id: slice.category,
+  const pieData = buildWorkbenchAlignedOrderStatusSlices(report.slices).map(
+    (slice) => ({
+      id: slice.id,
       value: slice.count,
       label: slice.label,
-      color: ORDER_STATUS_COLORS[slice.category] ?? SERIES_COLORS[0],
-    }));
+      color: ORDER_STATUS_COLORS[slice.id] ?? SERIES_COLORS[0],
+    }),
+  );
 
   return (
     <div className="space-y-4">

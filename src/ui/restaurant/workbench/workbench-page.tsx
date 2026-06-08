@@ -112,7 +112,7 @@ const KANBAN_COLUMNS: KanbanColumnDef[] = [
   },
   {
     id: "closed",
-    label: "Cerrado",
+    label: "Rechazado o Cancelado",
     statuses: ["RECHAZADO_LOCAL", "CANCELADO_CLIENTE"],
     accentBorder: "border-t-red-300",
     countBadge:
