@@ -55,8 +55,11 @@ export type RevenueReport = {
 };
 
 export type OrderStatusCategory =
-  | "COMPLETADOS"
   | "PENDIENTES"
+  | "ACEPTADOS"
+  | "EN_CURSO"
+  | "EN_CAMINO"
+  | "COMPLETADOS"
   | "RECHAZADOS"
   | "CANCELADOS";
 
@@ -81,6 +84,7 @@ export type PromotionUsageItem = {
   percentage: number | null;
   uses: number;
   discountedAmount: number;
+  label: string;
 };
 
 export type PromotionsReport = {

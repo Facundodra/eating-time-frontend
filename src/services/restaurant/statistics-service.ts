@@ -10,7 +10,11 @@ import type {
   StatisticsFilters,
   TopSellingDishesApiResponse,
 } from "@/lib/restaurant/statistics/types";
-import { toApiDateTime } from "@/lib/restaurant/statistics/utils";
+import { buildPromotionDisplayLabel, toApiDateTime } from "@/lib/restaurant/statistics/utils";
+import type { RestaurantCoupon } from "@/lib/restaurant/coupon/types";
+import type { RestaurantDiscount } from "@/lib/restaurant/discount/types";
+import { getRestaurantCoupons } from "@/services/restaurant/coupon-service";
+import { getRestaurantDiscounts } from "@/services/restaurant/discount-service";
 import { clientApi } from "@/services/shared/api-client";
 import { requireCurrentSession } from "@/services/shared/auth-service";
 
@@ -63,6 +67,10 @@ function mapStatisticsResponse(
   orderStatus: OrderStatusApiResponse,
   promotions: PromotionsApiResponse,
   popularityRating: PopularityRatingApiResponse,
+  promotionLookups?: {
+    discountsById: Map<number, RestaurantDiscount>;
+    couponsById: Map<number, RestaurantCoupon>;
+  },
 ): RestaurantStatistics {
   return {
     topSellingDishes: {
@@ -112,14 +120,32 @@ function mapStatisticsResponse(
     promotions: {
       from: promotions.desde,
       to: promotions.hasta,
-      items: promotions.items.map((item) => ({
-        type: item.tipo,
-        promotionId: item.promocionId,
-        code: item.codigo,
-        percentage: item.porcentaje,
-        uses: item.usos,
-        discountedAmount: item.montoDescontado,
-      })),
+      items: promotions.items.map((item) => {
+        const discount = promotionLookups?.discountsById.get(item.promocionId);
+        const coupon = promotionLookups?.couponsById.get(item.promocionId);
+
+        return {
+          type: item.tipo,
+          promotionId: item.promocionId,
+          code: item.codigo,
+          percentage: item.porcentaje,
+          uses: item.usos,
+          discountedAmount: item.montoDescontado,
+          label: buildPromotionDisplayLabel(
+            {
+              type: item.tipo,
+              promotionId: item.promocionId,
+              code: item.codigo,
+              percentage: item.porcentaje,
+            },
+            {
+              discountDishes: discount?.dishes.map((dish) => dish.name),
+              couponCode: coupon?.code ?? item.codigo,
+              couponDescription: coupon?.description,
+            },
+          ),
+        };
+      }),
     },
     popularityRating: {
       from: popularityRating.desde,
@@ -158,6 +184,8 @@ export async function fetchRestaurantStatistics(
       orderStatusResponse,
       promotionsResponse,
       popularityRatingResponse,
+      discountsResult,
+      couponsResult,
     ] = await Promise.all([
       clientApi.get<TopSellingDishesApiResponse>(
         `/api/local/${restaurantId}/estadisticas/platos-mas-vendidos${rangeQuery ? `?${rangeQuery}` : ""}`,
@@ -177,7 +205,19 @@ export async function fetchRestaurantStatistics(
       clientApi.get<PopularityRatingApiResponse>(
         `/api/local/${restaurantId}/estadisticas/popularidad-valoracion${rangeQuery ? `?${rangeQuery}` : ""}`,
       ),
+      getRestaurantDiscounts(restaurantId).catch(() => null),
+      getRestaurantCoupons(restaurantId).catch(() => null),
     ]);
+
+    const discountsById = new Map(
+      (discountsResult?.discounts ?? []).map((discount) => [
+        Number(discount.id),
+        discount,
+      ]),
+    );
+    const couponsById = new Map(
+      (couponsResult?.coupons ?? []).map((coupon) => [Number(coupon.id), coupon]),
+    );
 
     return mapStatisticsResponse(
       topSellingDishesResponse.data,
@@ -186,6 +226,7 @@ export async function fetchRestaurantStatistics(
       orderStatusResponse.data,
       promotionsResponse.data,
       popularityRatingResponse.data,
+      { discountsById, couponsById },
     );
   } catch (error) {
     if (axios.isAxiosError(error)) {

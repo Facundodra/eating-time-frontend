@@ -15,7 +15,6 @@ import type {
 import {
   formatCurrency,
   formatPeriodLabel,
-  getPromotionLabel,
   getUniqueSortedPeriods,
 } from "@/lib/restaurant/statistics/utils";
 
@@ -29,8 +28,11 @@ const SERIES_COLORS = [
 ];
 
 const ORDER_STATUS_COLORS: Record<string, string> = {
-  COMPLETADOS: "#10b981",
   PENDIENTES: "#f59e0b",
+  ACEPTADOS: "#10b981",
+  EN_CURSO: "#6366f1",
+  EN_CAMINO: "#a855f7",
+  COMPLETADOS: "#64748b",
   RECHAZADOS: "#ef4444",
   CANCELADOS: "#94a3b8",
 };
@@ -187,23 +189,52 @@ type PromotionsChartProps = {
 };
 
 export function PromotionsChart({ report }: PromotionsChartProps) {
-  const labels = report.items.map((item) => getPromotionLabel(item));
+  const labels = report.items.map((item) => item.label);
   const uses = report.items.map((item) => item.uses);
+  const maxLabelLength = labels.reduce(
+    (max, label) => Math.max(max, label.length),
+    0,
+  );
 
   return (
-    <BarChart
-      height={Math.max(280, report.items.length * 48)}
-      xAxis={[{ scaleType: "band", data: labels }]}
-      series={[
-        {
-          data: uses,
-          label: "Usos",
-          color: SERIES_COLORS[1],
-        },
-      ]}
-      margin={{ left: 56, right: 24, top: 24, bottom: 72 }}
-      sx={chartSx}
-    />
+    <div className="space-y-4">
+      <BarChart
+        layout="horizontal"
+        height={Math.max(220, report.items.length * 52)}
+        yAxis={[{ scaleType: "band", data: labels }]}
+        xAxis={[{ tickMinStep: 1 }]}
+        series={[
+          {
+            data: uses,
+            label: "Usos",
+            color: SERIES_COLORS[1],
+          },
+        ]}
+        margin={{
+          left: Math.min(280, Math.max(140, maxLabelLength * 7)),
+          right: 24,
+          top: 24,
+          bottom: 24,
+        }}
+        sx={chartSx}
+      />
+      <ul className="space-y-2 border-t border-gray-100 pt-4 dark:border-slate-800">
+        {report.items.map((item) => (
+          <li
+            key={`${item.type}-${item.promotionId}`}
+            className="flex flex-wrap items-center justify-between gap-2 text-sm"
+          >
+            <span className="font-medium text-slate-700 dark:text-slate-200">
+              {item.label}
+            </span>
+            <span className="text-slate-500 dark:text-slate-400">
+              {item.uses} {item.uses === 1 ? "uso" : "usos"} ·{" "}
+              {formatCurrency(item.discountedAmount)} descontados
+            </span>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

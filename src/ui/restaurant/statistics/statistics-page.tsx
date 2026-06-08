@@ -151,7 +151,7 @@ export default function RestaurantStatisticsPage() {
         <div className="grid gap-6 xl:grid-cols-2">
           <ChartPanel
             title="Platos más vendidos"
-            description="Cantidad de ventas por plato en el período seleccionado."
+            description="Cantidad de ventas por plato en pedidos ya confirmados por el local."
             isLoading={isLoading}
             isEmpty={statistics.topSellingDishes.items.length === 0}
           >
@@ -160,7 +160,7 @@ export default function RestaurantStatisticsPage() {
 
           <ChartPanel
             title="Estado de pedidos del día"
-            description="Distribución de pedidos completados, pendientes, rechazados y cancelados."
+            description="Distribución por estado operativo de los pedidos creados en la fecha seleccionada."
             isLoading={isLoading}
             isEmpty={statistics.orderStatus.total === 0}
             emptyMessage="No hay pedidos registrados para la fecha seleccionada."
@@ -182,7 +182,7 @@ export default function RestaurantStatisticsPage() {
           <div className="xl:col-span-2">
             <ChartPanel
               title="Ingresos por día o mes"
-              description="Facturación del local según pedidos finalizados."
+              description="Facturación del local según pedidos confirmados por el local."
               isLoading={isLoading}
               isEmpty={statistics.revenue.points.length === 0}
             >

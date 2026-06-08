@@ -77,10 +77,62 @@ export function getPromotionLabel(item: {
   }
 
   if (item.percentage != null) {
-    return `Descuento ${item.percentage}%`;
+    return `Descuento ${item.percentage}% (#${item.promotionId})`;
   }
 
   return item.type === "cupon"
     ? `Cupón #${item.promotionId}`
     : `Descuento #${item.promotionId}`;
+}
+
+function summarizeDishNames(names: string[], maxVisible = 2) {
+  if (names.length === 0) {
+    return "";
+  }
+
+  if (names.length === 1) {
+    return names[0];
+  }
+
+  if (names.length <= maxVisible) {
+    return names.join(", ");
+  }
+
+  const visible = names.slice(0, maxVisible).join(", ");
+  return `${visible} +${names.length - maxVisible}`;
+}
+
+export function buildPromotionDisplayLabel(
+  item: {
+    type: "descuento" | "cupon";
+    promotionId: number;
+    code: string | null;
+    percentage: number | null;
+  },
+  options?: {
+    discountDishes?: string[];
+    couponCode?: string | null;
+    couponDescription?: string | null;
+  },
+) {
+  if (item.type === "cupon") {
+    const code = item.code ?? options?.couponCode ?? `#${item.promotionId}`;
+    const percentage =
+      item.percentage != null ? ` · ${item.percentage}%` : "";
+    const description = options?.couponDescription?.trim();
+    return description
+      ? `Cupón ${code}${percentage} · ${description}`
+      : `Cupón ${code}${percentage}`;
+  }
+
+  const percentage = item.percentage;
+  const percentageLabel =
+    percentage != null ? `${percentage}%` : `#${item.promotionId}`;
+  const dishes = summarizeDishNames(options?.discountDishes ?? []);
+
+  if (dishes) {
+    return `Descuento ${percentageLabel} · ${dishes}`;
+  }
+
+  return `Descuento ${percentageLabel} · promo #${item.promotionId}`;
 }
