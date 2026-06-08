@@ -31,8 +31,7 @@ function mapApiDiscount(
   return {
     id: String(discount.id),
     percentage: discount.porcentaje,
-    status:
-      discount.estado && discount.eliminacion == null ? "active" : "inactive",
+    status: discount.estado && discount.eliminacion === null ? "active" : "inactive",
     createdAt: discount.creacion,
     expiresAt: discount.vencimiento,
     dishes: discount.platos.map((dish) => ({
@@ -49,12 +48,21 @@ function mapApiDish(dish: DishApiResponse): DiscountDish {
   };
 }
 
-function mapDiscountRequest(discount: RestaurantDiscount): RestaurantDiscountRequest {
-  return {
+function mapDiscountRequest(
+  discount: RestaurantDiscount,
+  options: { includeStatus?: boolean } = {},
+): RestaurantDiscountRequest {
+  const request: RestaurantDiscountRequest = {
     porcentaje: discount.percentage,
     vencimiento: normalizeApiDateTime(discount.expiresAt),
     idPlatos: discount.dishes.map((dish) => Number(dish.id)),
   };
+
+  if (options.includeStatus) {
+    request.estado = discount.status === "active";
+  }
+
+  return request;
 }
 
 function normalizeApiDateTime(value: string) {
@@ -117,7 +125,7 @@ export async function updateRestaurantDiscount(
   try {
     const response = await clientApi.patch<DiscountMutationResponse>(
       `/api/descuentos/${discount.id}`,
-      mapDiscountRequest(discount),
+      mapDiscountRequest(discount, { includeStatus: true }),
     );
     return response.data;
   } catch (error) {

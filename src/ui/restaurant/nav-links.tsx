@@ -42,7 +42,7 @@ const accountNavLinks = [
   { name: "Cambiar contraseña", href: "/restaurant/change-password", icon: KeyIcon },
 ];
 
-const navGroups = [
+export const restaurantNavGroups = [
   { label: "Operación", className: "restaurant-operations", links: operationsNavLinks },
   { label: "Gestión", className: "restaurant-management", links: managementNavLinks },
   { label: "Comercial", className: "restaurant-commercial", links: commercialNavLinks },
@@ -54,7 +54,7 @@ export default function NavLinksRestaurant() {
 
   return (
     <div className="restaurant-menu">
-      {navGroups.map((group) => (
+      {restaurantNavGroups.map((group) => (
         <div key={group.label}>
           <p className="nav-links-name mb-2 text-xs uppercase text-gray-400">
             {group.label}
@@ -76,9 +76,9 @@ export default function NavLinksRestaurant() {
                 >
                   <Link className="flex items-center gap-2" href={link.href}>
                     <Icon
-                      className={clsx("h-5 w-5 shrink-0", {
+                      className={clsx("h-5 w-5 shrink-0 transition-all duration-300", {
                         "text-orange-700": isActive,
-                        "text-gray-700": !isActive,
+                        "text-gray-700 group-hover/li:text-orange-700": !isActive,
                       })}
                     />
                     <span

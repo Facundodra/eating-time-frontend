@@ -40,4 +40,5 @@ export type RestaurantDiscountRequest = {
   porcentaje: number;
   vencimiento: string;
   idPlatos: number[];
+  estado?: boolean;
 };
