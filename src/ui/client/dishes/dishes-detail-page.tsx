@@ -74,7 +74,7 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
         <button
           type="button"
           onClick={() => router.back()}
-          className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
+          className="cursor-pointer inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
         >
           <ChevronLeftIcon className="h-4 w-4" />
           Volver al listado
