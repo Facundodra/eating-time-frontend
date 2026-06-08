@@ -9,12 +9,14 @@ import type {
     DeliveryPointCredentials,
     DeliveryPoint,
     ClientDish,
+    Discount,
     Cart,
     CartItem,
     Order,
     OrderHistoryStatus,
     OrderRequest,
     PaymentResponse,
+    LocalRating,
 } from "@/lib/client/types";
 
 export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRequest, PaymentResponse };
@@ -84,7 +86,7 @@ interface PlatoDtoFromApi {
 
 function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
     return {
-        id: String(plato.id),
+        id: plato.id,
         name: plato.nombre,
         description: plato.descripcion ?? "",
         price: plato.precio,
@@ -147,6 +149,29 @@ export async function getDish(id: string): Promise<ClientDish> {
         }
         throw new Error("No se pudo cargar el plato.");
     }
+}
+
+
+// Descuentos de plato
+export async function getDishDiscount(dishId: number): Promise<Discount | null> {
+    try {
+        const response = await clientApi.get<Discount>(`/api/descuentos/plato/${dishId}`);
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            if (error.response?.status === 404) return null;
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener descuento (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo cargar el descuento.");
+    }
+}
+
+// Devuelve los IDs de los platos con descuento activo, reutilizando el filtro conDescuento ya soportado por /api/locales/platos
+export async function getDiscountedDishIds(idLocal?: number): Promise<Set<number>> {
+    const dishes = await getDishes({ idLocal, conDescuento: true, tamano: 100 });
+    return new Set(dishes.map((dish) => dish.id));
 }
 
 
@@ -486,5 +511,100 @@ export async function getOrderHistoryRestaurants(): Promise<OrderHistoryRestaura
             throw new Error(message);
         }
         throw new Error("No se pudieron cargar los locales del historial.");
+    }
+}
+
+export class AccountDeletionError extends Error {
+  constructor(
+    message: string,
+    public readonly status?: number,
+    public readonly hasPendingOrders = false,
+  ) {
+    super(message);
+    this.name = "AccountDeletionError";
+  }
+}
+
+function getApiErrorMessage(data: unknown): string | undefined {
+  if (!data || typeof data !== "object") {
+    return undefined;
+  }
+
+  const payload = data as Record<string, unknown>;
+
+  if (typeof payload.message === "string") {
+    return payload.message;
+  }
+
+  if (typeof payload.error === "string") {
+    return payload.error;
+  }
+
+  if (typeof payload.detail === "string") {
+    return payload.detail;
+  }
+
+  return undefined;
+}
+
+export async function deleteClientAccount(): Promise<void> {
+  const session = await requireCurrentSession();
+
+  try {
+    await clientApi.delete(`/api/clientes/${session.idTipoUsuario}/cuenta`);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      const message = getApiErrorMessage(error.response?.data);
+
+      if (status === 403) {
+        throw new AccountDeletionError(
+          message ?? "No tenés permiso para eliminar esta cuenta.",
+          403,
+        );
+      }
+
+      if (status === 404) {
+        throw new AccountDeletionError(
+          message ?? "Cuenta no encontrada.",
+          404,
+        );
+      }
+
+      if (status === 409) {
+        throw new AccountDeletionError(
+          message ?? "No podés eliminar la cuenta en este momento.",
+          409,
+          true,
+        );
+      }
+
+      throw new AccountDeletionError(
+        message ?? `Error al eliminar la cuenta (${status})`,
+        status,
+      );
+    }
+
+    throw new AccountDeletionError(
+      "No se pudo eliminar la cuenta. Intentalo nuevamente.",
+    );
+  }
+}
+
+
+
+
+// ── Calificaciones ─────────────────────────────────────────────────────────────
+export async function getLocalRatings(restaurantId: number): Promise<LocalRating[]> {
+    try {
+        const response = await clientApi.get<LocalRating[]>(`/api/locales/${restaurantId}/comentarios`);
+        return response.data;
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener comentarios (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo cargar los comentarios.");
     }
 }

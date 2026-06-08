@@ -20,7 +20,7 @@ export type DeliveryPoint = {
 };
 
 export type ClientDish = {
-  id: string;
+  id: number;
   name: string;
   description: string;
   price: number;
@@ -29,6 +29,12 @@ export type ClientDish = {
   createdAt: string;
   localId: number;
   categories: number[];
+}
+
+export type Discount = {
+  id: number;
+  porcentaje: number;
+  estado: boolean;
 }
 
 export type RestaurantList = {
@@ -132,3 +138,15 @@ export type Order = {
   eliminacion: string | null;
   items: CartItem[];
 };
+
+
+
+// Calificacion de local 
+export type LocalRating = {
+  id: number;
+  calificacion: number;
+  comentario: string | null;
+  creacion: string;
+  pedidoId: number;
+  nombreCliente: string;
+}

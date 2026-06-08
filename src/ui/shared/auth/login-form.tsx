@@ -19,6 +19,7 @@ type LoginFormProps = {
 const loginReasonMessages: Record<string, string> = {
   "auth-required": "Iniciá sesión para continuar.",
   "session-expired": "Tu sesión expiró. Iniciá sesión nuevamente.",
+  "account-deleted": "Tu cuenta fue eliminada correctamente.",
 };
 
 export default function LoginForm({ reason }: LoginFormProps) {

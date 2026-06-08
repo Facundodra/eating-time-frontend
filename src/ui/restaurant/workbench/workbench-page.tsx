@@ -12,7 +12,12 @@ import type {
   WorkbenchOrder,
 } from "@/lib/restaurant/workbench/types";
 import {
+  ORDER_ADVANCEABLE_STATUSES,
+  ORDER_NEXT_STATUS,
+} from "@/lib/restaurant/workbench/types";
+import {
   acceptOrder,
+  advanceOrder,
   fetchWorkbenchOrders,
   rejectOrder,
 } from "@/services/restaurant/workbench-service";
@@ -29,6 +34,12 @@ const statusLabels: Record<OrderStatus, string> = {
   FINALIZADO: "Finalizado",
   RECHAZADO_LOCAL: "Rechazado",
   CANCELADO_CLIENTE: "Cancelado",
+};
+
+const advanceActionLabels: Partial<Record<OrderStatus, string>> = {
+  ACEPTADO_LOCAL: "Marcar en curso",
+  EN_CURSO_LOCAL: "Marcar en camino",
+  EN_CAMINO_LOCAL: "Marcar como finalizado",
 };
 
 const statusBadgeColors: Record<OrderStatus, string> = {
@@ -101,7 +112,7 @@ const KANBAN_COLUMNS: KanbanColumnDef[] = [
   },
   {
     id: "closed",
-    label: "Cerrado",
+    label: "Rechazado o Cancelado",
     statuses: ["RECHAZADO_LOCAL", "CANCELADO_CLIENTE"],
     accentBorder: "border-t-red-300",
     countBadge:
@@ -344,6 +355,30 @@ function OrderDetailPanel({
     }
   }
 
+  async function handleAdvance() {
+    setIsSubmitting(true);
+    setActionError(null);
+    try {
+      const session = await getCurrentSession();
+      const restaurantId = session?.idTipoUsuario
+        ? String(session.idTipoUsuario)
+        : "";
+      const updated = await advanceOrder(restaurantId, order.id);
+      onOrderUpdated(updated);
+      onReload();
+    } catch (err) {
+      setActionError(
+        err instanceof Error ? err.message : "Error al avanzar el pedido.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  const canAdvance = ORDER_ADVANCEABLE_STATUSES.has(order.status);
+  const nextStatus = ORDER_NEXT_STATUS[order.status];
+  const advanceLabel = advanceActionLabels[order.status];
+
   return (
     <>
       {/* Backdrop */}
@@ -527,6 +562,32 @@ function OrderDetailPanel({
               <p className="text-sm font-medium text-red-600 dark:text-red-400">
                 {order.rejectionReason}
               </p>
+            </div>
+          )}
+
+          {/* Advance status action */}
+          {canAdvance && advanceLabel && nextStatus && (
+            <div className="border-t border-gray-200 pt-5 dark:border-slate-700">
+              <p className="mb-3 text-sm font-medium text-slate-500 dark:text-slate-400">
+                El pedido pasará a{" "}
+                <span className="font-extrabold text-slate-700 dark:text-slate-200">
+                  {statusLabels[nextStatus]}
+                </span>
+                .
+              </p>
+              {actionError && (
+                <p className="mb-3 text-sm font-medium text-red-500 dark:text-red-400">
+                  {actionError}
+                </p>
+              )}
+              <button
+                type="button"
+                onClick={handleAdvance}
+                disabled={isSubmitting}
+                className="w-full rounded-xl bg-orange-500 px-4 py-2.5 text-sm font-extrabold text-white transition hover:bg-orange-600 disabled:opacity-60 active:scale-95 dark:bg-orange-600 dark:hover:bg-orange-500"
+              >
+                {isSubmitting ? "Actualizando..." : advanceLabel}
+              </button>
             </div>
           )}
 

@@ -38,13 +38,13 @@ const stats = [
 
 export default function RestaurantStats() {
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 xl:grid-cols-4">
       {stats.map((stat) => {
         const Icon = stat.icon;
 
         return (
           <article
-            className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900"
+            className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm sm:p-5 dark:border-slate-800 dark:bg-slate-900"
             key={stat.label}
           >
             <div className="flex items-start justify-between gap-4">
@@ -57,7 +57,7 @@ export default function RestaurantStats() {
                 {stat.tag}
               </span>
             </div>
-            <p className="mt-5 text-3xl font-bold text-slate-950 dark:text-white">
+            <p className="mt-5 text-2xl font-bold text-slate-950 sm:text-3xl dark:text-white">
               {stat.value}
             </p>
             <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">

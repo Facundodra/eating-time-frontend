@@ -1,5 +1,5 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import RestaurantStatisticsPage from "@/ui/restaurant/statistics/statistics-page";
 
 export default function StatisticsPage() {
-  return <ComingSoonPage backHref="/restaurant" title="Estadisticas" />;
+  return <RestaurantStatisticsPage />;
 }
