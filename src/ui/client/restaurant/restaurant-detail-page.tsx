@@ -93,11 +93,14 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
           {/* Info */}
           <div className="p-6">
             <div>
-              <h1 className="text-lg font-extrabold text-gray-900 flex align-center gap-3">
+              <h1 className="text-lg font-extrabold text-gray-900 flex items-center gap-3">
                 {restaurant.name}
-                <span className="flex text-sm text-orange-700 align-center">
+                <span className="flex align-center text-sm text-orange-700 items-center">
                   <StarIcon className="w-[20px] mr-1"></StarIcon>{" "}
-                  <span className="relative top-[5px]">{restaurant.stars}</span>
+                  <span className="relative">{restaurant.stars}</span>
+                  <Link href={`/client/restaurant/${id}/comentarios`} className="text-gray-800 text-xs  leading-1 font-normal ml-3 hover:text-orange-700">
+                    Ver comentarios
+                  </Link>
                 </span>
               </h1>
               <p className="descripcion text-md block">
