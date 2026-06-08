@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
 
-import { publicApi } from "./api-client";
+import { clientApi, publicApi } from "./api-client";
 import type {
   LoginCredentials,
   LoginWebResponse,
@@ -319,6 +319,48 @@ export async function confirmPasswordReset(
     throw new PasswordResetError(
       "No se pudo restablecer la contraseña. Intentalo nuevamente.",
       "invalid",
+    );
+  }
+}
+
+
+export class ChangePasswordError extends Error {
+  constructor(
+    message: string,
+    public readonly code: "wrong_password" | "validation" | "unauthorized",
+    public readonly status?: number,
+  ) {
+    super(message);
+    this.name = "ChangePasswordError";
+  }
+}
+
+export async function changePassword(
+  passwordActual: string,
+  nuevaPassword: string,
+): Promise<void> {
+  try {
+    await clientApi.patch("/api/auth/cambiar-password", {
+      passwordActual,
+      nuevaPassword,
+    });
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 400) {
+        const msg =
+          error.response?.data?.error ??
+          error.response?.data?.nuevaPassword ??
+          "Revisá los datos ingresados.";
+        throw new ChangePasswordError(msg, "wrong_password", 400);
+      }
+      if (status === 401) {
+        throw new ChangePasswordError("Tu sesión expiró.", "unauthorized", 401);
+      }
+    }
+    throw new ChangePasswordError(
+      "No se pudo cambiar la contraseña. Intentalo nuevamente.",
+      "wrong_password",
     );
   }
 }

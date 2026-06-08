@@ -60,13 +60,11 @@ export default function DeliveryPointList() {
       {deliveryPoints.map((deliveryPoint) => (
         <li
           key={deliveryPoint.id}
-          className="rounded-xl border border-gray-200 bg-white px-5 py-4 flex align-center"
+          className="rounded-xl border border-gray-200 bg-white px-5 py-4 flex items-start gap-3 dark:border-slate-700 dark:bg-slate-800/50"
         >
-          <p className="flex align-center justify-center mr-3">
-            <MapPinIcon className="w-[20px] text-orange-700"></MapPinIcon>
-          </p>
+          <MapPinIcon className="mt-0.5 h-5 w-5 shrink-0 text-orange-500" />
           <div>
-            <p className="text-sm font-bold text-slate-900">
+            <p className="text-sm font-bold text-slate-900 dark:text-white">
               {deliveryPoint.calle} {deliveryPoint.numero}
               {deliveryPoint.nroApto ? `, Apto ${deliveryPoint.nroApto}` : ""}
             </p>
@@ -74,7 +72,7 @@ export default function DeliveryPointList() {
               {deliveryPoint.localidad}
             </p>
             {deliveryPoint.indicaciones && (
-              <p className="mt-2 text-xs text-slate-500">
+              <p className="mt-1.5 text-xs text-slate-500 dark:text-slate-400">
                 {deliveryPoint.indicaciones}
               </p>
             )}
