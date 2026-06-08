@@ -67,7 +67,9 @@ export default function RestaurantStatus({ className }: { className?: string }) 
     };
   }, [refreshAvailability]);
 
-  const statusClass = isAvailable ? "open bg-green-100" : "closed bg-red-100";
+  const statusClass = isAvailable
+    ? "open bg-green-100 dark:bg-green-500/15"
+    : "closed bg-red-100 dark:bg-red-500/15";
   const label = isAvailable == null ? "Sin datos" : isAvailable ? "Abierto" : "Cerrado";
 
   return (
@@ -78,7 +80,7 @@ export default function RestaurantStatus({ className }: { className?: string }) 
         className,
       )}
     >
-      <span className="text-xs font-bold leading-1 [.open_&]:text-green-600 [.closed_&]:text-red-500 before:relative before:bottom-[1px] before:mr-1 before:inline-block before:h-[6px] before:w-[6px] before:rounded-full before:content-[''] [.closed_&]:before:bg-red-500 [.open_&]:before:bg-green-600">
+      <span className="text-xs font-bold leading-1 [.open_&]:text-green-600 [.closed_&]:text-red-500 dark:[.closed_&]:text-red-400 dark:[.open_&]:text-green-400 before:relative before:bottom-[1px] before:mr-1 before:inline-block before:h-[6px] before:w-[6px] before:rounded-full before:content-[''] [.closed_&]:before:bg-red-500 [.open_&]:before:bg-green-600 dark:[.closed_&]:before:bg-red-400 dark:[.open_&]:before:bg-green-400">
         {label}
       </span>
     </div>
