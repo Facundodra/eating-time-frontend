@@ -20,7 +20,7 @@ export type DeliveryPoint = {
 };
 
 export type ClientDish = {
-  id: string;
+  id: number;
   name: string;
   description: string;
   price: number;
@@ -29,6 +29,12 @@ export type ClientDish = {
   createdAt: string;
   localId: number;
   categories: number[];
+}
+
+export type Discount = {
+  id: number;
+  porcentaje: number;
+  estado: boolean;
 }
 
 export type RestaurantList = {
