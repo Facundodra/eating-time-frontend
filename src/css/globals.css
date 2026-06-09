@@ -22,6 +22,28 @@
     @apply max-w-[1440px] w-[85%] mx-auto;
 }
 
+.clean-scrollbar{
+    scrollbar-width: thin;
+    scrollbar-color: rgba(148, 163, 184, 0.35) transparent;
+}
+
+.clean-scrollbar::-webkit-scrollbar{
+    width: 6px;
+}
+
+.clean-scrollbar::-webkit-scrollbar-track{
+    background: transparent;
+}
+
+.clean-scrollbar::-webkit-scrollbar-thumb{
+    background-color: rgba(148, 163, 184, 0.28);
+    border-radius: 999px;
+}
+
+.clean-scrollbar::-webkit-scrollbar-thumb:hover{
+    background-color: rgba(234, 88, 12, 0.45);
+}
+
 
 /* Navbar animation */ 
 .sidenav{
@@ -95,7 +117,7 @@
         @apply mb-2 h-4 overflow-hidden;
     }
     .nav-link{
-        @apply mb-3 h-[44px] w-full px-[22px] py-0;
+        @apply h-[44px] w-full px-[22px] py-0;
         a{
             @apply h-full justify-start gap-2;
         }
@@ -114,7 +136,7 @@
         @apply mb-2 h-4 overflow-visible;
     }
     .nav-link{
-        @apply mb-3 h-[44px] px-[22px] py-0;
+        @apply h-[44px] px-[22px] py-0;
         a{
             @apply h-full justify-start gap-2;
         }

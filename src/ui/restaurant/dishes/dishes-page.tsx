@@ -1,16 +1,17 @@
 "use client";
 
-import { PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Image from "next/image";
-import { useMemo, useRef, useState, useTransition } from "react";
-
 import {
-  createDishAction,
-  deleteDishAction,
-  toggleDishAvailabilityAction,
-  updateDishAction,
-} from "@/app/restaurant/dishes/actions";
+  type DragEvent,
+  type FormEvent,
+  useMemo,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
+
 import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
   DishCategory,
@@ -18,7 +19,14 @@ import type {
   RestaurantDish,
   RestaurantDishesResponse,
 } from "@/lib/restaurant/dish/types";
-import { getDishCategories, getRestaurantDishes } from "@/services/restaurant/dish-service";
+import {
+  createDish,
+  deleteDish,
+  getDishCategories,
+  getRestaurantDishes,
+  toggleDishAvailability,
+  updateDish,
+} from "@/services/restaurant/dish-service";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
@@ -176,11 +184,14 @@ export default function RestaurantDishesPage() {
   const [categories, setCategories] = useState<DishCategory[]>([]);
   const [selectedDishId, setSelectedDishId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [mobileEditingDishId, setMobileEditingDishId] = useState("");
   const [isPending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [detailError, setDetailError] = useState<string | null>(null);
 
   // Create form refs
   const createFormRef = useRef<HTMLFormElement>(null);
+  const createImageInputRef = useRef<HTMLInputElement>(null);
   const editImageInputRef = useRef<HTMLInputElement>(null);
 
   // Edit form state
@@ -188,6 +199,7 @@ export default function RestaurantDishesPage() {
   const [editDescription, setEditDescription] = useState("");
   const [editPrice, setEditPrice] = useState("");
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
+  const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [hasEditImageChange, setHasEditImageChange] = useState(false);
   const {
     data: loadedData,
@@ -224,6 +236,7 @@ export default function RestaurantDishesPage() {
     setEditDescription(dish?.description ?? "");
     setEditPrice(dish ? String(dish.price) : "");
     setEditCategoryIds(dish?.categoryIds ?? []);
+    setEditImageFile(null);
     setHasEditImageChange(false);
     if (editImageInputRef.current) {
       editImageInputRef.current.value = "";
@@ -258,7 +271,9 @@ export default function RestaurantDishesPage() {
   function selectDish(dish: RestaurantDish) {
     resetEditForm(dish);
     setShowCreateForm(false);
-    setError(null);
+    setMobileEditingDishId("");
+    setCreateError(null);
+    setDetailError(null);
   }
 
   function handleFilterChange(nextFilter: DishFilter) {
@@ -276,7 +291,9 @@ export default function RestaurantDishesPage() {
     const nextDish = nextFilteredDishes[0] ?? null;
     resetEditForm(nextDish);
     setShowCreateForm(!nextDish);
-    setError(null);
+    setMobileEditingDishId("");
+    setCreateError(null);
+    setDetailError(null);
   }
 
   function handleCreate(formData: FormData) {
@@ -290,27 +307,30 @@ export default function RestaurantDishesPage() {
     const categoryIds = formData.getAll("categoryIds");
 
     if (!name || price <= 0) {
-      setError("Nombre y precio son obligatorios");
+      setCreateError("Nombre y precio son obligatorios");
       return;
     }
 
     if (!description) {
-      setError("La descripción es obligatoria");
+      setCreateError("La descripción es obligatoria");
       return;
     }
 
     if (categoryIds.length === 0) {
-      setError("Debe seleccionar al menos una categoría");
+      setCreateError("Debe seleccionar al menos una categoría");
       return;
     }
 
-    setError(null);
+    setCreateError(null);
     startTransition(async () => {
-      const result = await createDishAction(restaurantId, formData);
-
-      if (result.error) {
-        setError(result.error);
-      } else {
+      try {
+        await createDish(restaurantId, {
+          name,
+          description,
+          price,
+          categoryIds: categoryIds.map(String),
+          image: (formData.get("image") as File | null) ?? null,
+        });
         createFormRef.current?.reset();
         setShowCreateForm(false);
         // Refresh dish list without full page reload
@@ -324,6 +344,11 @@ export default function RestaurantDishesPage() {
         setCategories(freshCategories);
         resetEditForm(nextDish);
         setShowCreateForm(!nextDish);
+        setMobileEditingDishId("");
+      } catch (error) {
+        setCreateError(
+          error instanceof Error ? error.message : "Error al crear plato",
+        );
       }
     });
   }
@@ -333,40 +358,30 @@ export default function RestaurantDishesPage() {
 
     const price = editPrice ? Number(editPrice) : undefined;
     if (price != null && (isNaN(price) || price <= 0)) {
-      setError("El precio debe ser un numero positivo");
+      setDetailError("El precio debe ser un numero positivo");
       return;
     }
 
     if (!editDescription.trim()) {
-      setError("La descripción es obligatoria");
+      setDetailError("La descripción es obligatoria");
       return;
     }
 
     if (editCategoryIds.length === 0) {
-      setError("Debe seleccionar al menos una categoría");
+      setDetailError("Debe seleccionar al menos una categoría");
       return;
     }
 
-    setError(null);
-    const formData = new FormData();
-    if (editName.trim()) formData.append("name", editName.trim());
-    formData.append("description", editDescription.trim());
-    if (price != null) formData.append("price", String(price));
-    editCategoryIds.forEach((categoryId) => {
-      formData.append("categoryIds", categoryId);
-    });
-
-    const fileInput = editImageInputRef.current;
-    if (fileInput?.files?.[0]) {
-      formData.append("image", fileInput.files[0]);
-    }
-
+    setDetailError(null);
     startTransition(async () => {
-      const result = await updateDishAction(selectedDish.id, formData);
-
-      if (result.error) {
-        setError(result.error);
-      } else {
+      try {
+        await updateDish(selectedDish.id, {
+          name: editName.trim() || undefined,
+          description: editDescription.trim(),
+          price,
+          categoryIds: editCategoryIds,
+          image: editImageFile,
+        });
         const updateCurrentDishes = (current: RestaurantDish[]) =>
           current.map((d) =>
             d.id === selectedDish.id
@@ -382,11 +397,17 @@ export default function RestaurantDishesPage() {
 
         setDishes(updateCurrentDishes);
         setSavedDishes(updateCurrentDishes);
+        setEditImageFile(null);
         setHasEditImageChange(false);
+        setMobileEditingDishId("");
         if (editImageInputRef.current) {
           editImageInputRef.current.value = "";
         }
-        setError(null);
+        setDetailError(null);
+      } catch (error) {
+        setDetailError(
+          error instanceof Error ? error.message : "Error al modificar plato",
+        );
       }
     });
   }
@@ -394,34 +415,68 @@ export default function RestaurantDishesPage() {
   function handleDelete() {
     if (!selectedDish || !restaurantId) return;
 
-    setError(null);
-    startTransition(async () => {
-      const result = await deleteDishAction(selectedDish.id);
+    deleteDishAndUpdateList(selectedDish.id);
+  }
 
-      if (result.error) {
-        setError(result.error);
-      } else {
-        const nextDishes = dishes.filter((d) => d.id !== selectedDish.id);
+  function handleDeleteById(dishId: string) {
+    if (!restaurantId) return;
+
+    deleteDishAndUpdateList(dishId);
+  }
+
+  function deleteDishAndUpdateList(dishId: string) {
+    setDetailError(null);
+    startTransition(async () => {
+      try {
+        await deleteDish(dishId);
+        const nextDishes = dishes.filter((d) => d.id !== dishId);
         const nextDish = filterDishes(nextDishes, filter)[0] ?? null;
 
         setDishes(nextDishes);
         setSavedDishes(nextDishes);
         resetEditForm(nextDish);
         setShowCreateForm(!nextDish);
+        setMobileEditingDishId("");
+      } catch (error) {
+        setDetailError(
+          error instanceof Error ? error.message : "Error al eliminar plato",
+        );
       }
     });
+  }
+
+  function handleCreateSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    handleCreate(new FormData(event.currentTarget));
+  }
+
+  function handleCreateImageDragOver(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+  }
+
+  function handleCreateImageDrop(event: DragEvent<HTMLElement>) {
+    event.preventDefault();
+
+    const droppedImage = Array.from(event.dataTransfer.files).find((file) =>
+      file.type.startsWith("image/"),
+    );
+
+    if (!droppedImage || !createImageInputRef.current) {
+      return;
+    }
+
+    const dataTransfer = new DataTransfer();
+    dataTransfer.items.add(droppedImage);
+    createImageInputRef.current.files = dataTransfer.files;
   }
 
   function handleToggleAvailability() {
     if (!selectedDish || !restaurantId) return;
 
-    setError(null);
+    setDetailError(null);
     startTransition(async () => {
-      const result = await toggleDishAvailabilityAction(selectedDish.id);
-
-      if (result.error) {
-        setError(result.error);
-      } else {
+      try {
+        await toggleDishAvailability(selectedDish.id);
         const updateCurrentDishes = (current: RestaurantDish[]) =>
           current.map((d) => {
             if (d.id !== selectedDish.id) {
@@ -447,6 +502,13 @@ export default function RestaurantDishesPage() {
         setSavedDishes(nextDishes);
         resetEditForm(nextDish);
         setShowCreateForm(!nextDish);
+        setMobileEditingDishId("");
+      } catch (error) {
+        setDetailError(
+          error instanceof Error
+            ? error.message
+            : "Error al cambiar disponibilidad",
+        );
       }
     });
   }
@@ -465,11 +527,18 @@ export default function RestaurantDishesPage() {
     setEditDescription(savedSelectedDishData.description);
     setEditPrice(String(savedSelectedDishData.price));
     setEditCategoryIds(savedSelectedDishData.categoryIds);
+    setEditImageFile(null);
     setHasEditImageChange(false);
     if (editImageInputRef.current) {
       editImageInputRef.current.value = "";
     }
-    setError(null);
+    setDetailError(null);
+  }
+
+  function handleEditImageChange(fileList: FileList | null) {
+    const file = fileList?.[0] ?? null;
+    setEditImageFile(file);
+    setHasEditImageChange(Boolean(file));
   }
 
   const isDataReady = Boolean(loadedData) && !isLoading && !loadError;
@@ -478,12 +547,6 @@ export default function RestaurantDishesPage() {
 
   return (
     <section className="space-y-6">
-      {error && (
-        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
-          {error}
-        </div>
-      )}
-
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
         <label htmlFor="dish-status-filter" className="block max-w-[180px]">
           <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
@@ -523,7 +586,9 @@ export default function RestaurantDishesPage() {
               onClick={() => {
                 setShowCreateForm(true);
                 setSelectedDishId("");
-                setError(null);
+                setMobileEditingDishId("");
+                setCreateError(null);
+                setDetailError(null);
               }}
               className="flex h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
@@ -547,70 +612,214 @@ export default function RestaurantDishesPage() {
             {isDataReady && filteredDishes.map((dish) => {
               const isSelected =
                 dish.id === selectedDish?.id && !showCreateForm;
+              const isEditingInline =
+                mobileEditingDishId === dish.id && selectedDish?.id === dish.id;
 
               return (
-                <button
-                  type="button"
+                <article
                   key={dish.id}
-                  onClick={() => selectDish(dish)}
                   className={clsx(
-                    "grid w-full cursor-pointer gap-4 rounded-2xl border p-4 text-left transition hover:border-orange-200 hover:bg-orange-50/40 md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-start dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10",
+                    "rounded-2xl border transition hover:border-orange-200 hover:bg-orange-50/40 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10",
                     isSelected
                       ? "border-orange-200 bg-orange-50/40 dark:border-orange-500/30 dark:bg-orange-500/10"
                       : "border-transparent bg-white dark:bg-slate-900",
                   )}
                 >
-                  <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 dark:bg-orange-500/10">
-                    {dish.imageUrl ? (
-                      <Image
-                        src={dish.imageUrl}
-                        alt={dish.name}
-                        width={80}
-                        height={80}
-                        unoptimized
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-2xl font-black text-orange-600 dark:text-orange-400">
-                        {dish.name.charAt(0).toUpperCase()}
-                      </span>
-                    )}
-                  </div>
-                  <div className="min-w-0">
-                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
-                      {dish.name}
-                    </h3>
-                    <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      {formatPrice(dish.price)}
-                    </p>
-                    {dish.description && (
-                      <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-500 dark:text-slate-400">
-                        {dish.description}
-                      </p>
-                    )}
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {getCategoryLabels(dish.categoryIds, categories).map((categoryName) => (
-                        <span
-                          key={`${dish.id}-${categoryName}`}
-                          className="rounded-full bg-orange-50 px-3 py-1 text-xs font-extrabold text-orange-600 dark:bg-orange-500/10 dark:text-orange-400"
+                  {!isEditingInline && (
+                    <div
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => selectDish(dish)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter" || event.key === " ") {
+                          selectDish(dish);
+                        }
+                      }}
+                      className="grid w-full cursor-pointer grid-cols-[96px_minmax(0,1fr)] gap-4 p-4 text-left md:grid-cols-[96px_minmax(0,1fr)_auto] md:items-start"
+                    >
+                      <div className="col-start-1 row-start-1 flex h-20 w-20 items-center justify-center overflow-hidden rounded-2xl bg-orange-50 dark:bg-orange-500/10">
+                        {dish.imageUrl ? (
+                          <Image
+                            src={dish.imageUrl}
+                            alt={dish.name}
+                            width={80}
+                            height={80}
+                            unoptimized
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <span className="text-2xl font-black text-orange-600 dark:text-orange-400">
+                            {dish.name.charAt(0).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                      <div className="col-start-2 row-start-1 flex items-start justify-end gap-2 md:col-start-3">
+                        <StatusBadge status={dish.status} />
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            selectDish(dish);
+                            setMobileEditingDishId(dish.id);
+                          }}
+                          aria-label="Editar plato"
+                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-gray-100 transition hover:text-orange-600 xl:hidden dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800 dark:hover:text-orange-400"
                         >
-                          {categoryName}
-                        </span>
-                      ))}
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
-                        Creado: {formatDateTimeLabel(dish.createdAt)}
-                      </span>
+                          <PencilIcon className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(event) => {
+                            event.stopPropagation();
+                            handleDeleteById(dish.id);
+                          }}
+                          disabled={isPending}
+                          aria-label="Eliminar plato"
+                          className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white text-red-500 shadow-sm ring-1 ring-gray-100 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 xl:hidden dark:bg-slate-950 dark:text-red-400 dark:ring-slate-800 dark:hover:bg-red-500/10"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </button>
+                      </div>
+                      <div className="col-span-2 row-start-2 min-w-0 md:col-span-1 md:col-start-2 md:row-start-1">
+                        <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                          {dish.name}
+                        </h3>
+                        <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                          {formatPrice(dish.price)}
+                        </p>
+                        {dish.description && (
+                          <p className="mt-2 line-clamp-2 text-sm font-medium text-slate-500 dark:text-slate-400">
+                            {dish.description}
+                          </p>
+                        )}
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {getCategoryLabels(dish.categoryIds, categories).map((categoryName) => (
+                            <span
+                              key={`${dish.id}-${categoryName}`}
+                              className="rounded-full bg-orange-50 px-3 py-1 text-xs font-extrabold text-orange-600 dark:bg-orange-500/10 dark:text-orange-400"
+                            >
+                              {categoryName}
+                            </span>
+                          ))}
+                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+                            Creado: {formatDateTimeLabel(dish.createdAt)}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <StatusBadge status={dish.status} />
-                </button>
+                  )}
+
+                  {isEditingInline && selectedDish && (
+                    <div className="space-y-4 p-4 xl:hidden">
+                      {detailError && (
+                        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+                          {detailError}
+                        </div>
+                      )}
+
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                          Nombre
+                        </span>
+                        <input
+                          type="text"
+                          value={editName}
+                          onChange={(e) => setEditName(e.target.value)}
+                          className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                          Descripción
+                        </span>
+                        <textarea
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          rows={4}
+                          className="w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                        />
+                      </label>
+
+                      <div>
+                        <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                          Categorías
+                        </span>
+                        <CategorySelector
+                          categories={categories}
+                          selectedIds={editCategoryIds}
+                          onToggle={toggleEditCategory}
+                        />
+                      </div>
+
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                          Precio
+                        </span>
+                        <input
+                          type="number"
+                          min={1}
+                          step="0.01"
+                          value={editPrice}
+                          onChange={(e) => setEditPrice(e.target.value)}
+                          className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                        />
+                      </label>
+
+                      <label className="block">
+                        <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                          Nueva imagen (opcional)
+                        </span>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleEditImageChange(e.target.files)}
+                          className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                        />
+                      </label>
+
+                      <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-4 sm:flex-row sm:justify-end dark:border-slate-800">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            handleCancelChanges();
+                            setMobileEditingDishId("");
+                          }}
+                          className="h-11 cursor-pointer rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleToggleAvailability}
+                          disabled={isPending}
+                          className="h-11 cursor-pointer rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 disabled:opacity-50 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
+                        >
+                          {isPending
+                            ? "Actualizando..."
+                            : selectedDish.status === "available"
+                              ? "Marcar no disponible"
+                              : "Marcar disponible"}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={handleUpdate}
+                          disabled={isPending}
+                          className="h-11 cursor-pointer rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 disabled:opacity-50"
+                        >
+                          {isPending ? "Guardando..." : "Guardar cambios"}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </article>
               );
             })}
           </div>
         </section>
 
         {isLoading && (
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
                 Detalle del plato
@@ -626,7 +835,7 @@ export default function RestaurantDishesPage() {
         )}
 
         {loadError && (
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
                 Detalle del plato
@@ -643,7 +852,7 @@ export default function RestaurantDishesPage() {
 
         {/* Create form panel */}
         {isDataReady && showCreateForm && (
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="order-first overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:order-none dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
                 Nuevo plato
@@ -655,9 +864,15 @@ export default function RestaurantDishesPage() {
 
             <form
               ref={createFormRef}
-              action={handleCreate}
+              onSubmit={handleCreateSubmit}
               className="space-y-4 p-5"
             >
+              {createError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+                  {createError}
+                </div>
+              )}
+
               <label className="block">
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Nombre
@@ -709,11 +924,16 @@ export default function RestaurantDishesPage() {
                 />
               </label>
 
-              <label className="block">
+              <label
+                className="block"
+                onDragOver={handleCreateImageDragOver}
+                onDrop={handleCreateImageDrop}
+              >
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Imagen (opcional)
                 </span>
                 <input
+                  ref={createImageInputRef}
                   type="file"
                   name="image"
                   accept="image/*"
@@ -726,7 +946,7 @@ export default function RestaurantDishesPage() {
                   type="button"
                   onClick={() => {
                     setShowCreateForm(false);
-                    setError(null);
+                    setCreateError(null);
                     createFormRef.current?.reset();
                   }}
                   className="h-11 cursor-pointer rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
@@ -747,7 +967,7 @@ export default function RestaurantDishesPage() {
 
         {/* Detail / Edit panel */}
         {isDataReady && !showCreateForm && selectedDish && (
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <div>
                 <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
@@ -769,6 +989,12 @@ export default function RestaurantDishesPage() {
             </div>
 
             <div className="space-y-4 p-5">
+              {detailError && (
+                <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+                  {detailError}
+                </div>
+              )}
+
               <label className="block">
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Nombre
@@ -827,7 +1053,7 @@ export default function RestaurantDishesPage() {
                   ref={editImageInputRef}
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setHasEditImageChange(Boolean(e.target.files?.[0]))}
+                  onChange={(e) => handleEditImageChange(e.target.files)}
                   className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
               </label>
