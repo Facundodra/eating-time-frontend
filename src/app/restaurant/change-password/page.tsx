@@ -1,5 +1,5 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import ChangePasswordPage from "@/ui/shared/auth/change-password-page";
 
-export default function ChangePasswordPage() {
-  return <ComingSoonPage backHref="/restaurant" title="Cambiar contraseña" />;
+export default function RestaurantChangePasswordPage() {
+  return <ChangePasswordPage backHref="/restaurant/my-data" />;
 }

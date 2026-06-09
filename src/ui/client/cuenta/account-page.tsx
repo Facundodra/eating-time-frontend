@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ClockIcon,
+  LockClosedIcon,
   MapPinIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
@@ -19,6 +20,12 @@ const accountLinks = [
     title: "Historial de pedidos",
     description: "Consultá tus pedidos anteriores y su estado.",
     icon: ClockIcon,
+  },
+  {
+    href: "/client/mi-cuenta/change-password",
+    title: "Cambiar contraseña",
+    description: "Actualizá tu contraseña de acceso.",
+    icon: LockClosedIcon,
   },
 ];
 

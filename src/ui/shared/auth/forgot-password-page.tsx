@@ -9,7 +9,13 @@ import LoadingButton from "@/ui/shared/buttons/loading-button";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "@/ui/shared/theme/theme-toggle";
 
-export default function ForgotPasswordPage() {
+type ForgotPasswordPageProps = {
+  initialEmail?: string;
+};
+
+export default function ForgotPasswordPage({
+  initialEmail = "",
+}: ForgotPasswordPageProps) {
   const [sent, setSent] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -91,6 +97,7 @@ export default function ForgotPasswordPage() {
                   autoComplete="email"
                   required
                   placeholder="nombre@email.com"
+                  defaultValue={initialEmail}
                   className="field"
                 />
               </div>

@@ -9,7 +9,7 @@ import type {
 } from "@/lib/admin/users/types"
 
 
-import { clientApi } from "../shared/api-client";
+import { clientApi as api } from "@/services/shared/api-client";
 import { requireCurrentSession } from "@/services/shared/auth-service";
 import axios from "axios";
 
@@ -97,7 +97,7 @@ export async function obtenerSolicitudesRegistroRestaurant(): Promise<
   SolicitudRegistroResponse[]
 > {
   try {
-    const response = await clientApi.get<SolicitudRegistroResponse[]>("/api/gestion/solicitudes");
+    const response = await api.get<SolicitudRegistroResponse[]>("/api/gestion/solicitudes");
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -113,7 +113,7 @@ export async function obtenerSolicitudRegistroRestaurantPorId(
   id: number,
 ): Promise<SolicitudRegistroResponse> {
   try {
-    const response = await clientApi.get<SolicitudRegistroResponse>(`/api/gestion/solicitudes/${id}`);
+    const response = await api.get<SolicitudRegistroResponse>(`/api/gestion/solicitudes/${id}`);
     return response.data;
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -139,7 +139,7 @@ export async function enviarSolicitudRegistroRestaurant(
   }
 
   try {
-    await clientApi.post("/api/gestion/solicitud-registro", body);
+    await api.post("/api/gestion/solicitud-registro", body);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const status = error.response?.status;
@@ -174,7 +174,7 @@ async function actualizarEstadoSolicitudRegistroRestaurant(
   action: "aprobar" | "rechazar",
 ): Promise<void> {
   try {
-    await clientApi.patch(`/api/gestion/solicitudes/${id}/${action}`);
+    await api.patch(`/api/gestion/solicitudes/${id}/${action}`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const data = error.response?.data as { message?: string; error?: string; detail?: string } | undefined;
@@ -231,7 +231,7 @@ export async function confirmarCuentaRestaurant(
 
 export async function blockUser(id: number): Promise<void> {
   try {
-    await clientApi.patch(`/api/admin/usuarios/${id}/bloqueo`);
+    await api.patch(`/api/admin/usuarios/${id}/bloqueo`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const data = error.response?.data;
@@ -243,7 +243,7 @@ export async function blockUser(id: number): Promise<void> {
 
 export async function unblockUser(id: number): Promise<void> {
   try {
-    await clientApi.patch(`/api/admin/usuarios/${id}/desbloqueo`);
+    await api.patch(`/api/admin/usuarios/${id}/desbloqueo`);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const data = error.response?.data;
@@ -329,7 +329,7 @@ export async function getUsers<T extends keyof UserTypeMap>(filter: UsersFilter,
     await requireCurrentSession();
 
     try {
-        const response = await clientApi.get<UsersPageResponse>(`/api/admin/usuarios/${type}`, { params: filter });
+        const response = await api.get<UsersPageResponse>(`/api/admin/usuarios/${type}`, { params: filter });
         return {
             users: response.data.content.map((user) => mapUserResponse(user, type)),
             totalPages: response.data.totalPages,

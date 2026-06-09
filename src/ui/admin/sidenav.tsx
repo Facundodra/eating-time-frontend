@@ -16,13 +16,13 @@ export default function Sidenav({ session }: { session: LoginWebResponse }) {
   return (
     <aside
       className={clsx(
-        "sidenav admin-sidenav sticky top-0 flex h-screen w-[80px] flex-col overflow-hidden border-r border-gray-200 bg-white px-2 py-8 transition-all duration-300 ease-in-out hover:w-[260px] dark:border-slate-800 dark:bg-slate-950",
+        "sidenav admin-sidenav sticky top-0 flex h-screen w-[80px] flex-col overflow-hidden border-r border-gray-200 bg-white px-2 py-5 transition-all duration-300 ease-in-out hover:w-[260px] dark:border-slate-800 dark:bg-slate-950",
         {
           mini: pathname !== "/admin",
         },
       )}
     >
-      <Link href="/admin" className="logo mb-10 flex h-[44px] items-center gap-2 px-[22px]">
+      <Link href="/admin" className="logo mb-4 flex h-[44px] shrink-0 items-center gap-2 px-[22px]">
         <span className="flex h-5 w-5 shrink-0 items-center justify-center">
           <Image
             src={EatingTimeLogo}
@@ -42,7 +42,9 @@ export default function Sidenav({ session }: { session: LoginWebResponse }) {
         </div>
       </Link>
 
-      <NavLinksAdmin />
+      <div className="clean-scrollbar min-h-0 flex-1 overflow-y-auto overflow-x-hidden pr-1">
+        <NavLinksAdmin />
+      </div>
       <SessionWidget
         session={session}
         profileHref="/admin/my-data"

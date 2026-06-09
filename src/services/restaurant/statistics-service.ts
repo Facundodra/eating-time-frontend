@@ -15,7 +15,7 @@ import type { RestaurantCoupon } from "@/lib/restaurant/coupon/types";
 import type { RestaurantDiscount } from "@/lib/restaurant/discount/types";
 import { getRestaurantCoupons } from "@/services/restaurant/coupon-service";
 import { getRestaurantDiscounts } from "@/services/restaurant/discount-service";
-import { clientApi } from "@/services/shared/api-client";
+import { clientApi as api } from "@/services/shared/api-client";
 import { requireCurrentSession } from "@/services/shared/auth-service";
 
 type StatisticsErrorResponse = {
@@ -187,22 +187,22 @@ export async function fetchRestaurantStatistics(
       discountsResult,
       couponsResult,
     ] = await Promise.all([
-      clientApi.get<TopSellingDishesApiResponse>(
+      api.get<TopSellingDishesApiResponse>(
         `/api/local/${restaurantId}/estadisticas/platos-mas-vendidos${rangeQuery ? `?${rangeQuery}` : ""}`,
       ),
-      clientApi.get<DishSalesEvolutionApiResponse>(
+      api.get<DishSalesEvolutionApiResponse>(
         `/api/local/${restaurantId}/estadisticas/ventas-por-plato${rangeQuery ? `?${rangeQuery}` : ""}`,
       ),
-      clientApi.get<RevenueApiResponse>(
+      api.get<RevenueApiResponse>(
         `/api/local/${restaurantId}/estadisticas/ingresos${rangeQuery ? `?${rangeQuery}` : ""}`,
       ),
-      clientApi.get<OrderStatusApiResponse>(
+      api.get<OrderStatusApiResponse>(
         `/api/local/${restaurantId}/estadisticas/pedidos-estado${orderStatusQuery ? `?${orderStatusQuery}` : ""}`,
       ),
-      clientApi.get<PromotionsApiResponse>(
+      api.get<PromotionsApiResponse>(
         `/api/local/${restaurantId}/estadisticas/promociones${rangeQuery ? `?${rangeQuery}` : ""}`,
       ),
-      clientApi.get<PopularityRatingApiResponse>(
+      api.get<PopularityRatingApiResponse>(
         `/api/local/${restaurantId}/estadisticas/popularidad-valoracion${rangeQuery ? `?${rangeQuery}` : ""}`,
       ),
       getRestaurantDiscounts(restaurantId).catch(() => null),
