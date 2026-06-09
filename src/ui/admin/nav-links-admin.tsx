@@ -23,18 +23,18 @@ const mainNavLinks = [
 
 const accountNavLinks = [
   { name: "Mis datos", href: "/admin/my-data", icon: UserIcon },
-  { name: "Cambiar contraseña", href: "/admin/cambiar-contrasena", icon: KeyIcon },
+  { name: "Cambiar contraseña", href: "/admin/change-password", icon: KeyIcon },
 ];
 
 export default function NavLinksAdmin() {
   const pathname = usePathname();
 
   return (
-    <div className="admin-menu">
-      <p className="nav-links-name mb-2 text-xs uppercase text-gray-400">
+    <div className="admin-menu space-y-1">
+      <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400">
         Principal
       </p>
-      <ul className="nav-links admin-main">
+      <ul className="nav-links admin-main space-y-0">
         {mainNavLinks.map((link) => {
           const Icon = link.icon;
           const isActive = pathname === link.href;
@@ -42,7 +42,7 @@ export default function NavLinksAdmin() {
           return (
             <li
               className={clsx(
-                "nav-link mb-3 rounded-xl px-3 py-3 transition-all duration-300 hover:bg-orange-700/10 group/li",
+                "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li",
                 {
                   "bg-orange-700/10": isActive,
                 },
@@ -51,7 +51,7 @@ export default function NavLinksAdmin() {
             >
               <Link className="flex items-center gap-2" href={link.href}>
                 <Icon
-                  className={clsx("h-5 w-5 shrink-0", {
+                  className={clsx("h-[18px] w-[18px] shrink-0", {
                     "text-orange-700": isActive,
                     "text-gray-700 dark:text-slate-300": !isActive,
                   })}
@@ -73,10 +73,10 @@ export default function NavLinksAdmin() {
         })}
       </ul>
 
-      <p className="nav-links-name mb-2 text-xs uppercase text-gray-400">
+      <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400">
         Cuenta
       </p>
-      <ul className="nav-links admin-account">
+      <ul className="nav-links admin-account space-y-0">
         {accountNavLinks.map((link) => {
           const Icon = link.icon;
           const isActive = pathname === link.href;
@@ -84,7 +84,7 @@ export default function NavLinksAdmin() {
           return (
             <li
               className={clsx(
-                "nav-link mb-3 rounded-xl px-3 py-3 transition-all duration-300 hover:bg-orange-700/10 group/li",
+                "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li",
                 {
                   "bg-orange-700/10": isActive,
                 },
@@ -93,7 +93,7 @@ export default function NavLinksAdmin() {
             >
               <Link className="flex items-center gap-2" href={link.href}>
                 <Icon
-                  className={clsx("h-5 w-5 shrink-0", {
+                  className={clsx("h-[18px] w-[18px] shrink-0", {
                     "text-orange-700": isActive,
                     "text-gray-700 dark:text-slate-300": !isActive,
                   })}

@@ -425,9 +425,9 @@ export default function RestaurantSchedulesPage() {
               schedule.map((day) => (
                 <div
                   key={day.id}
-                  className="grid gap-4 xl:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)_220px] xl:items-center"
+                  className="grid gap-4 rounded-2xl border border-gray-200 bg-slate-50/60 p-4 dark:border-slate-800 dark:bg-slate-950/40 xl:grid-cols-[180px_minmax(0,1fr)_minmax(0,1fr)_220px] xl:items-center xl:border-0 xl:bg-transparent xl:p-0 dark:xl:bg-transparent"
                 >
-                  <div className="flex items-center justify-between gap-4 xl:justify-start xl:gap-8">
+                  <div className="flex items-center justify-between gap-4 border-b border-gray-200 pb-4 dark:border-slate-800 xl:border-b-0 xl:pb-0 xl:justify-start xl:gap-8">
                     <div className="min-w-[86px]">
                       <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
                         {day.label}

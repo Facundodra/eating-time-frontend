@@ -15,7 +15,7 @@ export const pageMetadata: Record<string, PageMetadata> = {
     title: "Bloqueo de cuentas",
     description: "Gestión de bloqueo de usuarios",
   },
-  "/admin/cambiar-contrasena": {
+  "/admin/change-password": {
     breadcrumb: "Administración / Seguridad",
     title: "Cambiar contraseña",
     description: "Actualización de contraseña del administrador",
@@ -90,7 +90,7 @@ export const pageMetadata: Record<string, PageMetadata> = {
     title: "Mis datos",
     description: "Información y configuración de la cuenta",
   },
-  "/restaurant/cambiar-contrasena": {
+  "/restaurant/change-password": {
     breadcrumb: "Cuenta del local",
     title: "Cambiar contraseña",
     description: "Actualización de contraseña de la cuenta",

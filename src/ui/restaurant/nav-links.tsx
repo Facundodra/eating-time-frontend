@@ -39,7 +39,7 @@ const commercialNavLinks = [
 
 const accountNavLinks = [
   { name: "Mis datos", href: "/restaurant/my-data", icon: UserIcon },
-  { name: "Cambiar contraseña", href: "/restaurant/cambiar-contrasena", icon: KeyIcon },
+  { name: "Cambiar contraseña", href: "/restaurant/change-password", icon: KeyIcon },
 ];
 
 export const restaurantNavGroups = [
@@ -53,13 +53,13 @@ export default function NavLinksRestaurant() {
   const pathname = usePathname();
 
   return (
-    <div className="restaurant-menu">
+    <div className="restaurant-menu space-y-1">
       {restaurantNavGroups.map((group) => (
         <div key={group.label}>
-          <p className="nav-links-name mb-2 text-xs uppercase text-gray-400">
+          <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400">
             {group.label}
           </p>
-          <ul className={clsx("nav-links", group.className)}>
+          <ul className={clsx("nav-links space-y-0", group.className)}>
             {group.links.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href;
@@ -67,7 +67,7 @@ export default function NavLinksRestaurant() {
               return (
                 <li
                   className={clsx(
-                    "nav-link mb-3 rounded-xl px-3 py-3 transition-all duration-300 hover:bg-orange-700/10 group/li",
+                    "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li",
                     {
                       "bg-orange-700/10": isActive,
                     },
@@ -76,7 +76,7 @@ export default function NavLinksRestaurant() {
                 >
                   <Link className="flex items-center gap-2" href={link.href}>
                     <Icon
-                      className={clsx("h-5 w-5 shrink-0 transition-all duration-300", {
+                      className={clsx("h-[18px] w-[18px] shrink-0 transition-all duration-300", {
                         "text-orange-700": isActive,
                         "text-gray-700 group-hover/li:text-orange-700": !isActive,
                       })}

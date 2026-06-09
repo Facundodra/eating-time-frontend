@@ -7,7 +7,7 @@ import type {
   RestaurantDiscountRequest,
   RestaurantDiscountsResponse,
 } from "@/lib/restaurant/discount/types";
-import { clientApi } from "@/services/shared/api-client";
+import { clientApi as api } from "@/services/shared/api-client";
 
 type DiscountErrorResponse = {
   error?: string;
@@ -88,10 +88,10 @@ export async function getRestaurantDiscounts(
   restaurantId: string,
 ): Promise<RestaurantDiscountsResponse> {
   const [discountsResponse, dishesResponse] = await Promise.all([
-    clientApi.get<RestaurantDiscountApiResponse[]>(
+    api.get<RestaurantDiscountApiResponse[]>(
       `/api/local/${restaurantId}/descuentos`,
     ),
-    clientApi.get<DishApiResponse[]>("/api/platos", {
+    api.get<DishApiResponse[]>("/api/platos", {
       params: { idLocal: restaurantId },
     }),
   ]);
@@ -107,7 +107,7 @@ export async function createRestaurantDiscount(
   discount: RestaurantDiscount,
 ): Promise<DiscountMutationResponse> {
   try {
-    const response = await clientApi.post<DiscountMutationResponse>(
+    const response = await api.post<DiscountMutationResponse>(
       "/api/descuentos",
       mapDiscountRequest(discount),
     );
@@ -123,7 +123,7 @@ export async function updateRestaurantDiscount(
   discount: RestaurantDiscount,
 ): Promise<DiscountMutationResponse> {
   try {
-    const response = await clientApi.patch<DiscountMutationResponse>(
+    const response = await api.patch<DiscountMutationResponse>(
       `/api/descuentos/${discount.id}`,
       mapDiscountRequest(discount, { includeStatus: true }),
     );
@@ -139,7 +139,7 @@ export async function deleteRestaurantDiscount(
   discountId: string,
 ): Promise<DiscountMutationResponse> {
   try {
-    const response = await clientApi.delete<DiscountMutationResponse>(
+    const response = await api.delete<DiscountMutationResponse>(
       `/api/descuentos/${discountId}`,
     );
     return response.data;

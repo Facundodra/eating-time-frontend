@@ -44,7 +44,7 @@ export default function SessionWidget({
   }
 
   return (
-    <div className="session-widget mt-auto flex flex-col items-center">
+    <div className="session-widget mt-3 flex shrink-0 flex-col items-center border-t border-gray-100 pt-3 dark:border-slate-800">
       <Link
         href={profileHref}
         className="session-widget-link flex w-full items-center gap-3 overflow-hidden"
@@ -74,7 +74,7 @@ export default function SessionWidget({
         onClick={handleLogout}
         isLoading={isLoggingOut}
         loadingText="Cerrando sesión..."
-        className="logout-button btn-primary mt-4 flex w-full items-center gap-2 overflow-hidden text-center"
+        className="logout-button btn-primary mt-3 flex w-full items-center gap-2 overflow-hidden text-center"
       >
         <ArrowLeftEndOnRectangleIcon className="h-5 w-5 shrink-0" />
         <span className="logout-button-label block max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 ease-in-out">

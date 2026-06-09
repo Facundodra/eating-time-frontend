@@ -4,7 +4,6 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
-import { useRouter } from "next/navigation";
 
 import {
   confirmPasswordReset,
@@ -17,7 +16,6 @@ import ThemeToggle from "@/ui/shared/theme/theme-toggle";
 type Props = { token: string };
 
 export default function ResetPasswordPage({ token }: Props) {
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [showPsw, setShowPsw] = useState(false);
@@ -42,7 +40,7 @@ export default function ResetPasswordPage({ token }: Props) {
             El enlace que usaste no es válido. Solicitá uno nuevo desde la página de recuperación.
           </p>
           <Link
-            href="/restablecer-contrasena"
+            href="/forgot-password"
             className="mt-7 text-sm font-extrabold text-orange-600 transition hover:text-orange-700"
           >
             Solicitar nuevo enlace
@@ -188,7 +186,7 @@ export default function ResetPasswordPage({ token }: Props) {
             </p>
             {errorMessage.includes("expiró") && (
               <Link
-                href="/restablecer-contrasena"
+                href="/forgot-password"
                 className="mt-1 block text-xs font-extrabold text-red-700 underline dark:text-red-300"
               >
                 Solicitar nuevo enlace

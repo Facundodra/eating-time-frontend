@@ -22,7 +22,7 @@ const accountLinks = [
     icon: ClockIcon,
   },
   {
-    href: "/client/mi-cuenta/cambiar-contrasena",
+    href: "/client/mi-cuenta/change-password",
     title: "Cambiar contraseña",
     description: "Actualizá tu contraseña de acceso.",
     icon: LockClosedIcon,
