@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useRef, useState } from "react";
 
 import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
 import {
@@ -22,23 +22,80 @@ const loginReasonMessages: Record<string, string> = {
   "account-deleted": "Tu cuenta fue eliminada correctamente.",
 };
 
+function scrollToElementSmoothly(element: HTMLElement, duration = 900) {
+  const start = window.scrollY;
+  const target = element.getBoundingClientRect().top + window.scrollY - 24;
+  const distance = target - start;
+  const startTime = performance.now();
+
+  function easeInOutCubic(progress: number) {
+    return progress < 0.5
+      ? 4 * progress * progress * progress
+      : 1 - Math.pow(-2 * progress + 2, 3) / 2;
+  }
+
+  function animate(currentTime: number) {
+    const elapsed = currentTime - startTime;
+    const progress = Math.min(elapsed / duration, 1);
+
+    window.scrollTo(0, start + distance * easeInOutCubic(progress));
+
+    if (progress < 1) {
+      window.requestAnimationFrame(animate);
+    }
+  }
+
+  window.requestAnimationFrame(animate);
+}
+
 export default function LoginForm({ reason }: LoginFormProps) {
   const router = useRouter();
+  const formSectionRef = useRef<HTMLElement>(null);
+  const emailInputRef = useRef<HTMLInputElement>(null);
+  const [email, setEmail] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const forgotPasswordHref = email.trim()
+    ? `/forgot-password?email=${encodeURIComponent(email.trim())}`
+    : "/forgot-password";
+
+  useEffect(() => {
+    if (!window.matchMedia("(max-width: 1023px)").matches) {
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      if (!formSectionRef.current) {
+        return;
+      }
+
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) {
+        formSectionRef.current.scrollIntoView({ block: "start" });
+        emailInputRef.current?.focus({ preventScroll: true });
+        return;
+      }
+
+      scrollToElementSmoothly(formSectionRef.current);
+      window.setTimeout(() => {
+        emailInputRef.current?.focus({ preventScroll: true });
+      }, 900);
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const email = String(formData.get("email") ?? "");
+    const submittedEmail = String(formData.get("email") ?? "");
     const password = String(formData.get("password") ?? "");
 
     setErrorMessage("");
     setIsSubmitting(true);
 
     try {
-      await login({ email, password });
+      await login({ email: submittedEmail, password });
 
       const currentSession = await getCurrentSession();
       if (!currentSession) {
@@ -58,7 +115,10 @@ export default function LoginForm({ reason }: LoginFormProps) {
   }
 
   return (
-    <section className="w-full max-w-[420px] rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900">
+    <section
+      ref={formSectionRef}
+      className="scroll-mt-6 w-full max-w-[420px] rounded-[28px] border border-gray-200 bg-white px-9 py-10 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900"
+    >
       <div>
         <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 dark:text-white">
           Iniciar sesión
@@ -83,12 +143,15 @@ export default function LoginForm({ reason }: LoginFormProps) {
             Correo electrónico
           </label>
           <input
+            ref={emailInputRef}
             id="email"
             name="email"
             type="email"
             autoComplete="email"
             required
             placeholder="nombre@email.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
             className="field"
           />
         </div>
@@ -102,7 +165,8 @@ export default function LoginForm({ reason }: LoginFormProps) {
               Contraseña
             </label>
             <Link
-              href="/restablecer-contrasena"
+              href={forgotPasswordHref}
+              tabIndex={-1}
               className="text-xs font-extrabold text-orange-600 transition hover:text-orange-700"
             >
               Recuperar contraseña
