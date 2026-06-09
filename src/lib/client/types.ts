@@ -77,10 +77,26 @@ export type PaymentResponse = {
 // Estado devuelto por Mercado Pago en el callback
 export type PaymentStatus = "approved" | "failure" | "pending";
 
+export type OrderRatingValue =
+  | "1_ESTRELLA"
+  | "2_ESTRELLAS"
+  | "3_ESTRELLAS"
+  | "4_ESTRELLAS"
+  | "5_ESTRELLAS";
+
+export type OrderRating = {
+  id?: number;
+  pedidoId: number;
+  calificacion: OrderRatingValue | string;
+  comentario: string | null;
+  creacion?: string | null;
+};
+
 export type CartItem = {
   id: number;
   pedidoId: number;
   platoId: number;
+  nombre?: string;
   descuentoId: number | null;
   cantidad: number;
   costoUnitario: number;
@@ -137,6 +153,8 @@ export type Order = {
   creacion: string;
   eliminacion: string | null;
   items: CartItem[];
+  calificacionLocal: OrderRating | null;
+  hasLocalRating: boolean;
 };
 
 
