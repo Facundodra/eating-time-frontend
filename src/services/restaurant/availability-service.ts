@@ -1,4 +1,4 @@
-import { clientApi as api } from "../shared/api-client";
+import { clientApi as api } from "@/services/shared/api-client";
 
 export const RESTAURANT_AVAILABILITY_REFRESH_EVENT =
   "restaurant-availability:refresh";

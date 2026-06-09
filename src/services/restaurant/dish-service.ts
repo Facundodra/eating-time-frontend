@@ -1,10 +1,17 @@
+import axios from "axios";
+
 import type {
   DishCategory,
   RestaurantDish,
   RestaurantDishesResponse,
 } from "@/lib/restaurant/dish/types";
+import { clientApi as api } from "@/services/shared/api-client";
 
-const API_URL = process.env.NEXT_PUBLIC_API_BASE_URL ?? process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080";
+type DishErrorResponse = {
+  error?: string;
+  message?: string;
+  detail?: string;
+};
 
 interface PlatoDtoFromApi {
   id: number;
@@ -37,39 +44,43 @@ function mapPlatoToRestaurantDish(plato: PlatoDtoFromApi): RestaurantDish {
   };
 }
 
-export async function getDishCategories(): Promise<DishCategory[]> {
-  const response = await fetch(`${API_URL}/api/categorias`, { cache: "no-store" });
-
-  if (!response.ok) {
-    throw new Error(`Error al obtener categorías (${response.status})`);
+function getDishErrorMessage(error: unknown, fallbackMessage: string) {
+  if (!axios.isAxiosError<DishErrorResponse>(error)) {
+    return fallbackMessage;
   }
 
-  const categorias: CategoriaDtoFromApi[] = await response.json();
+  const data = error.response?.data;
+  return data?.error ?? data?.message ?? data?.detail ?? fallbackMessage;
+}
 
-  return categorias.map((categoria) => ({
-    id: String(categoria.id),
-    name: categoria.nombre,
-  }));
+export async function getDishCategories(): Promise<DishCategory[]> {
+  try {
+    const response = await api.get<CategoriaDtoFromApi[]>("/api/categorias");
+
+    return response.data.map((categoria) => ({
+      id: String(categoria.id),
+      name: categoria.nombre,
+    }));
+  } catch (error) {
+    throw new Error(getDishErrorMessage(error, "Error al obtener categorias"));
+  }
 }
 
 export async function getRestaurantDishes(
   restaurantId: string,
 ): Promise<RestaurantDishesResponse> {
-  const response = await fetch(
-    `${API_URL}/api/platos?idLocal=${restaurantId}`,
-    { cache: "no-store" },
-  );
+  try {
+    const response = await api.get<PlatoDtoFromApi[]>("/api/platos", {
+      params: { idLocal: restaurantId },
+    });
 
-  if (!response.ok) {
-    throw new Error(`Error al obtener platos (${response.status})`);
+    return {
+      restaurantId,
+      dishes: response.data.map(mapPlatoToRestaurantDish),
+    };
+  } catch (error) {
+    throw new Error(getDishErrorMessage(error, "Error al obtener platos"));
   }
-
-  const platos: PlatoDtoFromApi[] = await response.json();
-
-  return {
-    restaurantId,
-    dishes: platos.map(mapPlatoToRestaurantDish),
-  };
 }
 
 export async function createDish(
@@ -92,20 +103,10 @@ export async function createDish(
   });
   if (data.image) body.append("imagen", data.image);
 
-  const response = await fetch(`${API_URL}/api/platos`, {
-    method: "POST",
-    body,
-  });
-
-  if (!response.ok) {
-    let errorMessage = `Error al crear plato (${response.status})`;
-    try {
-      const text = await response.text();
-      if (text) errorMessage = text;
-    } catch {
-      // ignore
-    }
-    throw new Error(errorMessage);
+  try {
+    await api.post("/api/platos", body);
+  } catch (error) {
+    throw new Error(getDishErrorMessage(error, "Error al crear plato"));
   }
 }
 
@@ -128,54 +129,27 @@ export async function updateDish(
   });
   if (data.image) body.append("imagen", data.image);
 
-  const response = await fetch(`${API_URL}/api/platos/${dishId}`, {
-    method: "PATCH",
-    body,
-  });
-
-  if (!response.ok) {
-    let errorMessage = `Error al modificar plato (${response.status})`;
-    try {
-      const text = await response.text();
-      if (text) errorMessage = text;
-    } catch {
-      // ignore
-    }
-    throw new Error(errorMessage);
+  try {
+    await api.patch(`/api/platos/${dishId}`, body);
+  } catch (error) {
+    throw new Error(getDishErrorMessage(error, "Error al modificar plato"));
   }
 }
 
 export async function deleteDish(dishId: string): Promise<void> {
-  const response = await fetch(`${API_URL}/api/platos/${dishId}`, {
-    method: "DELETE",
-  });
-
-  if (!response.ok) {
-    let errorMessage = `Error al eliminar plato (${response.status})`;
-    try {
-      const text = await response.text();
-      if (text) errorMessage = text;
-    } catch {
-      // ignore
-    }
-    throw new Error(errorMessage);
+  try {
+    await api.delete(`/api/platos/${dishId}`);
+  } catch (error) {
+    throw new Error(getDishErrorMessage(error, "Error al eliminar plato"));
   }
 }
 
 export async function toggleDishAvailability(dishId: string): Promise<void> {
-  const response = await fetch(
-    `${API_URL}/api/platos/${dishId}/disponibilidad`,
-    { method: "PATCH" },
-  );
-
-  if (!response.ok) {
-    let errorMessage = `Error al cambiar disponibilidad (${response.status})`;
-    try {
-      const text = await response.text();
-      if (text) errorMessage = text;
-    } catch {
-      // ignore
-    }
-    throw new Error(errorMessage);
+  try {
+    await api.patch(`/api/platos/${dishId}/disponibilidad`);
+  } catch (error) {
+    throw new Error(
+      getDishErrorMessage(error, "Error al cambiar disponibilidad"),
+    );
   }
 }

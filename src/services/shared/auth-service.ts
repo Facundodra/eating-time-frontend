@@ -1,6 +1,6 @@
 import axios, { AxiosError } from "axios";
 
-import { publicApi } from "./api-client";
+import { publicApi as api } from "@/services/shared/api-client";
 import type {
   LoginCredentials,
   LoginWebResponse,
@@ -129,11 +129,11 @@ export async function requireCurrentSession(): Promise<LoginWebResponse> {
 export async function getSessionFromCookieHeader(
   cookieHeader: string,
 ): Promise<LoginWebResponse | null> {
-  if (!publicApi.defaults.baseURL || !cookieHeader) {
+  if (!api.defaults.baseURL || !cookieHeader) {
     return null;
   }
 
-  const response = await fetch(`${publicApi.defaults.baseURL}/api/auth/me`, {
+  const response = await fetch(`${api.defaults.baseURL}/api/auth/me`, {
     method: "GET",
     cache: "no-store",
     headers: {
@@ -155,7 +155,7 @@ export async function getSessionFromCookieHeader(
 export async function confirmRestaurantAccount(
   credentials: RestaurantConfirmationCredentials,
 ): Promise<void> {
-  if (!publicApi.defaults.baseURL) {
+  if (!api.defaults.baseURL) {
     throw new RestaurantConfirmationError(
       "No está configurada la URL del backend. Revisá NEXT_PUBLIC_API_URL o NEXT_PUBLIC_API_BASE_URL.",
     );
@@ -165,7 +165,7 @@ export async function confirmRestaurantAccount(
 
   for (const endpoint of RESTAURANT_CONFIRMATION_ENDPOINTS) {
     try {
-      await publicApi.post(endpoint, credentials);
+      await api.post(endpoint, credentials);
       return;
     } catch (error) {
       if (!axios.isAxiosError<RestaurantConfirmationErrorResponse>(error)) {
@@ -272,7 +272,7 @@ function getErrorMessage(
 }
 
 export async function resetPassword(email: string): Promise<void> {
-  await publicApi.post("/api/auth/recuperar-password", { email });
+  await api.post("/api/auth/recuperar-password", { email });
 }
 
 export class PasswordResetError extends Error {
@@ -291,7 +291,7 @@ export async function confirmPasswordReset(
   nuevaPassword: string,
 ): Promise<void> {
   try {
-    await publicApi.post("/api/auth/restablecer-password", {
+    await api.post("/api/auth/restablecer-password", {
       token,
       nuevaPassword,
     });
@@ -342,7 +342,7 @@ export async function register(credentials: RegisterCredentials): Promise<void> 
   }
 
   try {
-    await publicApi.post("/api/auth/registro", body);
+    await api.post("/api/auth/registro", body);
   } catch (error) {
     if (axios.isAxiosError(error)) {
       const data = error.response?.data;
