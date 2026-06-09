@@ -902,25 +902,27 @@ export default function RestaurantCouponsPage() {
         )}
 
         {isDataReady && showCreateForm && (
-          <CouponFormPanel
-            availableDishes={availableDishes}
-            coupon={createCoupon}
-            error={formError}
-            isAddingDish={isAddingDish}
-            isAddingDishRow={isAddingDishRow}
-            isSaving={isSavingChanges}
-            mode="create"
-            onAddDish={() => startAddingDishRow(createCoupon)}
-            onCancel={handleCancelCreate}
-            onCancelDish={cancelAddingDishRow}
-            onChange={updateCreateCoupon}
-            onCloseError={() => setFormError(null)}
-            onConfirmDish={addDishToCreateCoupon}
-            onPendingDishChange={setPendingDishId}
-            onRemoveDish={removeDishFromCreateCoupon}
-            onSave={handleCreateCoupon}
-            pendingDishId={pendingDishId}
-          />
+          <div className="order-first xl:order-none">
+            <CouponFormPanel
+              availableDishes={availableDishes}
+              coupon={createCoupon}
+              error={formError}
+              isAddingDish={isAddingDish}
+              isAddingDishRow={isAddingDishRow}
+              isSaving={isSavingChanges}
+              mode="create"
+              onAddDish={() => startAddingDishRow(createCoupon)}
+              onCancel={handleCancelCreate}
+              onCancelDish={cancelAddingDishRow}
+              onChange={updateCreateCoupon}
+              onCloseError={() => setFormError(null)}
+              onConfirmDish={addDishToCreateCoupon}
+              onPendingDishChange={setPendingDishId}
+              onRemoveDish={removeDishFromCreateCoupon}
+              onSave={handleCreateCoupon}
+              pendingDishId={pendingDishId}
+            />
+          </div>
         )}
 
         {isDataReady && !showCreateForm && selectedCoupon && editableSelectedCoupon && (

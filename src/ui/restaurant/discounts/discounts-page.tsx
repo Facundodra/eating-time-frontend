@@ -948,7 +948,7 @@ export default function RestaurantDiscountsPage() {
         )}
 
         {isDataReady && showCreateForm && (
-          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+          <section className="order-first overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:order-none dark:border-slate-800 dark:bg-slate-900">
             <div className="flex items-start justify-between gap-4 border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <div>
                 <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">

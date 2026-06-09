@@ -3,6 +3,7 @@
 import { BarChart } from "@mui/x-charts/BarChart";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { PieChart } from "@mui/x-charts/PieChart";
+import { useEffect, useState } from "react";
 
 import type {
   DishSalesEvolutionReport,
@@ -48,18 +49,38 @@ const chartSx = {
   },
 };
 
+function useCompactCharts() {
+  const [isCompact, setIsCompact] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia("(max-width: 640px)");
+
+    function updateCompactState() {
+      setIsCompact(mediaQuery.matches);
+    }
+
+    updateCompactState();
+    mediaQuery.addEventListener("change", updateCompactState);
+
+    return () => mediaQuery.removeEventListener("change", updateCompactState);
+  }, []);
+
+  return isCompact;
+}
+
 type TopSellingDishesChartProps = {
   report: TopSellingDishesReport;
 };
 
 export function TopSellingDishesChart({ report }: TopSellingDishesChartProps) {
+  const isCompact = useCompactCharts();
   const labels = report.items.map((item) => item.name);
   const quantities = report.items.map((item) => item.quantitySold);
 
   return (
     <BarChart
       layout="horizontal"
-      height={Math.max(280, report.items.length * 42)}
+      height={Math.max(isCompact ? 240 : 280, report.items.length * 42)}
       yAxis={[{ scaleType: "band", data: labels }]}
       series={[
         {
@@ -68,7 +89,12 @@ export function TopSellingDishesChart({ report }: TopSellingDishesChartProps) {
           color: SERIES_COLORS[0],
         },
       ]}
-      margin={{ left: 120, right: 24, top: 24, bottom: 24 }}
+      margin={{
+        left: isCompact ? 72 : 120,
+        right: isCompact ? 8 : 24,
+        top: 24,
+        bottom: 24,
+      }}
       sx={chartSx}
     />
   );
@@ -81,6 +107,7 @@ type DishSalesEvolutionChartProps = {
 export function DishSalesEvolutionChart({
   report,
 }: DishSalesEvolutionChartProps) {
+  const isCompact = useCompactCharts();
   const periods = getUniqueSortedPeriods(
     report.series.flatMap((series) => series.points.map((point) => point.period)),
   );
@@ -90,7 +117,7 @@ export function DishSalesEvolutionChart({
 
   return (
     <LineChart
-      height={340}
+      height={isCompact ? 280 : 340}
       xAxis={[{ scaleType: "point", data: xLabels }]}
       series={report.series.map((series, index) => ({
         data: periods.map((period) => {
@@ -102,7 +129,12 @@ export function DishSalesEvolutionChart({
         curve: "linear",
         showMark: periods.length <= 20,
       }))}
-      margin={{ left: 56, right: 24, top: 24, bottom: 56 }}
+      margin={{
+        left: isCompact ? 40 : 56,
+        right: isCompact ? 8 : 24,
+        top: 24,
+        bottom: isCompact ? 40 : 56,
+      }}
       sx={chartSx}
     />
   );
@@ -113,6 +145,7 @@ type RevenueChartProps = {
 };
 
 export function RevenueChart({ report }: RevenueChartProps) {
+  const isCompact = useCompactCharts();
   const xLabels = report.points.map((point) =>
     formatPeriodLabel(point.period, report.granularity),
   );
@@ -127,7 +160,7 @@ export function RevenueChart({ report }: RevenueChartProps) {
         </span>
       </p>
       <LineChart
-        height={340}
+        height={isCompact ? 280 : 340}
         xAxis={[{ scaleType: "point", data: xLabels }]}
         series={[
           {
@@ -139,7 +172,12 @@ export function RevenueChart({ report }: RevenueChartProps) {
             showMark: report.points.length <= 20,
           },
         ]}
-        margin={{ left: 72, right: 24, top: 24, bottom: 56 }}
+        margin={{
+          left: isCompact ? 48 : 72,
+          right: isCompact ? 8 : 24,
+          top: 24,
+          bottom: isCompact ? 40 : 56,
+        }}
         sx={chartSx}
       />
     </div>
@@ -151,6 +189,7 @@ type OrderStatusChartProps = {
 };
 
 export function OrderStatusChart({ report }: OrderStatusChartProps) {
+  const isCompact = useCompactCharts();
   const pieData = buildWorkbenchAlignedOrderStatusSlices(report.slices).map(
     (slice) => ({
       id: slice.id,
@@ -169,7 +208,7 @@ export function OrderStatusChart({ report }: OrderStatusChartProps) {
         </span>
       </p>
       <PieChart
-        height={320}
+        height={isCompact ? 260 : 320}
         series={[
           {
             data: pieData,
@@ -179,7 +218,12 @@ export function OrderStatusChart({ report }: OrderStatusChartProps) {
             highlightScope: { fade: "global", highlight: "item" },
           },
         ]}
-        margin={{ top: 24, bottom: 24, left: 24, right: 120 }}
+        margin={{
+          top: 24,
+          bottom: 24,
+          left: isCompact ? 8 : 24,
+          right: isCompact ? 8 : 120,
+        }}
         sx={chartSx}
       />
     </div>
@@ -191,6 +235,7 @@ type PromotionsChartProps = {
 };
 
 export function PromotionsChart({ report }: PromotionsChartProps) {
+  const isCompact = useCompactCharts();
   const labels = report.items.map((item) => item.label);
   const uses = report.items.map((item) => item.uses);
   const maxLabelLength = labels.reduce(
@@ -202,7 +247,7 @@ export function PromotionsChart({ report }: PromotionsChartProps) {
     <div className="space-y-4">
       <BarChart
         layout="horizontal"
-        height={Math.max(220, report.items.length * 52)}
+        height={Math.max(isCompact ? 200 : 220, report.items.length * 52)}
         yAxis={[{ scaleType: "band", data: labels }]}
         xAxis={[{ tickMinStep: 1 }]}
         series={[
@@ -213,8 +258,10 @@ export function PromotionsChart({ report }: PromotionsChartProps) {
           },
         ]}
         margin={{
-          left: Math.min(280, Math.max(140, maxLabelLength * 7)),
-          right: 24,
+          left: isCompact
+            ? 80
+            : Math.min(280, Math.max(140, maxLabelLength * 7)),
+          right: isCompact ? 8 : 24,
           top: 24,
           bottom: 24,
         }}
@@ -245,10 +292,11 @@ type PopularityRatingChartProps = {
 };
 
 export function PopularityRatingChart({ report }: PopularityRatingChartProps) {
+  const isCompact = useCompactCharts();
   const labels = report.items.map((item) => item.name);
   const quantities = report.items.map((item) => item.quantitySold);
   const ratings = report.items.map((item) => item.averageRating);
-  const chartHeight = Math.max(220, report.items.length * 36);
+  const chartHeight = Math.max(isCompact ? 200 : 220, report.items.length * 36);
 
   return (
     <div className="space-y-6">
@@ -274,7 +322,12 @@ export function PopularityRatingChart({ report }: PopularityRatingChartProps) {
               color: SERIES_COLORS[0],
             },
           ]}
-          margin={{ left: 120, right: 24, top: 8, bottom: 8 }}
+          margin={{
+            left: isCompact ? 72 : 120,
+            right: isCompact ? 8 : 24,
+            top: 8,
+            bottom: 8,
+          }}
           sx={chartSx}
         />
       </div>
@@ -295,7 +348,12 @@ export function PopularityRatingChart({ report }: PopularityRatingChartProps) {
               color: SERIES_COLORS[2],
             },
           ]}
-          margin={{ left: 120, right: 24, top: 8, bottom: 8 }}
+          margin={{
+            left: isCompact ? 72 : 120,
+            right: isCompact ? 8 : 24,
+            top: 8,
+            bottom: 8,
+          }}
           sx={chartSx}
         />
       </div>

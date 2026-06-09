@@ -50,8 +50,8 @@ export default function RestaurantStatisticsPage() {
     loadError?.message ?? "No se pudieron cargar las estadísticas.";
 
   return (
-    <section className="space-y-6">
-      <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+    <section className="min-w-0 space-y-6">
+      <div className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-5">
         <div className="mb-4">
           <h2 className="text-base font-extrabold text-slate-950 dark:text-white">
             Filtros
@@ -61,7 +61,7 @@ export default function RestaurantStatisticsPage() {
           </p>
         </div>
 
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2 xl:grid-cols-3">
           <label className="block">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
               Desde
@@ -148,7 +148,7 @@ export default function RestaurantStatisticsPage() {
       )}
 
       {statistics && (
-        <div className="grid gap-6 xl:grid-cols-2">
+        <div className="grid min-w-0 gap-4 sm:gap-6 xl:grid-cols-2">
           <ChartPanel
             title="Platos más vendidos"
             description="Cantidad de ventas por plato en pedidos ya confirmados por el local."
