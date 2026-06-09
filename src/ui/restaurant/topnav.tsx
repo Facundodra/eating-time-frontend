@@ -96,7 +96,7 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
             <div className="mb-6 flex items-start justify-between gap-4">
               <div>
                 <p className="text-lg font-black text-slate-950 dark:text-white">
-                  Eating Time
+                  Eating<span className="text-red-600 dark:text-red-500">Time</span>
                 </p>
                 <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
                   Panel del local

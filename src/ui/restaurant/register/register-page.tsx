@@ -45,7 +45,7 @@ export default function RegisterPage() {
           />
           <div>
             <span className="block text-lg font-black leading-5 text-slate-900 dark:text-white">
-              Eating Time
+              Eating<span className="text-red-600 dark:text-red-500">Time</span>
             </span>
             <span className="text-xs font-bold text-slate-400">
               Registro de locales

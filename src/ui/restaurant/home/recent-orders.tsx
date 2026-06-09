@@ -1,36 +1,13 @@
-"use client";
-
 import Link from "next/link";
-import { useCallback, useMemo } from "react";
 
-import { useAsyncData } from "@/hooks/shared/use-async-data";
-import type {
-  OrderStatus,
-  WorkbenchOrder,
-} from "@/lib/restaurant/workbench/types";
-import { fetchWorkbenchOrders } from "@/services/restaurant/workbench-service";
-import { getCurrentSession } from "@/services/shared/auth-service";
-import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
-import PanelError from "@/ui/shared/feedback/panel-error";
-
-const activeOrderStatuses: OrderStatus[] = [
-  "PENDIENTE_CONFIRMACION_LOCAL",
-  "ACEPTADO_LOCAL",
-  "EN_CURSO_LOCAL",
-  "EN_CAMINO_LOCAL",
-];
-
-const statusLabels: Record<OrderStatus, string> = {
-  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente",
-  ACEPTADO_LOCAL: "Aceptado",
-  EN_CURSO_LOCAL: "En curso",
-  EN_CAMINO_LOCAL: "En camino",
-  FINALIZADO: "Finalizado",
-  RECHAZADO_LOCAL: "Rechazado",
-  CANCELADO_CLIENTE: "Cancelado",
-};
+import type { RestaurantDashboardOrder } from "@/lib/restaurant/dashboard/types";
+import type { OrderStatus } from "@/lib/restaurant/workbench/types";
 
 const statusClassName: Record<OrderStatus, string> = {
+  EN_CARRITO:
+    "bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400",
+  ETAPA_DE_PAGO:
+    "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
   PENDIENTE_CONFIRMACION_LOCAL:
     "bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-400",
   ACEPTADO_LOCAL:
@@ -46,59 +23,17 @@ const statusClassName: Record<OrderStatus, string> = {
     "bg-gray-100 text-gray-500 dark:bg-gray-500/10 dark:text-gray-400",
 };
 
-function formatTime(dateStr: string) {
-  const date = new Date(dateStr);
+type RestaurantRecentOrdersProps = {
+  error?: string | null;
+  isLoading: boolean;
+  orders: RestaurantDashboardOrder[];
+};
 
-  if (Number.isNaN(date.getTime())) {
-    return dateStr;
-  }
-
-  return date.toLocaleTimeString("es-UY", {
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function formatPrice(price: number) {
-  return `$ ${price.toLocaleString("es-UY")}`;
-}
-
-function getPendingOrders(orders: WorkbenchOrder[]) {
-  return orders
-    .filter((order) => activeOrderStatuses.includes(order.status))
-    .slice(0, 3);
-}
-
-export default function RestaurantRecentOrders() {
-  const loadRecentOrders = useCallback(async () => {
-    const session = await getCurrentSession();
-    const restaurantId = session?.idTipoUsuario
-      ? String(session.idTipoUsuario)
-      : "";
-
-    if (!restaurantId) {
-      throw new Error("No se pudo obtener el ID del local.");
-    }
-
-    return fetchWorkbenchOrders(restaurantId, {
-      sortBy: "antiguedad",
-      direction: "desc",
-    });
-  }, []);
-
-  const {
-    data: orders,
-    error: loadError,
-    isLoading,
-    reload,
-  } = useAsyncData(loadRecentOrders);
-
-  // El card del home queda visible siempre; solo la bandeja de pedidos cambia
-  // entre loading, error, vacio o datos reales segun la respuesta del backend.
-  const pendingOrders = useMemo(() => getPendingOrders(orders ?? []), [orders]);
-  const loadErrorMessage =
-    loadError?.message ?? "No se pudieron cargar los pedidos pendientes.";
-
+export default function RestaurantRecentOrders({
+  error,
+  isLoading,
+  orders,
+}: RestaurantRecentOrdersProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <div className="flex flex-col gap-4 border-b border-gray-100 px-5 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
@@ -123,69 +58,75 @@ export default function RestaurantRecentOrders() {
           <thead className="bg-gray-50 text-xs uppercase tracking-wide text-slate-500 dark:bg-slate-950/40 dark:text-slate-400">
             <tr>
               <th className="px-5 py-4 font-bold">Pedido</th>
-              <th className="hidden px-5 py-4 font-bold md:table-cell">Cliente</th>
+              <th className="hidden px-5 py-4 font-bold md:table-cell">
+                Cliente
+              </th>
               <th className="px-5 py-4 font-bold">Hora</th>
-              <th className="hidden px-5 py-4 font-bold md:table-cell">Items</th>
-              <th className="hidden px-5 py-4 font-bold md:table-cell">Total</th>
+              <th className="hidden px-5 py-4 font-bold md:table-cell">
+                Total
+              </th>
               <th className="px-5 py-4 font-bold">Estado</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100 text-sm dark:divide-slate-800">
-            {isLoading && (
-              <tr>
-                <td className="px-5 py-10" colSpan={6}>
-                  <LoadingIndicator label="Cargando pedidos pendientes..." />
-                </td>
-              </tr>
-            )}
-
-            {!isLoading && loadError && (
-              <tr>
-                <td className="px-5 py-5" colSpan={6}>
-                  <PanelError message={loadErrorMessage} onRetry={reload} />
-                </td>
-              </tr>
-            )}
-
-            {!isLoading && !loadError && pendingOrders.length === 0 && (
+            {isLoading ? (
               <tr>
                 <td
-                  className="px-5 py-10 text-center text-sm font-medium text-slate-400 dark:text-slate-500"
-                  colSpan={6}
+                  className="px-5 py-8 text-center font-medium text-slate-400"
+                  colSpan={5}
                 >
-                  No hay pedidos pendientes por revisar.
+                  Cargando pedidos...
                 </td>
               </tr>
-            )}
+            ) : null}
 
-            {!isLoading && !loadError && pendingOrders.map((order) => (
-              <tr key={order.id}>
-                <td className="px-5 py-4 font-bold text-slate-950 dark:text-white">
-                  #{order.id}
-                </td>
-                <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
-                  Cliente #{order.customerId}
-                </td>
-                <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                  {formatTime(order.createdAt)}
-                </td>
-                <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
-                  -
-                </td>
-                <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
-                  {formatPrice(order.total)}
-                </td>
-                <td className="px-5 py-4">
-                  <span
-                    className={`rounded-full px-3 py-1 text-xs font-bold ${
-                      statusClassName[order.status]
-                    }`}
-                  >
-                    {statusLabels[order.status]}
-                  </span>
+            {!isLoading && error ? (
+              <tr>
+                <td
+                  className="px-5 py-8 text-center font-medium text-red-500"
+                  colSpan={5}
+                >
+                  {error}
                 </td>
               </tr>
-            ))}
+            ) : null}
+
+            {!isLoading && !error && orders.length === 0 ? (
+              <tr>
+                <td
+                  className="px-5 py-8 text-center font-medium text-slate-400"
+                  colSpan={5}
+                >
+                  No hay pedidos recientes para mostrar.
+                </td>
+              </tr>
+            ) : null}
+
+            {!isLoading && !error
+              ? orders.map((order) => (
+                  <tr key={order.id}>
+                    <td className="px-5 py-4 font-bold text-slate-950 dark:text-white">
+                      #{order.id}
+                    </td>
+                    <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
+                      {order.customerLabel}
+                    </td>
+                    <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
+                      {order.time}
+                    </td>
+                    <td className="hidden px-5 py-4 text-slate-500 md:table-cell dark:text-slate-400">
+                      {order.total}
+                    </td>
+                    <td className="px-5 py-4">
+                      <span
+                        className={`rounded-full px-3 py-1 text-xs font-bold ${statusClassName[order.status]}`}
+                      >
+                        {order.statusLabel}
+                      </span>
+                    </td>
+                  </tr>
+                ))
+              : null}
           </tbody>
         </table>
       </div>

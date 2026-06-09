@@ -36,8 +36,8 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           className="w-[50px]"
         />
         <div className="logo_content">
-          <span className="logo_content_name block text-xl font-bold">
-            Eating Time
+          <span className="logo_content_name block text-xl font-bold text-slate-950 dark:text-slate-50">
+            Eating<span className="text-red-600 dark:text-red-500">Time</span>
           </span>
         </div>
       </Link>
