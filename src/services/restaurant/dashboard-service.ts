@@ -51,7 +51,7 @@ function formatTime(dateStr: string) {
 function mapRecentOrder(order: WorkbenchOrder): RestaurantDashboardOrder {
   return {
     id: order.id,
-    customerLabel: `Cliente #${order.customerId}`,
+    customerLabel: order.customerName ?? `Cliente #${order.customerId}`,
     status: order.status,
     statusLabel: statusLabels[order.status],
     time: formatTime(order.createdAt),
@@ -82,7 +82,7 @@ function buildStats(
       tone: "amber",
     },
     {
-      label: "Ingresos del dia",
+      label: "Ingresos del día",
       value: formatPrice(todayRevenue),
       tag: "Hoy",
       tone: "emerald",
@@ -90,7 +90,7 @@ function buildStats(
     {
       label: "Platos publicados",
       value: dishes.length.toString(),
-      tag: "Menu",
+      tag: "Menú",
       tone: "slate",
     },
     {

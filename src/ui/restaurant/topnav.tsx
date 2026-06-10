@@ -2,6 +2,7 @@
 
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import clsx from "clsx";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
@@ -9,6 +10,7 @@ import { useState } from "react";
 import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
 import type { LoginWebResponse } from "@/lib/shared/auth/types";
 import { getPageMetadata } from "@/lib/shared/page-metadata";
+import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import { restaurantNavGroups } from "./nav-links";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
@@ -94,13 +96,23 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
           )}
         >
             <div className="mb-6 flex items-start justify-between gap-4">
-              <div>
-                <p className="text-lg font-black text-slate-950 dark:text-white">
-                  Eating<span className="text-red-600 dark:text-red-500">Time</span>
-                </p>
-                <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Panel del local
-                </p>
+              <div className="flex min-w-0 items-center gap-3">
+                <Image
+                  src={EatingTimeLogo}
+                  alt="Eating Time Logo"
+                  width={32}
+                  height={32}
+                  className="h-8 w-8 shrink-0 rounded-lg"
+                  priority
+                />
+                <div className="min-w-0">
+                  <p className="truncate text-lg font-black text-slate-950 dark:text-white">
+                    Eating<span className="text-red-600 dark:text-red-500">Time</span>
+                  </p>
+                  <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
+                    Panel del local
+                  </p>
+                </div>
               </div>
               <button
                 type="button"

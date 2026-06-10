@@ -33,7 +33,7 @@ export default function Sidenav({ session }: { session: LoginWebResponse }) {
           />
         </span>
         <div className="logo_content">
-          <span className="logo_content_name whitespace-nowrap text-xl font-bold text-slate-950 dark:text-slate-50">
+          <span className="logo_content_name whitespace-nowrap text-xl font-bold">
             Eating<span className="text-red-600 dark:text-red-500">Time</span>
           </span>
           <span className="logo_content_user-type block whitespace-nowrap text-sm text-gray-500 dark:text-slate-400">

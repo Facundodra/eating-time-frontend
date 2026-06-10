@@ -1,5 +1,5 @@
-import RestaurantWorkbenchPage from "@/ui/restaurant/workbench/workbench-page";
+import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
 
 export default function OrdersPage() {
-  return <RestaurantWorkbenchPage mode="orders" />;
+  return <ComingSoonPage backHref="/restaurant" title="Pedidos" />;
 }

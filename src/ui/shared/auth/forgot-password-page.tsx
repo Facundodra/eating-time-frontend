@@ -49,7 +49,7 @@ export default function ForgotPasswordPage({
             className="h-9 w-9 rounded-xl shadow-sm"
           />
           <span className="text-base font-extrabold tracking-tight text-slate-900 dark:text-white">
-            Eating<span className="text-red-600 dark:text-red-500">Time</span>
+            Eating Time
           </span>
         </Link>
 

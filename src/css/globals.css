@@ -121,7 +121,7 @@ button, a{
         @apply mb-2 h-4 overflow-hidden;
     }
     .nav-link{
-        @apply mb-3 h-[44px] w-full px-[22px] py-0;
+        @apply mb-0 h-[44px] w-full px-[22px] py-0;
         a{
             @apply h-full justify-start gap-2;
         }
@@ -140,7 +140,7 @@ button, a{
         @apply mb-2 h-4 overflow-visible;
     }
     .nav-link{
-        @apply mb-3 h-[44px] px-[22px] py-0;
+        @apply mb-0 h-[44px] px-[22px] py-0;
         a{
             @apply h-full justify-start gap-2;
         }
@@ -155,20 +155,6 @@ button, a{
 /* Clases Formulario */
 .field{
     @apply h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20;
-}
-
-.field:-webkit-autofill,
-.field:-webkit-autofill:hover,
-.field:-webkit-autofill:focus{
-    -webkit-text-fill-color: rgb(15 23 42);
-    box-shadow: 0 0 0 1000px #ffffff inset;
-}
-
-.dark .field:-webkit-autofill,
-.dark .field:-webkit-autofill:hover,
-.dark .field:-webkit-autofill:focus{
-    -webkit-text-fill-color: #ffffff;
-    box-shadow: 0 0 0 1000px rgb(2 6 23) inset;
 }
 
 

@@ -22,7 +22,6 @@ import {
   rejectWorkbenchOrder,
 } from "@/services/restaurant/workbench-service";
 
-type RestaurantWorkbenchPageMode = "workbench" | "orders";
 type BoardStatus =
   | "PENDIENTE_CONFIRMACION_LOCAL"
   | "ACEPTADO_LOCAL"
@@ -132,15 +131,7 @@ function isBoardStatus(status: OrderStatus): status is BoardStatus {
   return boardColumns.some((column) => column.status === status);
 }
 
-type RestaurantWorkbenchPageProps = {
-  mode?: RestaurantWorkbenchPageMode;
-};
-
-export default function RestaurantWorkbenchPage(
-  props: RestaurantWorkbenchPageProps,
-) {
-  void props;
-
+export default function RestaurantWorkbenchPage() {
   const [orders, setOrders] = useState<WorkbenchOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
