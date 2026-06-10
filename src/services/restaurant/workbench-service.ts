@@ -8,7 +8,7 @@ import type {
   WorkbenchOrder,
   WorkbenchOrderApiResponse,
 } from "@/lib/restaurant/workbench/types";
-import { clientApi } from "@/services/shared/api-client";
+import { clientApi as api } from "@/services/shared/api-client";
 
 type BackendErrorResponse = {
   message?: string;
@@ -112,7 +112,7 @@ function getBackendErrorMessage(error: unknown, fallback: string): string {
         data.path?.includes("/pedido/") &&
         data.path.endsWith("/avanzar")
       ) {
-        return `El backend configurado no tiene disponible PATCH ${data.path}. Actualiza el backend desplegado o apunta NEXT_PUBLIC_API_URL a un backend que tenga ese endpoint.`;
+        return `El backend configurado no tiene disponible PATCH ${data.path}. Actualiza el backend desplegado o apunta NEXT_PUBLIC_API_BASE_URL a un backend que tenga ese endpoint.`;
       }
 
       return data.message ?? data.detail ?? data.error ?? fallback;
@@ -139,7 +139,7 @@ export async function fetchWorkbenchOrders(
   const query = params.toString() ? `?${params.toString()}` : "";
 
   try {
-    const response = await clientApi.get<WorkbenchOrdersApiResponse>(
+    const response = await api.get<WorkbenchOrdersApiResponse>(
       `/api/local/${encodeURIComponent(restaurantId)}/mesa-trabajo${query}`,
       { timeout: 15000 },
     );
@@ -178,7 +178,7 @@ export async function updateWorkbenchOrderStatus(
       : `/api/local/${encodedLocalId}/pedido/${encodedOrderId}/rechazar`;
 
   try {
-    const response = await clientApi.patch<WorkbenchOrderApiResponse | null>(
+    const response = await api.patch<WorkbenchOrderApiResponse | null>(
       endpoint,
       body,
       {
@@ -224,7 +224,7 @@ export async function changeWorkbenchOrderStatus(
   const encodedOrderId = encodeURIComponent(orderId.toString());
 
   try {
-    const response = await clientApi.patch<WorkbenchOrderApiResponse | null>(
+    const response = await api.patch<WorkbenchOrderApiResponse | null>(
       `/api/local/${encodedLocalId}/pedido/${encodedOrderId}/avanzar`,
       { estado: status },
       { headers: { "Content-Type": "application/json" } },
