@@ -218,34 +218,44 @@ export default function OrderHistoryPage() {
   async function handleOpenRating(order: Order) {
     setRatingLoadError(null);
 
-    if (isOrderRated(order)) {
+    const alreadyRated = isOrderRated(order);
+
+    // Pedido todavía no calificado: abrir modal para calificar
+    if (!alreadyRated) {
       setSelectedRatingOrder(order);
       return;
     }
 
+    // Pedido calificado y ya tengo la calificación cargada: abrir modal en modo ver
+    if (order.calificacionLocal) {
+      setSelectedRatingOrder(order);
+      return;
+    }
+
+    // Pedido marcado como calificado, pero falta traer el detalle
     setLoadingRatingOrderId(order.id);
 
     try {
       const rating = await getOrderLocalRating(order.id);
 
-      if (rating) {
-        const ratedOrder = mergeOrderRating(order, rating);
-
-        setOrders((currentOrders) =>
-          currentOrders.map((currentOrder) =>
-            currentOrder.id === order.id ? ratedOrder : currentOrder,
-          ),
-        );
-        setSelectedRatingOrder(ratedOrder);
-        return;
+      if (!rating) {
+        throw new Error("El pedido figura como calificado, pero no se encontró la calificación guardada.");
       }
 
-      setSelectedRatingOrder(order);
+      const ratedOrder = mergeOrderRating(order, rating);
+
+      setOrders((currentOrders) =>
+        currentOrders.map((currentOrder) =>
+          currentOrder.id === order.id ? ratedOrder : currentOrder,
+        ),
+      );
+
+      setSelectedRatingOrder(ratedOrder);
     } catch (error) {
       setRatingLoadError(
         error instanceof Error
           ? error.message
-          : "No se pudo cargar la calificacion guardada.",
+          : "No se pudo cargar la calificación guardada.",
       );
     } finally {
       setLoadingRatingOrderId(null);

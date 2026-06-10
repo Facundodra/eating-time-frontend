@@ -430,6 +430,11 @@ interface PedidoDtoFromApi {
     localCalificacion?: unknown;
     tieneCalificacionLocal?: unknown;
     calificadoLocal?: unknown;
+    localCalificado?: unknown;
+    tieneCalificacion?: unknown;
+    calificado?: unknown;
+    calificacion?: unknown;
+    rating?: unknown;
 }
 
 interface OrderRatingDtoFromApi {
@@ -455,10 +460,15 @@ function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
         localCalificacion,
         tieneCalificacionLocal,
         calificadoLocal,
+        localCalificado,
+        tieneCalificacion,
+        calificado,
+        calificacion,
+        rating: ratingValue,
         ...rest
     } = dto;
     const rating = mapOrderRatingFromApi(
-        calificacionLocal ?? localCalificacion ?? null,
+        calificacionLocal ?? localCalificacion ?? calificacion ?? ratingValue ?? null,
         dto.id,
     );
 
@@ -474,6 +484,11 @@ function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
                 localCalificacion,
                 tieneCalificacionLocal,
                 calificadoLocal,
+                localCalificado,
+                tieneCalificacion,
+                calificado,
+                calificacion,
+                ratingValue,
             ),
     };
 }
@@ -502,6 +517,7 @@ function mapOrderRatingFromApi(
     const nestedRating =
         record.calificacionLocal ??
         record.localCalificacion ??
+        record.calificacion ??
         record.rating ??
         record.data;
 
@@ -558,6 +574,10 @@ function hasOrderRatingFromApi(...values: unknown[]): boolean {
                 record.localCalificacion,
                 record.calificadoLocal,
                 record.tieneCalificacionLocal,
+                record.localCalificado,
+                record.tieneCalificacion,
+                record.calificado,
+                record.calificacion,
                 record.rating,
                 record.data,
             )
@@ -573,24 +593,33 @@ async function fetchOrderLocalRating(
         const response = await api.get<unknown>(
             `/api/pedidos/${orderId}/calificacion-local`,
         );
+
         return mapOrderRatingFromApi(response.data, orderId);
     } catch (error) {
         if (axios.isAxiosError(error)) {
             const status = error.response?.status;
 
-            if (status === 404 || status === 405) {
+            // 404 sí puede significar "este pedido no tiene calificación"
+            if (status === 404) {
                 return null;
             }
 
-            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+            const data = error.response?.data as
+                | { error?: string; message?: string }
+                | string
+                | undefined;
+
             const message =
                 typeof data === "string"
                     ? data
-                    : data?.error ?? data?.message ?? `Error al obtener calificacion (${status})`;
+                    : data?.error ??
+                      data?.message ??
+                      `Error al obtener calificación (${status})`;
+
             throw new Error(message);
         }
 
-        throw new Error("No se pudo cargar la calificacion del pedido.");
+        throw new Error("No se pudo cargar la calificación del pedido.");
     }
 }
 
@@ -604,20 +633,39 @@ async function hydrateOrdersWithLocalRatings(
 
     if (ordersToHydrate.length === 0) return orders;
 
-    const ratingResults = await Promise.all(
-        ordersToHydrate.map(async (order) => ({
-            orderId: order.id,
-            rating: await fetchOrderLocalRating(clientId, order.id).catch(() => null),
+    const uniqueLocalIds = Array.from(
+        new Set(ordersToHydrate.map((order) => order.restaurantId)),
+    );
+
+    const localRatingsResults = await Promise.all(
+        uniqueLocalIds.map(async (localId) => ({
+            localId,
+            ratings: await fetchLocalRatings(localId).catch((error) => {
+                console.warn(
+                    `No se pudieron cargar las calificaciones del local ${localId}:`,
+                    error,
+                );
+
+                return [];
+            }),
         })),
     );
 
-    const ratingsByOrderId = new Map(
-        ratingResults
-            .filter((result): result is { orderId: number; rating: OrderRating } =>
-                Boolean(result.rating),
-            )
-            .map((result) => [result.orderId, result.rating]),
-    );
+    const ratingsByOrderId = new Map<number, OrderRating>();
+
+    for (const localResult of localRatingsResults) {
+        for (const rawRating of localResult.ratings) {
+            const orderId = getRatingOrderId(rawRating);
+
+            if (!orderId) continue;
+
+            const mappedRating = mapOrderRatingFromApi(rawRating, orderId);
+
+            if (mappedRating) {
+                ratingsByOrderId.set(orderId, mappedRating);
+            }
+        }
+    }
 
     if (ratingsByOrderId.size === 0) return orders;
 
@@ -625,7 +673,11 @@ async function hydrateOrdersWithLocalRatings(
         const rating = ratingsByOrderId.get(order.id);
 
         return rating
-            ? { ...order, calificacionLocal: rating, hasLocalRating: true }
+            ? {
+                  ...order,
+                  calificacionLocal: rating,
+                  hasLocalRating: true,
+              }
             : order;
     });
 }
@@ -726,7 +778,29 @@ function parseRatingValueToNumber(value: OrderRatingValue | string): number | nu
 
 export async function getOrderLocalRating(orderId: number): Promise<OrderRating | null> {
     const session = await requireCurrentSession();
-    return fetchOrderLocalRating(session.idTipoUsuario, orderId);
+
+    const { orders } = await getOrderHistory({
+        orderId,
+        includeRatings: false,
+    });
+
+    const order = orders.find((currentOrder) => currentOrder.id === orderId);
+
+    if (!order) {
+        throw new Error("No se encontró el pedido.");
+    }
+
+    const localRatings = await fetchLocalRatings(order.restaurantId);
+
+    for (const rawRating of localRatings) {
+        const ratingOrderId = getRatingOrderId(rawRating);
+
+        if (ratingOrderId !== orderId) continue;
+
+        return mapOrderRatingFromApi(rawRating, orderId);
+    }
+
+    return null;
 }
 
 export async function submitOrderLocalRating(
@@ -896,5 +970,64 @@ export async function getLocalRatings(restaurantId: number): Promise<LocalRating
             throw new Error(message);
         }
         throw new Error("No se pudo cargar los comentarios.");
+    }
+}
+
+
+type LocalRatingsApiResponse =
+    | unknown[]
+    | {
+          content?: unknown[];
+      };
+
+function getRatingOrderId(rating: unknown): number | null {
+    if (!rating || typeof rating !== "object") return null;
+
+    const record = rating as Record<string, unknown>;
+
+    if (typeof record.pedidoId === "number") return record.pedidoId;
+    if (typeof record.idPedido === "number") return record.idPedido;
+    if (typeof record.orderId === "number") return record.orderId;
+
+    const pedido = record.pedido;
+    if (pedido && typeof pedido === "object") {
+        const pedidoRecord = pedido as Record<string, unknown>;
+        if (typeof pedidoRecord.id === "number") return pedidoRecord.id;
+    }
+
+    return null;
+}
+
+function getRatingsArrayFromApi(response: LocalRatingsApiResponse): unknown[] {
+    if (Array.isArray(response)) return response;
+    if (Array.isArray(response.content)) return response.content;
+    return [];
+}
+
+async function fetchLocalRatings(localId: number): Promise<unknown[]> {
+    try {
+        const response = await api.get<LocalRatingsApiResponse>(
+            `/api/locales/${localId}/calificaciones`,
+        );
+
+        return getRatingsArrayFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data as
+                | { error?: string; message?: string }
+                | string
+                | undefined;
+
+            const message =
+                typeof data === "string"
+                    ? data
+                    : data?.error ??
+                      data?.message ??
+                      `Error al obtener calificaciones del local (${error.response?.status})`;
+
+            throw new Error(message);
+        }
+
+        throw new Error("No se pudieron cargar las calificaciones del local.");
     }
 }
