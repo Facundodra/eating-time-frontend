@@ -124,13 +124,14 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           <li><Link href="/client/mi-cuenta" className="text-sm text-gray-800 hover:text-orange-700 transition">Mi cuenta</Link></li>
           <li>
             <Link
-              href="/client/order-history"
+              href="/client/order-ratings"
               className="text-sm text-gray-800 hover:text-orange-700 transition"
             >
-              Historial de Pedidos
+              Calificación de pedidos
               {pendingRatingCount > 0 ? ` (${pendingRatingCount})` : ""}
             </Link>
           </li>
+          <li><Link href="/client/order-history" className="text-sm text-gray-800 hover:text-orange-700 transition">Historial de Pedidos</Link></li>
           <li><Link href="/logout" className="text-sm text-gray-800 hover:text-orange-700 transition">Salir</Link></li>
         </ul>
       </div>

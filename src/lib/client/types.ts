@@ -77,17 +77,12 @@ export type PaymentResponse = {
 // Estado devuelto por Mercado Pago en el callback
 export type PaymentStatus = "approved" | "failure" | "pending";
 
-export type OrderRatingValue =
-  | "1_ESTRELLA"
-  | "2_ESTRELLAS"
-  | "3_ESTRELLAS"
-  | "4_ESTRELLAS"
-  | "5_ESTRELLAS";
+export type OrderRatingValue = 0 | 1;
 
 export type OrderRating = {
   id?: number;
   pedidoId: number;
-  calificacion: OrderRatingValue | string;
+  calificacion: OrderRatingValue;
   comentario: string | null;
   creacion?: string | null;
 };

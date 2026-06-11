@@ -67,8 +67,6 @@ export default function RestaurantList() {
   useEffect(() => {
     let cancelled = false;
 
-    setLoading(true);
-    setError(null);
     getRestaurants({
       ...sortMap[sort],
       ...(filterOpen  && { servicio: 'ACTIVO' as const }),
@@ -78,6 +76,7 @@ export default function RestaurantList() {
     })
       .then(({ restaurants, totalPages }) => {
         if (cancelled) return;
+        setError(null);
         setRestaurants(restaurants);
         setTotalPages(totalPages);
       })

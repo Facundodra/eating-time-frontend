@@ -156,6 +156,20 @@ export async function fetchWorkbenchOrders(
   }
 }
 
+const ALL_ORDERS_START_DATE_TIME = "1970-01-01T00:00:00";
+const ALL_ORDERS_END_DATE_TIME = "2100-12-31T23:59:59";
+
+export async function fetchRestaurantOrders(
+  restaurantId: string,
+  filters?: WorkbenchFilters,
+): Promise<WorkbenchOrder[]> {
+  return fetchWorkbenchOrders(restaurantId, {
+    ...filters,
+    startDateTime: filters?.startDateTime ?? ALL_ORDERS_START_DATE_TIME,
+    endDateTime: filters?.endDateTime ?? ALL_ORDERS_END_DATE_TIME,
+  });
+}
+
 type WorkbenchOrderAction = "confirmar" | "rechazar";
 
 type WorkbenchActionBody = {

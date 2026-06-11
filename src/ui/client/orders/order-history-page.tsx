@@ -2,17 +2,20 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ReceiptPercentIcon } from "@heroicons/react/24/outline";
-
 import {
-  getOrderLocalRating,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  ReceiptPercentIcon,
+} from "@heroicons/react/24/outline";
+
+import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
+import {
   getOrderHistory,
   getOrderHistoryRestaurants,
+  getOrderLocalRating,
   type OrderHistoryFilter,
   type OrderHistoryRestaurant,
 } from "@/services/client/client-service";
-import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
-import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 import OrderDetailModal from "@/ui/client/orders/order-detail-modal";
 import OrderRatingModal from "@/ui/client/ratings/order-rating-modal";
 
@@ -22,7 +25,7 @@ type SortKey = "fecha-desc" | "fecha-asc" | "precio-desc" | "precio-asc";
 
 const statusLabels: Record<OrderHistoryStatus, string> = {
   ACEPTADO_LOCAL: "Aceptado",
-  EN_CURSO_LOCAL: "En preparación",
+  EN_CURSO_LOCAL: "En preparacion",
   EN_CAMINO_LOCAL: "En camino",
   FINALIZADO: "Finalizado",
   RECHAZADO_LOCAL: "Rechazado",
@@ -38,10 +41,20 @@ const statusColors: Record<OrderHistoryStatus, string> = {
   CANCELADO_CLIENTE: "bg-gray-200 text-gray-600",
 };
 
+const sortMap: Record<
+  SortKey,
+  { ordenarPor: "fecha" | "precio"; direccion: "asc" | "desc" }
+> = {
+  "fecha-desc": { ordenarPor: "fecha", direccion: "desc" },
+  "fecha-asc": { ordenarPor: "fecha", direccion: "asc" },
+  "precio-desc": { ordenarPor: "precio", direccion: "desc" },
+  "precio-asc": { ordenarPor: "precio", direccion: "asc" },
+};
+
 function StatusBadge({ status }: { status: OrderHistoryStatus }) {
   return (
     <span
-      className={`rounded-full px-3 py-1 text-xs font-bold ${
+      className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
         statusColors[status] ?? "bg-gray-100 text-gray-600"
       }`}
     >
@@ -74,28 +87,25 @@ function itemCount(order: Order) {
     .reduce((sum, item) => sum + item.cantidad, 0);
 }
 
-function OrderCardSkeleton() {
+function RowSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="h-4 bg-gray-200 rounded w-1/4" />
-        <div className="h-5 bg-gray-100 rounded-full w-20" />
+    <div className="grid animate-pulse grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_auto] sm:items-center sm:gap-8">
+      <div className="space-y-2">
+        <div className="h-4 w-2/3 rounded bg-gray-200" />
+        <div className="h-3 w-1/3 rounded bg-gray-100" />
       </div>
-      <div className="h-3 bg-gray-100 rounded w-1/3" />
-      <div className="flex items-center justify-between pt-1">
-        <div className="h-3 bg-gray-100 rounded w-1/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/5" />
+      <div className="h-4 w-2/3 rounded bg-gray-200" />
+      <div className="space-y-2">
+        <div className="h-3 w-20 rounded bg-gray-100" />
+        <div className="h-3 w-3/4 rounded bg-gray-100" />
+      </div>
+      <div className="space-y-2 sm:justify-self-end">
+        <div className="h-4 w-24 rounded bg-gray-200" />
+        <div className="h-3 w-16 rounded bg-gray-100" />
       </div>
     </div>
   );
 }
-
-const sortMap: Record<SortKey, { ordenarPor: "fecha" | "precio"; direccion: "asc" | "desc" }> = {
-  "fecha-desc": { ordenarPor: "fecha", direccion: "desc" },
-  "fecha-asc": { ordenarPor: "fecha", direccion: "asc" },
-  "precio-desc": { ordenarPor: "precio", direccion: "desc" },
-  "precio-asc": { ordenarPor: "precio", direccion: "asc" },
-};
 
 function toStartOfDay(date: string) {
   return `${date}T00:00:00`;
@@ -105,23 +115,50 @@ function toEndOfDay(date: string) {
   return `${date}T23:59:59`;
 }
 
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  const delta = 1;
+  const range: number[] = [];
+
+  for (
+    let i = Math.max(1, current - delta);
+    i <= Math.min(total, current + delta);
+    i += 1
+  ) {
+    range.push(i);
+  }
+
+  const pages: (number | "ellipsis")[] = [];
+
+  if (range[0] > 1) {
+    pages.push(1);
+    if (range[0] > 2) pages.push("ellipsis");
+  }
+
+  pages.push(...range);
+
+  const last = range[range.length - 1];
+
+  if (last < total) {
+    if (last < total - 1) pages.push("ellipsis");
+    pages.push(total);
+  }
+
+  return pages;
+}
+
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  // Filtros
   const [sort, setSort] = useState<SortKey>("fecha-desc");
   const [localId, setLocalId] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<OrderHistoryFilter>({});
-
-  // Locales con pedidos en el historial (para filtro y nombres en tarjetas)
   const [restaurants, setRestaurants] = useState<OrderHistoryRestaurant[]>([]);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(true);
   const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(
     null,
   );
@@ -134,18 +171,31 @@ export default function OrderHistoryPage() {
   const [ratingLoadError, setRatingLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    let ignore = false;
+
+    setRestaurantsLoading(true);
+
     getOrderHistoryRestaurants()
-      .then(setRestaurants)
-      .catch(() => setRestaurants([]));
+      .then((data) => {
+        if (!ignore) setRestaurants(data);
+      })
+      .catch(() => {
+        if (!ignore) setRestaurants([]);
+      })
+      .finally(() => {
+        if (!ignore) setRestaurantsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
   }, []);
 
   useEffect(() => {
     let ignore = false;
 
     async function loadOrders() {
-      const isNewSearch = page === 0;
-      if (isNewSearch) setLoading(true);
-      else setLoadingMore(true);
+      setLoading(true);
       setError(null);
 
       try {
@@ -158,7 +208,7 @@ export default function OrderHistoryPage() {
 
         if (ignore) return;
 
-        setOrders((prev) => (isNewSearch ? data : [...prev, ...data]));
+        setOrders(data);
         setTotalPages(total);
       } catch (err) {
         if (!ignore) {
@@ -169,10 +219,7 @@ export default function OrderHistoryPage() {
           );
         }
       } finally {
-        if (!ignore) {
-          if (isNewSearch) setLoading(false);
-          else setLoadingMore(false);
-        }
+        if (!ignore) setLoading(false);
       }
     }
 
@@ -205,20 +252,10 @@ export default function OrderHistoryPage() {
     return order.hasLocalRating || Boolean(order.calificacionLocal);
   }
 
-  function handleRatingSaved(orderId: number, rating: OrderRating) {
-    setOrders((currentOrders) =>
-      currentOrders.map((order) =>
-        order.id === orderId ? mergeOrderRating(order, rating) : order,
-      ),
-    );
-
-    window.dispatchEvent(new Event("order-rating-updated"));
-  }
-
   async function handleOpenRating(order: Order) {
     setRatingLoadError(null);
 
-    if (isOrderRated(order)) {
+    if (order.calificacionLocal) {
       setSelectedRatingOrder(order);
       return;
     }
@@ -228,23 +265,22 @@ export default function OrderHistoryPage() {
     try {
       const rating = await getOrderLocalRating(order.id);
 
-      if (rating) {
-        const ratedOrder = mergeOrderRating(order, rating);
-
-        setOrders((currentOrders) =>
-          currentOrders.map((currentOrder) =>
-            currentOrder.id === order.id ? ratedOrder : currentOrder,
-          ),
-        );
-        setSelectedRatingOrder(ratedOrder);
-        return;
+      if (!rating) {
+        throw new Error("No se encontro la calificacion guardada.");
       }
 
-      setSelectedRatingOrder(order);
-    } catch (error) {
+      const ratedOrder = mergeOrderRating(order, rating);
+
+      setOrders((currentOrders) =>
+        currentOrders.map((currentOrder) =>
+          currentOrder.id === order.id ? ratedOrder : currentOrder,
+        ),
+      );
+      setSelectedRatingOrder(ratedOrder);
+    } catch (err) {
       setRatingLoadError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "No se pudo cargar la calificacion guardada.",
       );
     } finally {
@@ -252,10 +288,41 @@ export default function OrderHistoryPage() {
     }
   }
 
-  const hasMore = page < totalPages - 1;
+  function handleRatingSaved(orderId: number, rating: OrderRating) {
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId ? mergeOrderRating(order, rating) : order,
+      ),
+    );
+    window.dispatchEvent(new Event("order-rating-updated"));
+  }
+
+  function goToPage(target: number) {
+    setPage(target);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function getRestaurantName(id: number) {
+    return restaurants.find((restaurant) => restaurant.id === id)?.name ?? `Local #${id}`;
+  }
+
+  const controlsDisabled = restaurantsLoading;
+  const controlClasses =
+    "h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
+  const pageNumbers = getPageNumbers(page + 1, totalPages);
 
   return (
-    <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-6">
+    <div className="mx-auto max-w-[1150px] space-y-6 px-4 py-6">
+      {selectedDetailOrder ? (
+        <OrderDetailModal
+          onClose={() => setSelectedDetailOrder(null)}
+          order={selectedDetailOrder}
+          restaurantId={selectedDetailOrder.restaurantId}
+        />
+      ) : null}
+
       {selectedRatingOrder ? (
         <OrderRatingModal
           key={selectedRatingOrder.id}
@@ -265,52 +332,53 @@ export default function OrderHistoryPage() {
         />
       ) : null}
 
-      {selectedDetailOrder ? (
-        <OrderDetailModal
-          onClose={() => setSelectedDetailOrder(null)}
-          order={selectedDetailOrder}
-          restaurantId={selectedDetailOrder.restaurantId}
-        />
-      ) : null}
-
       <section>
-        <h1 className="text-2xl font-bold text-gray-900">Historial de pedidos</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Consultá tus pedidos anteriores.
+        <h1 className="text-2xl font-bold text-gray-900">
+          Historial de pedidos
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Consulta tus pedidos anteriores.
         </p>
       </section>
 
-      {/* Barra de filtros */}
-      <div className="rounded-xl border border-gray-100 bg-white p-4 space-y-4">
+      <div className="space-y-4 rounded-xl border border-gray-100 bg-white p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700">Ordenar por</span>
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Ordenar por
+            </span>
             <select
-              value={sort}
-              onChange={(e) => {
+              className={controlClasses}
+              disabled={controlsDisabled}
+              onChange={(event) => {
                 setPage(0);
-                setSort(e.target.value as SortKey);
+                setSort(event.target.value as SortKey);
               }}
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              value={sort}
             >
-              <option value="fecha-desc">Fecha: más recientes</option>
-              <option value="fecha-asc">Fecha: más antiguos</option>
+              <option value="fecha-desc">Fecha: mas recientes</option>
+              <option value="fecha-asc">Fecha: mas antiguos</option>
               <option value="precio-desc">Precio total: mayor a menor</option>
               <option value="precio-asc">Precio total: menor a mayor</option>
             </select>
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700">Local</span>
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Local
+            </span>
             <select
+              className={controlClasses}
+              disabled={controlsDisabled}
+              onChange={(event) => setLocalId(event.target.value)}
               value={localId}
-              onChange={(e) => setLocalId(e.target.value)}
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
             >
-              <option value="">Todos los locales</option>
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
+              <option value="">
+                {restaurantsLoading ? "Cargando locales..." : "Todos los locales"}
+              </option>
+              {restaurants.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name}
                 </option>
               ))}
             </select>
@@ -320,34 +388,47 @@ export default function OrderHistoryPage() {
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-gray-700">Desde</span>
+              <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Desde
+              </span>
               <input
+                className={`${controlClasses} w-36`}
+                disabled={controlsDisabled}
+                onChange={(event) => setDesde(event.target.value)}
                 type="date"
                 value={desde}
-                onChange={(e) => setDesde(e.target.value)}
-                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-gray-700">Hasta</span>
+              <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Hasta
+              </span>
               <input
+                className={`${controlClasses} w-36`}
+                disabled={controlsDisabled}
+                onChange={(event) => setHasta(event.target.value)}
                 type="date"
                 value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
-                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
             </label>
           </div>
 
           <button
-            type="button"
+            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800 disabled:cursor-not-allowed disabled:bg-orange-300"
+            disabled={controlsDisabled}
             onClick={applyFilters}
-            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800"
+            type="button"
           >
             Aplicar filtros
           </button>
         </div>
+
+        {restaurantsLoading ? (
+          <p className="text-xs text-gray-400">
+            Cargando locales... los filtros se habilitaran en un momento.
+          </p>
+        ) : null}
       </div>
 
       {ratingLoadError ? (
@@ -356,15 +437,16 @@ export default function OrderHistoryPage() {
         </p>
       ) : null}
 
-      {/* Resultados */}
       {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <OrderCardSkeleton key={i} />
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+          {Array.from({ length: 5 }).map((_, index) => (
+            <RowSkeleton key={index} />
           ))}
         </div>
       ) : error ? (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {error}
+        </p>
       ) : orders.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-16 text-center">
           <ReceiptPercentIcon className="mx-auto h-10 w-10 text-gray-300" />
@@ -374,92 +456,129 @@ export default function OrderHistoryPage() {
         </div>
       ) : (
         <>
-          <div className="space-y-4">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
             {orders.map((order) => (
               <div
+                className="grid grid-cols-1 gap-3 px-5 py-4 transition-colors hover:bg-orange-50/40 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_auto] sm:items-center sm:gap-8"
                 key={order.id}
-                className="rounded-xl border border-gray-200 bg-white p-5 transition-colors hover:border-orange-300"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                      <h2 className="font-bold text-gray-900">Pedido #{order.id}</h2>
-                      <button
-                        className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
-                        onClick={() => setSelectedDetailOrder(order)}
-                        type="button"
-                      >
-                        Ver detalles
-                      </button>
-
-                      {order.estado === "FINALIZADO" ? (
-                        <button
-                          className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
-                          disabled={loadingRatingOrderId === order.id}
-                          onClick={() => void handleOpenRating(order)}
-                          type="button"
-                        >
-                          {loadingRatingOrderId === order.id
-                            ? "Cargando..."
-                            : isOrderRated(order)
-                            ? "Ver calificación"
-                            : "Calificar"}
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="mt-0.5 text-sm text-gray-500">
-                      <LocalNameWidget localId={order.restaurantId} />
-                    </div>
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <span className="font-bold text-gray-900">
+                      {formatDate(order.creacion)}
+                    </span>
+                    <StatusBadge status={order.estado} />
                   </div>
-                  <StatusBadge status={order.estado} />
+                  <p className="mt-0.5 text-sm font-semibold text-orange-700">
+                    {formatPrice(order.total)}
+                  </p>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                  <span className="text-xs text-gray-400">{formatDate(order.creacion)}</span>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-400">
-                      {itemCount(order)} {itemCount(order) === 1 ? "ítem" : "ítems"}
-                    </span>
-                    <span className="text-sm font-bold text-orange-700">
-                      {formatPrice(order.total)}
-                    </span>
-                  </div>
+                <div className="min-w-0">
+                  <p className="line-clamp-2 font-semibold text-gray-900">
+                    {getRestaurantName(order.restaurantId)}
+                  </p>
                 </div>
 
-                {order.urlFactura && (
-                  <div className="mt-3">
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-500">Envio a:</p>
+                  <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">
+                    {order.direccion?.trim()
+                      ? order.direccion
+                      : "Sin direccion registrada"}
+                  </p>
+                </div>
+
+                <div className="space-y-1.5 sm:justify-self-end sm:text-right">
+                  <button
+                    className="text-sm font-semibold text-orange-700 transition-colors hover:text-orange-800 hover:underline"
+                    onClick={() => setSelectedDetailOrder(order)}
+                    type="button"
+                  >
+                    Ver detalles
+                  </button>
+
+                  {order.estado === "FINALIZADO" && isOrderRated(order) ? (
+                    <button
+                      className="block text-sm font-semibold text-orange-700 transition-colors hover:text-orange-800 hover:underline disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto"
+                      disabled={loadingRatingOrderId === order.id}
+                      onClick={() => void handleOpenRating(order)}
+                      type="button"
+                    >
+                      {loadingRatingOrderId === order.id
+                        ? "Cargando..."
+                        : "Ver calificacion"}
+                    </button>
+                  ) : null}
+
+                  {order.urlFactura ? (
                     <Link
+                      className="block text-sm font-semibold text-orange-700 transition-colors hover:text-orange-800 hover:underline"
                       href={order.urlFactura}
                       target="_blank"
-                      className="text-xs font-semibold text-orange-700 hover:underline"
                     >
                       Ver factura
                     </Link>
-                  </div>
-                )}
+                  ) : null}
+
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    Pedido{" "}
+                    <span className="font-semibold text-gray-600">#{order.id}</span>
+                    {" - "}
+                    {itemCount(order)} {itemCount(order) === 1 ? "item" : "items"}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
 
-          {hasMore && (
-            <div className="flex justify-center pt-2">
+          {totalPages > 1 ? (
+            <nav className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
               <button
+                aria-label="Pagina anterior"
+                className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={page === 0}
+                onClick={() => goToPage(page - 1)}
                 type="button"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={loadingMore}
-                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {loadingMore ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-orange-600" />
-                    Cargando...
-                  </>
-                ) : (
-                  "Cargar más"
-                )}
+                <ChevronLeftIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Anterior</span>
               </button>
-            </div>
-          )}
+
+              {pageNumbers.map((pageNumber, index) =>
+                pageNumber === "ellipsis" ? (
+                  <span className="px-2 text-sm text-gray-400" key={`e-${index}`}>
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    aria-current={pageNumber - 1 === page ? "page" : undefined}
+                    className={`h-9 min-w-9 rounded-md px-3 text-sm font-semibold transition-colors ${
+                      pageNumber - 1 === page
+                        ? "bg-orange-700 text-white"
+                        : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
+                    key={pageNumber}
+                    onClick={() => goToPage(pageNumber - 1)}
+                    type="button"
+                  >
+                    {pageNumber}
+                  </button>
+                ),
+              )}
+
+              <button
+                aria-label="Pagina siguiente"
+                className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                disabled={page >= totalPages - 1}
+                onClick={() => goToPage(page + 1)}
+                type="button"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </nav>
+          ) : null}
         </>
       )}
     </div>
