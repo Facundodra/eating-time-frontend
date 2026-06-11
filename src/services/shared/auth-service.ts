@@ -397,3 +397,29 @@ export async function register(credentials: RegisterCredentials): Promise<void> 
     throw new Error("No se pudo registrar. Intentalo nuevamente.");
   }
 }
+
+
+// Editar datos usuario
+export async function editUserData(nombre?: string, telefono?: string, foto?: File | null): Promise<void> {
+  const body = new FormData();
+  body.append("nombre", nombre ?? "");
+  body.append("telefono", telefono ?? "");
+
+  if (foto instanceof File && foto.size > 0) {
+    body.append("foto", foto);
+  }
+
+  try {
+    await client.patch("/api/local/editar", body);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const status = error.response?.status;
+      if (status === 401) {
+        throw new Error("Tu sesión expiró." );
+      }
+    }
+    throw new Error(
+      "No se pudo editar el usuario. Intentalo nuevamente."
+    );
+  }
+}
