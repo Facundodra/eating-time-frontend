@@ -1,5 +1,5 @@
-import RestaurantWorkbenchPage from "@/ui/restaurant/workbench/workbench-page";
+import RestaurantOrdersPage from "@/ui/restaurant/orders/orders-page";
 
 export default function OrdersPage() {
-  return <RestaurantWorkbenchPage mode="orders" />;
+  return <RestaurantOrdersPage />;
 }

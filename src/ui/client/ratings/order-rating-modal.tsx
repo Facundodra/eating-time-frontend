@@ -1,8 +1,15 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { XMarkIcon } from "@heroicons/react/24/outline";
-import { StarIcon } from "@heroicons/react/24/solid";
+import {
+  HandThumbDownIcon,
+  HandThumbUpIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
+import {
+  HandThumbDownIcon as HandThumbDownSolidIcon,
+  HandThumbUpIcon as HandThumbUpSolidIcon,
+} from "@heroicons/react/24/solid";
 import clsx from "clsx";
 
 import type { Order, OrderRating, OrderRatingValue } from "@/lib/client/types";
@@ -15,27 +22,29 @@ type OrderRatingModalProps = {
 };
 
 const ratingOptions: Array<{
+  activeClassName: string;
+  Icon: typeof HandThumbUpIcon;
+  SolidIcon: typeof HandThumbUpSolidIcon;
   label: string;
-  level: number;
   value: OrderRatingValue;
 }> = [
-  { label: "1", level: 1, value: "1_ESTRELLA" },
-  { label: "2", level: 2, value: "2_ESTRELLAS" },
-  { label: "3", level: 3, value: "3_ESTRELLAS" },
-  { label: "4", level: 4, value: "4_ESTRELLAS" },
-  { label: "5", level: 5, value: "5_ESTRELLAS" },
+  {
+    activeClassName:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+    Icon: HandThumbUpIcon,
+    SolidIcon: HandThumbUpSolidIcon,
+    label: "Me gusta",
+    value: 1,
+  },
+  {
+    activeClassName:
+      "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+    Icon: HandThumbDownIcon,
+    SolidIcon: HandThumbDownSolidIcon,
+    label: "No me gusta",
+    value: 0,
+  },
 ];
-
-function getRatingLevel(value?: string | null) {
-  if (!value) return 0;
-
-  const firstDigit = Number(value.charAt(0));
-  return Number.isFinite(firstDigit) ? firstDigit : 0;
-}
-
-function getRatingValue(level: number): OrderRatingValue {
-  return ratingOptions.find((option) => option.level === level)?.value ?? "5_ESTRELLAS";
-}
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
@@ -53,6 +62,12 @@ function formatDate(dateStr: string) {
   });
 }
 
+function getRatingLabel(value: OrderRatingValue | null) {
+  if (value === 1) return "Me gusta";
+  if (value === 0) return "No me gusta";
+  return "Sin calificación";
+}
+
 export default function OrderRatingModal({
   onClose,
   onSaved,
@@ -60,8 +75,8 @@ export default function OrderRatingModal({
 }: OrderRatingModalProps) {
   const savedRating = order.calificacionLocal;
   const isReadOnly = Boolean(savedRating);
-  const [selectedLevel, setSelectedLevel] = useState(
-    getRatingLevel(savedRating?.calificacion),
+  const [selectedRating, setSelectedRating] = useState<OrderRatingValue | null>(
+    savedRating?.calificacion ?? null,
   );
   const [comment, setComment] = useState(savedRating?.comentario ?? "");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -78,8 +93,8 @@ export default function OrderRatingModal({
       return;
     }
 
-    if (!selectedLevel) {
-      setSubmitError("Selecciona una calificacion para continuar.");
+    if (selectedRating == null) {
+      setSubmitError("Seleccioná una calificación para continuar.");
       return;
     }
 
@@ -88,7 +103,7 @@ export default function OrderRatingModal({
 
     try {
       const rating = await submitOrderLocalRating(order.id, {
-        calificacion: getRatingValue(selectedLevel),
+        calificacion: selectedRating,
         comentario: comment,
       });
       onSaved(rating);
@@ -97,7 +112,7 @@ export default function OrderRatingModal({
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "No se pudo registrar la calificacion.",
+          : "No se pudo registrar la calificación.",
       );
     } finally {
       setIsSubmitting(false);
@@ -116,7 +131,7 @@ export default function OrderRatingModal({
           <div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <p className="text-xs font-extrabold uppercase text-slate-400 dark:text-slate-500">
-                {isReadOnly ? "Calificacion del pedido" : "Calificar pedido"}
+                {isReadOnly ? "Calificación del pedido" : "Calificar pedido"}
               </p>
               <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
                 {ratingDateLabel}
@@ -144,32 +159,37 @@ export default function OrderRatingModal({
         <form className="space-y-5 px-6 py-5" onSubmit={handleSubmit}>
           <fieldset disabled={isSubmitting || isReadOnly}>
             <legend className="mb-3 text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Calificacion
+              Calificación
             </legend>
-            <div className="flex flex-wrap gap-2">
+            <div className="grid gap-3 sm:grid-cols-2">
               {ratingOptions.map((option) => {
-                const isActive = selectedLevel >= option.level;
+                const isActive = selectedRating === option.value;
+                const Icon = isActive ? option.SolidIcon : option.Icon;
 
                 return (
                   <button
-                    aria-label={`${option.label} estrellas`}
-                    className="rounded-lg p-1 transition enabled:hover:bg-orange-50 disabled:cursor-default dark:enabled:hover:bg-orange-500/10"
+                    aria-pressed={isActive}
+                    className={clsx(
+                      "flex h-16 items-center justify-center gap-3 rounded-xl border px-4 text-sm font-extrabold transition disabled:cursor-default",
+                      isActive
+                        ? option.activeClassName
+                        : "border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10 dark:hover:text-orange-300",
+                    )}
                     key={option.value}
-                    onClick={() => setSelectedLevel(option.level)}
+                    onClick={() => setSelectedRating(option.value)}
                     type="button"
                   >
-                    <StarIcon
-                      className={clsx(
-                        "h-9 w-9 transition",
-                        isActive
-                          ? "text-orange-400"
-                          : "text-slate-300 dark:text-slate-700",
-                      )}
-                    />
+                    <Icon className="h-6 w-6" />
+                    {option.label}
                   </button>
                 );
               })}
             </div>
+            {isReadOnly ? (
+              <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-slate-400">
+                Resultado: {getRatingLabel(selectedRating)}
+              </p>
+            ) : null}
           </fieldset>
 
           <label className="block">
@@ -205,10 +225,10 @@ export default function OrderRatingModal({
             {!isReadOnly ? (
               <button
                 className="h-11 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
-                disabled={!selectedLevel || isSubmitting}
+                disabled={selectedRating == null || isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? "Guardando..." : "Guardar calificacion"}
+                {isSubmitting ? "Guardando..." : "Guardar calificación"}
               </button>
             ) : null}
           </div>

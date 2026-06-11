@@ -497,11 +497,11 @@ function mapOrderRatingFromApi(
     rating: unknown,
     orderId: number,
 ): OrderRating | null {
-    if (!rating) return null;
+    if (rating == null) return null;
 
     if (typeof rating === "string" || typeof rating === "number") {
         const calificacion = normalizeRatingValue(rating);
-        if (!calificacion) return null;
+        if (calificacion == null) return null;
 
         return {
             pedidoId: orderId,
@@ -527,7 +527,7 @@ function mapOrderRatingFromApi(
     }
 
     const calificacion = normalizeRatingValue(record.calificacion);
-    if (!calificacion) return null;
+    if (calificacion == null) return null;
 
     return {
         id: typeof record.id === "number" ? record.id : undefined,
@@ -538,14 +538,26 @@ function mapOrderRatingFromApi(
     };
 }
 
-function normalizeRatingValue(value: unknown): string | null {
-    if (typeof value === "string") {
-        const normalized = value.trim();
-        return normalized.length > 0 ? normalized : null;
+function normalizeRatingValue(value: unknown): OrderRatingValue | null {
+    if (typeof value === "number" && Number.isInteger(value) && (value === 0 || value === 1)) {
+        return value;
     }
 
-    if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5) {
-        return value === 1 ? "1_ESTRELLA" : `${value}_ESTRELLAS`;
+    if (typeof value === "string") {
+        const normalized = value.trim().toUpperCase();
+
+        if (normalized === "0" || normalized === "DISLIKE" || normalized === "DISLIKED") {
+            return 0;
+        }
+
+        if (
+            normalized === "1" ||
+            normalized === "LIKE" ||
+            normalized === "LIKED" ||
+            normalized === "1_ESTRELLA"
+        ) {
+            return 1;
+        }
     }
 
     return null;
@@ -566,7 +578,7 @@ function hasOrderRatingFromApi(...values: unknown[]): boolean {
 
         const record = value as Record<string, unknown>;
         return (
-            Boolean(normalizeRatingValue(record.calificacion)) ||
+            normalizeRatingValue(record.calificacion) != null ||
             hasOrderRatingFromApi(
                 record.id,
                 record.pedidoId,
@@ -583,44 +595,6 @@ function hasOrderRatingFromApi(...values: unknown[]): boolean {
             )
         );
     });
-}
-
-async function fetchOrderLocalRating(
-    clientId: number,
-    orderId: number,
-): Promise<OrderRating | null> {
-    try {
-        const response = await api.get<unknown>(
-            `/api/pedidos/${orderId}/calificacion-local`,
-        );
-
-        return mapOrderRatingFromApi(response.data, orderId);
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const status = error.response?.status;
-
-            // 404 sí puede significar "este pedido no tiene calificación"
-            if (status === 404) {
-                return null;
-            }
-
-            const data = error.response?.data as
-                | { error?: string; message?: string }
-                | string
-                | undefined;
-
-            const message =
-                typeof data === "string"
-                    ? data
-                    : data?.error ??
-                      data?.message ??
-                      `Error al obtener calificación (${status})`;
-
-            throw new Error(message);
-        }
-
-        throw new Error("No se pudo cargar la calificación del pedido.");
-    }
 }
 
 async function hydrateOrdersWithLocalRatings(
@@ -763,7 +737,7 @@ export type SubmitOrderRatingRequest = {
 };
 
 function parseRatingValueToNumber(value: OrderRatingValue | string): number | null {
-    if (typeof value === "number" && Number.isInteger(value) && value >= 1 && value <= 5) {
+    if (typeof value === "number" && Number.isInteger(value) && (value === 0 || value === 1)) {
         return value;
     }
 
@@ -771,13 +745,16 @@ function parseRatingValueToNumber(value: OrderRatingValue | string): number | nu
         return null;
     }
 
-    const normalized = value.trim();
-    const match = normalized.match(/^([1-5])(?:_|$)/);
-    return match ? Number(match[1]) : null;
+    const normalized = value.trim().toUpperCase();
+
+    if (normalized === "0") return 0;
+    if (normalized === "1" || normalized === "1_ESTRELLA") return 1;
+
+    return null;
 }
 
 export async function getOrderLocalRating(orderId: number): Promise<OrderRating | null> {
-    const session = await requireCurrentSession();
+    await requireCurrentSession();
 
     const { orders } = await getOrderHistory({
         orderId,
@@ -811,7 +788,7 @@ export async function submitOrderLocalRating(
     const ratingNumber = parseRatingValueToNumber(request.calificacion);
 
     if (ratingNumber == null) {
-        throw new Error("La calificación debe ser un número entre 1 y 5.");
+        throw new Error("La calificación debe ser like o dislike.");
     }
 
     const body = {

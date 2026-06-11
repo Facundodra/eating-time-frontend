@@ -4,17 +4,17 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ReceiptPercentIcon } from "@heroicons/react/24/outline";
 
+import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
 import {
-  getOrderLocalRating,
   getOrderHistory,
+  getOrderLocalRating,
   getOrderHistoryRestaurants,
   type OrderHistoryFilter,
   type OrderHistoryRestaurant,
 } from "@/services/client/client-service";
-import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
-import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 import OrderDetailModal from "@/ui/client/orders/order-detail-modal";
 import OrderRatingModal from "@/ui/client/ratings/order-rating-modal";
+import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 
 const PAGE_SIZE = 10;
 
@@ -36,6 +36,16 @@ const statusColors: Record<OrderHistoryStatus, string> = {
   FINALIZADO: "bg-green-100 text-green-800",
   RECHAZADO_LOCAL: "bg-red-100 text-red-700",
   CANCELADO_CLIENTE: "bg-gray-200 text-gray-600",
+};
+
+const sortMap: Record<
+  SortKey,
+  { ordenarPor: "fecha" | "precio"; direccion: "asc" | "desc" }
+> = {
+  "fecha-desc": { ordenarPor: "fecha", direccion: "desc" },
+  "fecha-asc": { ordenarPor: "fecha", direccion: "asc" },
+  "precio-desc": { ordenarPor: "precio", direccion: "desc" },
+  "precio-asc": { ordenarPor: "precio", direccion: "asc" },
 };
 
 function StatusBadge({ status }: { status: OrderHistoryStatus }) {
@@ -74,35 +84,28 @@ function itemCount(order: Order) {
     .reduce((sum, item) => sum + item.cantidad, 0);
 }
 
-function OrderCardSkeleton() {
-  return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="h-4 bg-gray-200 rounded w-1/4" />
-        <div className="h-5 bg-gray-100 rounded-full w-20" />
-      </div>
-      <div className="h-3 bg-gray-100 rounded w-1/3" />
-      <div className="flex items-center justify-between pt-1">
-        <div className="h-3 bg-gray-100 rounded w-1/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/5" />
-      </div>
-    </div>
-  );
-}
-
-const sortMap: Record<SortKey, { ordenarPor: "fecha" | "precio"; direccion: "asc" | "desc" }> = {
-  "fecha-desc": { ordenarPor: "fecha", direccion: "desc" },
-  "fecha-asc": { ordenarPor: "fecha", direccion: "asc" },
-  "precio-desc": { ordenarPor: "precio", direccion: "desc" },
-  "precio-asc": { ordenarPor: "precio", direccion: "asc" },
-};
-
 function toStartOfDay(date: string) {
   return `${date}T00:00:00`;
 }
 
 function toEndOfDay(date: string) {
   return `${date}T23:59:59`;
+}
+
+function OrderCardSkeleton() {
+  return (
+    <div className="animate-pulse space-y-3 rounded-xl border border-gray-200 bg-white p-5">
+      <div className="flex items-center justify-between">
+        <div className="h-4 w-1/4 rounded bg-gray-200" />
+        <div className="h-5 w-20 rounded-full bg-gray-100" />
+      </div>
+      <div className="h-3 w-1/3 rounded bg-gray-100" />
+      <div className="flex items-center justify-between pt-1">
+        <div className="h-3 w-1/4 rounded bg-gray-100" />
+        <div className="h-4 w-1/5 rounded bg-gray-200" />
+      </div>
+    </div>
+  );
 }
 
 export default function OrderHistoryPage() {
@@ -112,15 +115,11 @@ export default function OrderHistoryPage() {
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
-
-  // Filtros
   const [sort, setSort] = useState<SortKey>("fecha-desc");
   const [localId, setLocalId] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<OrderHistoryFilter>({});
-
-  // Locales con pedidos en el historial (para filtro y nombres en tarjetas)
   const [restaurants, setRestaurants] = useState<OrderHistoryRestaurant[]>([]);
   const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(
     null,
@@ -205,41 +204,21 @@ export default function OrderHistoryPage() {
     return order.hasLocalRating || Boolean(order.calificacionLocal);
   }
 
-  function handleRatingSaved(orderId: number, rating: OrderRating) {
-    setOrders((currentOrders) =>
-      currentOrders.map((order) =>
-        order.id === orderId ? mergeOrderRating(order, rating) : order,
-      ),
-    );
-
-    window.dispatchEvent(new Event("order-rating-updated"));
-  }
-
   async function handleOpenRating(order: Order) {
     setRatingLoadError(null);
 
-    const alreadyRated = isOrderRated(order);
-
-    // Pedido todavía no calificado: abrir modal para calificar
-    if (!alreadyRated) {
-      setSelectedRatingOrder(order);
-      return;
-    }
-
-    // Pedido calificado y ya tengo la calificación cargada: abrir modal en modo ver
     if (order.calificacionLocal) {
       setSelectedRatingOrder(order);
       return;
     }
 
-    // Pedido marcado como calificado, pero falta traer el detalle
     setLoadingRatingOrderId(order.id);
 
     try {
       const rating = await getOrderLocalRating(order.id);
 
       if (!rating) {
-        throw new Error("El pedido figura como calificado, pero no se encontró la calificación guardada.");
+        throw new Error("No se encontró la calificación guardada.");
       }
 
       const ratedOrder = mergeOrderRating(order, rating);
@@ -265,16 +244,7 @@ export default function OrderHistoryPage() {
   const hasMore = page < totalPages - 1;
 
   return (
-    <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-6">
-      {selectedRatingOrder ? (
-        <OrderRatingModal
-          key={selectedRatingOrder.id}
-          onClose={() => setSelectedRatingOrder(null)}
-          onSaved={(rating) => handleRatingSaved(selectedRatingOrder.id, rating)}
-          order={selectedRatingOrder}
-        />
-      ) : null}
-
+    <div className="mx-auto max-w-[1000px] space-y-6 px-4 py-6">
       {selectedDetailOrder ? (
         <OrderDetailModal
           onClose={() => setSelectedDetailOrder(null)}
@@ -283,23 +253,35 @@ export default function OrderHistoryPage() {
         />
       ) : null}
 
+      {selectedRatingOrder ? (
+        <OrderRatingModal
+          key={selectedRatingOrder.id}
+          onClose={() => setSelectedRatingOrder(null)}
+          onSaved={() => undefined}
+          order={selectedRatingOrder}
+        />
+      ) : null}
+
       <section>
-        <h1 className="text-2xl font-bold text-gray-900">Historial de pedidos</h1>
-        <p className="text-sm text-gray-500 mt-1">
+        <h1 className="text-2xl font-bold text-gray-900">
+          Historial de pedidos
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
           Consultá tus pedidos anteriores.
         </p>
       </section>
 
-      {/* Barra de filtros */}
-      <div className="rounded-xl border border-gray-100 bg-white p-4 space-y-4">
+      <div className="space-y-4 rounded-xl border border-gray-100 bg-white p-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700">Ordenar por</span>
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Ordenar por
+            </span>
             <select
               value={sort}
-              onChange={(e) => {
+              onChange={(event) => {
                 setPage(0);
-                setSort(e.target.value as SortKey);
+                setSort(event.target.value as SortKey);
               }}
               className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
             >
@@ -311,16 +293,18 @@ export default function OrderHistoryPage() {
           </label>
 
           <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700">Local</span>
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Local
+            </span>
             <select
               value={localId}
-              onChange={(e) => setLocalId(e.target.value)}
+              onChange={(event) => setLocalId(event.target.value)}
               className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
             >
               <option value="">Todos los locales</option>
-              {restaurants.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
+              {restaurants.map((restaurant) => (
+                <option key={restaurant.id} value={restaurant.id}>
+                  {restaurant.name}
                 </option>
               ))}
             </select>
@@ -330,21 +314,25 @@ export default function OrderHistoryPage() {
         <div className="flex flex-wrap items-end gap-4">
           <div className="flex flex-wrap items-end gap-3">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-gray-700">Desde</span>
+              <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Desde
+              </span>
               <input
                 type="date"
                 value={desde}
-                onChange={(e) => setDesde(e.target.value)}
+                onChange={(event) => setDesde(event.target.value)}
                 className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
             </label>
 
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-gray-700">Hasta</span>
+              <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+                Hasta
+              </span>
               <input
                 type="date"
                 value={hasta}
-                onChange={(e) => setHasta(e.target.value)}
+                onChange={(event) => setHasta(event.target.value)}
                 className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
               />
             </label>
@@ -366,15 +354,16 @@ export default function OrderHistoryPage() {
         </p>
       ) : null}
 
-      {/* Resultados */}
       {loading ? (
         <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <OrderCardSkeleton key={i} />
+          {Array.from({ length: 4 }).map((_, index) => (
+            <OrderCardSkeleton key={index} />
           ))}
         </div>
       ) : error ? (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {error}
+        </p>
       ) : orders.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-16 text-center">
           <ReceiptPercentIcon className="mx-auto h-10 w-10 text-gray-300" />
@@ -393,7 +382,9 @@ export default function OrderHistoryPage() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                      <h2 className="font-bold text-gray-900">Pedido #{order.id}</h2>
+                      <h2 className="font-bold text-gray-900">
+                        Pedido #{order.id}
+                      </h2>
                       <button
                         className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
                         onClick={() => setSelectedDetailOrder(order)}
@@ -401,19 +392,16 @@ export default function OrderHistoryPage() {
                       >
                         Ver detalles
                       </button>
-
-                      {order.estado === "FINALIZADO" ? (
+                      {order.estado === "FINALIZADO" && isOrderRated(order) ? (
                         <button
-                          className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
+                          className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60"
                           disabled={loadingRatingOrderId === order.id}
                           onClick={() => void handleOpenRating(order)}
                           type="button"
                         >
                           {loadingRatingOrderId === order.id
                             ? "Cargando..."
-                            : isOrderRated(order)
-                            ? "Ver calificación"
-                            : "Calificar"}
+                            : "Ver calificación"}
                         </button>
                       ) : null}
                     </div>
@@ -425,7 +413,9 @@ export default function OrderHistoryPage() {
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                  <span className="text-xs text-gray-400">{formatDate(order.creacion)}</span>
+                  <span className="text-xs text-gray-400">
+                    {formatDate(order.creacion)}
+                  </span>
                   <div className="flex items-center gap-4">
                     <span className="text-xs text-gray-400">
                       {itemCount(order)} {itemCount(order) === 1 ? "ítem" : "ítems"}
@@ -436,7 +426,7 @@ export default function OrderHistoryPage() {
                   </div>
                 </div>
 
-                {order.urlFactura && (
+                {order.urlFactura ? (
                   <div className="mt-3">
                     <Link
                       href={order.urlFactura}
@@ -446,16 +436,16 @@ export default function OrderHistoryPage() {
                       Ver factura
                     </Link>
                   </div>
-                )}
+                ) : null}
               </div>
             ))}
           </div>
 
-          {hasMore && (
+          {hasMore ? (
             <div className="flex justify-center pt-2">
               <button
                 type="button"
-                onClick={() => setPage((p) => p + 1)}
+                onClick={() => setPage((currentPage) => currentPage + 1)}
                 disabled={loadingMore}
                 className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
@@ -469,7 +459,7 @@ export default function OrderHistoryPage() {
                 )}
               </button>
             </div>
-          )}
+          ) : null}
         </>
       )}
     </div>

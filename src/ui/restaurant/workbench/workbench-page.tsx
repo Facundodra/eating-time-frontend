@@ -4,15 +4,29 @@ import {
   ArrowPathIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import {
+  HandThumbDownIcon as HandThumbDownSolidIcon,
+  HandThumbUpIcon as HandThumbUpSolidIcon,
+} from "@heroicons/react/24/solid";
 import clsx from "clsx";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import type {
   OrderStatus,
   WorkbenchFilters,
   WorkbenchOrder,
+  WorkbenchOrderRating,
+  WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import {
@@ -20,9 +34,9 @@ import {
   fetchWorkbenchOrders,
   confirmWorkbenchOrder,
   rejectWorkbenchOrder,
+  submitWorkbenchOrderCustomerRating,
 } from "@/services/restaurant/workbench-service";
 
-type RestaurantWorkbenchPageMode = "workbench" | "orders";
 type BoardStatus =
   | "PENDIENTE_CONFIRMACION_LOCAL"
   | "ACEPTADO_LOCAL"
@@ -82,6 +96,31 @@ type PendingOrderAction = {
   order: WorkbenchOrder;
 };
 
+const ratingOptions: Array<{
+  activeClassName: string;
+  Icon: typeof HandThumbUpIcon;
+  SolidIcon: typeof HandThumbUpSolidIcon;
+  label: string;
+  value: WorkbenchRatingValue;
+}> = [
+  {
+    activeClassName:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+    Icon: HandThumbUpIcon,
+    SolidIcon: HandThumbUpSolidIcon,
+    label: "Me gusta",
+    value: 1,
+  },
+  {
+    activeClassName:
+      "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+    Icon: HandThumbDownIcon,
+    SolidIcon: HandThumbDownSolidIcon,
+    label: "No me gusta",
+    value: 0,
+  },
+];
+
 function formatDate(dateStr: string) {
   if (!dateStr) return "-";
 
@@ -132,15 +171,7 @@ function isBoardStatus(status: OrderStatus): status is BoardStatus {
   return boardColumns.some((column) => column.status === status);
 }
 
-type RestaurantWorkbenchPageProps = {
-  mode?: RestaurantWorkbenchPageMode;
-};
-
-export default function RestaurantWorkbenchPage(
-  props: RestaurantWorkbenchPageProps,
-) {
-  void props;
-
+export default function RestaurantWorkbenchPage() {
   const [orders, setOrders] = useState<WorkbenchOrder[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -151,11 +182,11 @@ export default function RestaurantWorkbenchPage(
   const [sortBy, setSortBy] = useState<"antiguedad" | "items">("antiguedad");
   const [direction, setDirection] = useState<"asc" | "desc">("desc");
   const [orderId, setOrderId] = useState("");
-  const [startDateTime, setStartDateTime] = useState("");
-  const [endDateTime, setEndDateTime] = useState("");
   const [selectedOrder, setSelectedOrder] = useState<WorkbenchOrder | null>(
     null,
   );
+  const [selectedRatingOrder, setSelectedRatingOrder] =
+    useState<WorkbenchOrder | null>(null);
   const [pendingAction, setPendingAction] = useState<PendingOrderAction | null>(
     null,
   );
@@ -187,8 +218,6 @@ export default function RestaurantWorkbenchPage(
         sortBy,
         direction,
         orderId: orderId || undefined,
-        startDateTime: startDateTime || undefined,
-        endDateTime: endDateTime || undefined,
       };
 
       try {
@@ -211,7 +240,7 @@ export default function RestaurantWorkbenchPage(
     return () => {
       ignore = true;
     };
-  }, [sortBy, direction, orderId, startDateTime, endDateTime, refreshKey]);
+  }, [sortBy, direction, orderId, refreshKey]);
 
   const ordersByStatus = useMemo(() => {
     const grouped = new Map<BoardStatus, WorkbenchOrder[]>(
@@ -234,6 +263,38 @@ export default function RestaurantWorkbenchPage(
     );
     setSelectedOrder((currentOrder) =>
       currentOrder?.id === updatedOrder.id ? updatedOrder : currentOrder,
+    );
+    setSelectedRatingOrder((currentOrder) =>
+      currentOrder?.id === updatedOrder.id ? updatedOrder : currentOrder,
+    );
+  }
+
+  function mergeOrderCustomerRating(
+    order: WorkbenchOrder,
+    rating: WorkbenchOrderRating,
+  ): WorkbenchOrder {
+    return {
+      ...order,
+      customerRating: rating,
+      hasCustomerRating: true,
+    };
+  }
+
+  function handleRatingSaved(orderId: number, rating: WorkbenchOrderRating) {
+    setOrders((currentOrders) =>
+      currentOrders.map((order) =>
+        order.id === orderId ? mergeOrderCustomerRating(order, rating) : order,
+      ),
+    );
+    setSelectedOrder((currentOrder) =>
+      currentOrder?.id === orderId
+        ? mergeOrderCustomerRating(currentOrder, rating)
+        : currentOrder,
+    );
+    setSelectedRatingOrder((currentOrder) =>
+      currentOrder?.id === orderId
+        ? mergeOrderCustomerRating(currentOrder, rating)
+        : currentOrder,
     );
   }
 
@@ -346,7 +407,7 @@ export default function RestaurantWorkbenchPage(
   return (
     <section className="min-w-0 space-y-5">
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[240px_160px_200px_200px_auto]">
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[240px_160px_auto]">
           <label className="block">
             <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
               Ordenar pedidos
@@ -378,30 +439,6 @@ export default function RestaurantWorkbenchPage(
               value={orderId}
               onChange={(event) => setOrderId(event.target.value)}
               placeholder="Ej: 5"
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
-              Desde
-            </span>
-            <input
-              type="datetime-local"
-              value={startDateTime}
-              onChange={(event) => setStartDateTime(event.target.value)}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-            />
-          </label>
-
-          <label className="block">
-            <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
-              Hasta
-            </span>
-            <input
-              type="datetime-local"
-              value={endDateTime}
-              onChange={(event) => setEndDateTime(event.target.value)}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             />
           </label>
@@ -473,6 +510,7 @@ export default function RestaurantWorkbenchPage(
                           setPendingAction({ type: "reject", order })
                         }
                         onOpenInfo={() => setSelectedOrder(order)}
+                        onOpenRating={() => setSelectedRatingOrder(order)}
                       />
                     ))
                   )}
@@ -489,6 +527,17 @@ export default function RestaurantWorkbenchPage(
           onClose={() => setSelectedOrder(null)}
           onReject={() =>
             setPendingAction({ type: "reject", order: selectedOrder })
+          }
+        />
+      ) : null}
+
+      {selectedRatingOrder ? (
+        <OrderCustomerRatingModal
+          key={selectedRatingOrder.id}
+          order={selectedRatingOrder}
+          onClose={() => setSelectedRatingOrder(null)}
+          onSaved={(rating) =>
+            handleRatingSaved(selectedRatingOrder.id, rating)
           }
         />
       ) : null}
@@ -522,6 +571,7 @@ function OrderCard({
   isProcessing,
   onAdvance,
   onOpenInfo,
+  onOpenRating,
   onReject,
   order,
   status,
@@ -529,12 +579,14 @@ function OrderCard({
   isProcessing: boolean;
   onAdvance: () => void;
   onOpenInfo: () => void;
+  onOpenRating: () => void;
   onReject: () => void;
   order: WorkbenchOrder;
   status: BoardStatus;
 }) {
   const nextStatus = nextStatusByStatus[order.status];
   const canReject = order.status === "PENDIENTE_CONFIRMACION_LOCAL";
+  const canRate = order.status === "FINALIZADO";
 
   return (
     <article className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md dark:border-slate-800 dark:bg-slate-900">
@@ -570,7 +622,7 @@ function OrderCard({
         <p className="text-sm font-black text-slate-950 dark:text-white">
           {formatPrice(order.total)}
         </p>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center justify-end gap-2">
           {canReject ? (
             <button
               type="button"
@@ -580,6 +632,20 @@ function OrderCard({
               className="grid h-8 w-8 place-items-center rounded-lg border border-red-100 text-red-500 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-red-500/20 dark:hover:bg-red-500/10"
             >
               <ChevronLeftIcon className="h-4 w-4" />
+            </button>
+          ) : null}
+          {canRate ? (
+            <button
+              type="button"
+              onClick={onOpenRating}
+              className={clsx(
+                "h-8 rounded-lg px-3 text-xs font-black transition",
+                order.hasCustomerRating
+                  ? "bg-orange-50 text-orange-600 hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20"
+                  : "bg-orange-600 text-white hover:bg-orange-700",
+              )}
+            >
+              {order.hasCustomerRating ? "Ver calif." : "Calificar"}
             </button>
           ) : null}
           <button
@@ -607,6 +673,184 @@ function OrderCard({
         </div>
       </div>
     </article>
+  );
+}
+
+function getRatingLabel(value: WorkbenchRatingValue | null) {
+  if (value === 1) return "Me gusta";
+  if (value === 0) return "No me gusta";
+  return "Calificacion registrada";
+}
+
+function OrderCustomerRatingModal({
+  onClose,
+  onSaved,
+  order,
+}: {
+  onClose: () => void;
+  onSaved: (rating: WorkbenchOrderRating) => void;
+  order: WorkbenchOrder;
+}) {
+  const savedRating = order.customerRating;
+  const isReadOnly = order.hasCustomerRating || Boolean(savedRating);
+  const [selectedRating, setSelectedRating] = useState<WorkbenchRatingValue | null>(
+    savedRating?.calificacion ?? null,
+  );
+  const [comment, setComment] = useState(savedRating?.comentario ?? "");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const ratingDateLabel = savedRating?.creacion
+    ? formatDate(savedRating.creacion)
+    : "--/--, --:--";
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (isReadOnly) {
+      onClose();
+      return;
+    }
+
+    if (selectedRating == null) {
+      setSubmitError("Selecciona una calificacion para continuar.");
+      return;
+    }
+
+    setIsSubmitting(true);
+    setSubmitError(null);
+
+    try {
+      const rating = await submitWorkbenchOrderCustomerRating(order.id, {
+        calificacion: selectedRating,
+        comentario: comment,
+      });
+      onSaved(rating);
+      onClose();
+    } catch (error) {
+      setSubmitError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo registrar la calificacion.",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+    >
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md rounded-2xl border border-white/80 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+              <h2 className="text-base font-black text-slate-950 dark:text-white">
+                PED-{order.id}
+              </h2>
+              <span className="text-xs font-bold text-slate-400 dark:text-slate-500">
+                {ratingDateLabel}
+              </span>
+            </div>
+            <p className="mt-2 text-sm font-black text-slate-800 dark:text-slate-100">
+              {getCustomerLabel(order)}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            aria-label="Cerrar"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-slate-500 transition hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+        </div>
+
+        <fieldset className="mt-6" disabled={isSubmitting || isReadOnly}>
+          <legend className="mb-3 text-sm font-black text-slate-700 dark:text-slate-200">
+            Calificacion
+          </legend>
+          <div className="flex flex-wrap gap-3">
+            {ratingOptions.map((option) => {
+              const isActive = selectedRating === option.value;
+              const Icon = isActive ? option.SolidIcon : option.Icon;
+
+              return (
+                <button
+                  key={option.value}
+                  type="button"
+                  aria-pressed={isActive}
+                  onClick={() => setSelectedRating(option.value)}
+                  className={clsx(
+                    "inline-flex h-12 min-w-[128px] items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black transition disabled:cursor-default",
+                    isActive
+                      ? option.activeClassName
+                      : "border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10 dark:hover:text-orange-300",
+                  )}
+                >
+                  <Icon className="h-6 w-6" />
+                  {option.label}
+                </button>
+              );
+            })}
+          </div>
+          {isReadOnly ? (
+            <p className="mt-3 text-sm font-semibold text-slate-500 dark:text-slate-400">
+              Resultado: {getRatingLabel(selectedRating)}
+            </p>
+          ) : null}
+        </fieldset>
+
+        <label className="mt-5 block">
+          <span className="mb-2 block text-sm font-black text-slate-700 dark:text-slate-200">
+            Comentario
+          </span>
+          <textarea
+            value={comment}
+            onChange={(event) => setComment(event.target.value)}
+            disabled={isSubmitting || isReadOnly}
+            maxLength={280}
+            rows={5}
+            placeholder="Escribe un comentario sobre el cliente."
+            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-950/60 dark:disabled:text-slate-400 dark:focus:ring-orange-500/20"
+          />
+        </label>
+
+        {submitError ? (
+          <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300">
+            {submitError}
+          </p>
+        ) : null}
+
+        <div className="mt-5 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isSubmitting}
+            className="h-10 rounded-xl bg-slate-100 px-4 text-sm font-black text-slate-700 transition hover:bg-slate-200 disabled:opacity-50 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
+          >
+            Cerrar
+          </button>
+
+          {!isReadOnly ? (
+            <button
+              type="submit"
+              disabled={selectedRating == null || isSubmitting}
+              className="h-10 rounded-xl bg-orange-600 px-4 text-sm font-black text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isSubmitting ? "Guardando..." : "Guardar"}
+            </button>
+          ) : null}
+        </div>
+      </form>
+    </div>
   );
 }
 

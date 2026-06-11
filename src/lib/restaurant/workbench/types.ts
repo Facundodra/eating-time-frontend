@@ -9,6 +9,16 @@ export type OrderStatus =
   | "RECHAZADO_LOCAL"
   | "CANCELADO_CLIENTE";
 
+export type WorkbenchRatingValue = 0 | 1;
+
+export type WorkbenchOrderRating = {
+  id?: number;
+  pedidoId: number;
+  calificacion: WorkbenchRatingValue;
+  comentario: string | null;
+  creacion?: string | null;
+};
+
 export type WorkbenchOrderApiResponse = {
   id?: number;
   pedidoId?: number;
@@ -40,6 +50,18 @@ export type WorkbenchOrderApiResponse = {
   fechaCreacion?: string;
   createdAt?: string;
   eliminacion?: string | null;
+  calificacionCliente?: unknown;
+  clienteCalificacion?: unknown;
+  tieneCalificacionCliente?: unknown;
+  calificadoCliente?: unknown;
+  calificacionLocal?: unknown;
+  localCalificacion?: unknown;
+  tieneCalificacionLocal?: unknown;
+  calificadoLocal?: unknown;
+  tieneCalificacion?: unknown;
+  calificado?: unknown;
+  calificacion?: unknown;
+  rating?: unknown;
 };
 
 export type WorkbenchOrderItemApiResponse = {
@@ -93,6 +115,8 @@ export type WorkbenchOrder = {
   rejectionReason: string | null;
   createdAt: string;
   deletedAt: string | null;
+  customerRating: WorkbenchOrderRating | null;
+  hasCustomerRating: boolean;
 };
 
 export type WorkbenchFilters = {

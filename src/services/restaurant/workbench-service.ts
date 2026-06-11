@@ -7,6 +7,8 @@ import type {
   WorkbenchOrderItemApiResponse,
   WorkbenchOrder,
   WorkbenchOrderApiResponse,
+  WorkbenchOrderRating,
+  WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
 import { clientApi } from "@/services/shared/api-client";
 
@@ -27,6 +29,14 @@ type WorkbenchOrdersApiResponse =
       pedidos?: WorkbenchOrderApiResponse[];
       orders?: WorkbenchOrderApiResponse[];
     };
+
+type WorkbenchOrderRatingApiResponse = {
+  id?: number;
+  pedidoId?: number;
+  calificacion?: WorkbenchRatingValue | string | null;
+  comentario?: string | null;
+  creacion?: string | null;
+};
 
 function mapWorkbenchOrderItem(
   item: WorkbenchOrderItemApiResponse,
@@ -62,11 +72,128 @@ function getItemCount(
   );
 }
 
-function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
-  const items = getOrderItems(order);
+function normalizeWorkbenchRatingValue(
+  value: unknown,
+): WorkbenchRatingValue | null {
+  if (typeof value === "number" && Number.isInteger(value)) {
+    if (value === 0 || value === 1) return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toUpperCase();
+
+    if (normalized === "0" || normalized === "DISLIKE" || normalized === "DISLIKED") {
+      return 0;
+    }
+
+    if (normalized === "1" || normalized === "LIKE" || normalized === "LIKED") {
+      return 1;
+    }
+  }
+
+  return null;
+}
+
+function mapWorkbenchRatingFromApi(
+  rating: unknown,
+  orderId: number,
+): WorkbenchOrderRating | null {
+  if (rating == null) return null;
+
+  if (typeof rating === "string" || typeof rating === "number") {
+    const calificacion = normalizeWorkbenchRatingValue(rating);
+    if (calificacion == null) return null;
+
+    return {
+      pedidoId: orderId,
+      calificacion,
+      comentario: null,
+      creacion: null,
+    };
+  }
+
+  if (typeof rating !== "object") return null;
+
+  const record = rating as Record<string, unknown>;
+  const nestedRating =
+    record.calificacionCliente ??
+    record.clienteCalificacion ??
+    record.calificacionLocal ??
+    record.localCalificacion ??
+    record.calificacion ??
+    record.rating ??
+    record.data;
+
+  if (nestedRating != null && nestedRating !== rating) {
+    const mappedNestedRating = mapWorkbenchRatingFromApi(nestedRating, orderId);
+    if (mappedNestedRating) return mappedNestedRating;
+  }
+
+  const calificacion = normalizeWorkbenchRatingValue(record.calificacion);
+  if (calificacion == null) return null;
 
   return {
-    id: order.id ?? order.pedidoId ?? 0,
+    id: typeof record.id === "number" ? record.id : undefined,
+    pedidoId: typeof record.pedidoId === "number" ? record.pedidoId : orderId,
+    calificacion,
+    comentario: typeof record.comentario === "string" ? record.comentario : null,
+    creacion: typeof record.creacion === "string" ? record.creacion : null,
+  };
+}
+
+function hasWorkbenchRatingFromApi(...values: unknown[]): boolean {
+  return values.some((value) => {
+    if (value == null) return false;
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value > 0;
+
+    if (typeof value === "string") {
+      const normalized = value.trim().toLowerCase();
+      return normalized !== "" && normalized !== "false" && normalized !== "0";
+    }
+
+    if (typeof value !== "object") return false;
+
+    const record = value as Record<string, unknown>;
+    return (
+      normalizeWorkbenchRatingValue(record.calificacion) != null ||
+      hasWorkbenchRatingFromApi(
+        record.id,
+        record.pedidoId,
+        record.calificacionCliente,
+        record.clienteCalificacion,
+        record.tieneCalificacionCliente,
+        record.calificadoCliente,
+        record.calificacionLocal,
+        record.localCalificacion,
+        record.tieneCalificacionLocal,
+        record.calificadoLocal,
+        record.tieneCalificacion,
+        record.calificado,
+        record.calificacion,
+        record.rating,
+        record.data,
+      )
+    );
+  });
+}
+
+function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
+  const items = getOrderItems(order);
+  const orderId = order.id ?? order.pedidoId ?? 0;
+  const rating = mapWorkbenchRatingFromApi(
+    order.calificacionCliente ??
+      order.clienteCalificacion ??
+      order.calificacionLocal ??
+      order.localCalificacion ??
+      order.calificacion ??
+      order.rating ??
+      null,
+    orderId,
+  );
+
+  return {
+    id: orderId,
     restaurantId: order.localId ?? order.idLocal ?? 0,
     customerId: order.clienteId ?? order.idCliente ?? 0,
     customerName: order.clienteNombre ?? order.nombreCliente ?? null,
@@ -89,6 +216,23 @@ function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
     rejectionReason: order.motivoRechazo ?? null,
     createdAt: order.creacion ?? order.fechaCreacion ?? order.createdAt ?? "",
     deletedAt: order.eliminacion ?? null,
+    customerRating: rating,
+    hasCustomerRating:
+      Boolean(rating) ||
+      hasWorkbenchRatingFromApi(
+        order.calificacionCliente,
+        order.clienteCalificacion,
+        order.tieneCalificacionCliente,
+        order.calificadoCliente,
+        order.calificacionLocal,
+        order.localCalificacion,
+        order.tieneCalificacionLocal,
+        order.calificadoLocal,
+        order.tieneCalificacion,
+        order.calificado,
+        order.calificacion,
+        order.rating,
+      ),
   };
 }
 
@@ -154,6 +298,20 @@ export async function fetchWorkbenchOrders(
       getBackendErrorMessage(error, "No se pudieron cargar los pedidos."),
     );
   }
+}
+
+const ALL_ORDERS_START_DATE_TIME = "1970-01-01T00:00:00";
+const ALL_ORDERS_END_DATE_TIME = "2100-12-31T23:59:59";
+
+export async function fetchRestaurantOrders(
+  restaurantId: string,
+  filters?: WorkbenchFilters,
+): Promise<WorkbenchOrder[]> {
+  return fetchWorkbenchOrders(restaurantId, {
+    ...filters,
+    startDateTime: filters?.startDateTime ?? ALL_ORDERS_START_DATE_TIME,
+    endDateTime: filters?.endDateTime ?? ALL_ORDERS_END_DATE_TIME,
+  });
 }
 
 type WorkbenchOrderAction = "confirmar" | "rechazar";
@@ -234,6 +392,42 @@ export async function changeWorkbenchOrderStatus(
   } catch (error) {
     throw new Error(
       getBackendErrorMessage(error, "No se pudo actualizar el estado del pedido."),
+    );
+  }
+}
+
+export type SubmitWorkbenchOrderRatingRequest = {
+  calificacion: WorkbenchRatingValue;
+  comentario?: string;
+};
+
+export async function submitWorkbenchOrderCustomerRating(
+  orderId: number,
+  request: SubmitWorkbenchOrderRatingRequest,
+): Promise<WorkbenchOrderRating> {
+  const body = {
+    pedidoId: orderId,
+    calificacion: request.calificacion,
+    comentario: request.comentario?.trim() || null,
+  };
+
+  try {
+    const response = await clientApi.post<WorkbenchOrderRatingApiResponse>(
+      `/api/pedidos/${encodeURIComponent(orderId.toString())}/calificacion-local`,
+      body,
+      { headers: { "Content-Type": "application/json" } },
+    );
+
+    return (
+      mapWorkbenchRatingFromApi(response.data, orderId) ?? {
+        pedidoId: orderId,
+        calificacion: request.calificacion,
+        comentario: body.comentario,
+      }
+    );
+  } catch (error) {
+    throw new Error(
+      getBackendErrorMessage(error, "No se pudo registrar la calificacion."),
     );
   }
 }

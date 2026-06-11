@@ -41,7 +41,7 @@ export const pageMetadata: Record<string, PageMetadata> = {
     description: "Resumen general del local",
   },
   "/restaurant/workbench": {
-    breadcrumb: "Trabajo diario del local",
+    breadcrumb: "Pedidos de las últimas 24 horas",
     title: "Mesa de trabajo",
     description: "Gestión de mesas y pedidos en curso",
   },
