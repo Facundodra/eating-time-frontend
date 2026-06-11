@@ -12,9 +12,9 @@ import type {
   WorkbenchOrder,
 } from "@/lib/restaurant/workbench/types";
 import {
-  acceptOrder,
+  confirmWorkbenchOrder,
   fetchWorkbenchOrders,
-  rejectOrder,
+  rejectWorkbenchOrder,
 } from "@/services/restaurant/workbench-service";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
@@ -22,6 +22,8 @@ import PanelError from "@/ui/shared/feedback/panel-error";
 // ─── Status config ─────────────────────────────────────────────────────────────
 
 const statusLabels: Record<OrderStatus, string> = {
+  EN_CARRITO: "En carrito",
+  ETAPA_DE_PAGO: "En pago",
   PENDIENTE_CONFIRMACION_LOCAL: "Pendiente",
   ACEPTADO_LOCAL: "Aceptado",
   EN_CURSO_LOCAL: "En curso",
@@ -32,6 +34,10 @@ const statusLabels: Record<OrderStatus, string> = {
 };
 
 const statusBadgeColors: Record<OrderStatus, string> = {
+  EN_CARRITO:
+    "bg-slate-100 text-slate-500 dark:bg-slate-500/10 dark:text-slate-400",
+  ETAPA_DE_PAGO:
+    "bg-sky-50 text-sky-600 dark:bg-sky-500/10 dark:text-sky-400",
   PENDIENTE_CONFIRMACION_LOCAL:
     "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
   ACEPTADO_LOCAL:
@@ -136,7 +142,9 @@ function formatTime(dateStr: string) {
   }
 }
 
-function formatPrice(price: number) {
+function formatPrice(price: number | null | undefined) {
+  if (price == null) return "-";
+
   return `$${price.toLocaleString("es-UY")}`;
 }
 
@@ -306,8 +314,12 @@ function OrderDetailPanel({
       const restaurantId = session?.idTipoUsuario
         ? String(session.idTipoUsuario)
         : "";
-      const updated = await acceptOrder(restaurantId, order.id, estimatedTime.trim());
-      onOrderUpdated(updated);
+      const updated = await confirmWorkbenchOrder(
+        restaurantId,
+        order.id,
+        estimatedTime.trim(),
+      );
+      if (updated) onOrderUpdated(updated);
       setEstimatedTime("");
       onReload();
     } catch (err) {
@@ -331,8 +343,12 @@ function OrderDetailPanel({
       const restaurantId = session?.idTipoUsuario
         ? String(session.idTipoUsuario)
         : "";
-      const updated = await rejectOrder(restaurantId, order.id, rejectionReason.trim());
-      onOrderUpdated(updated);
+      const updated = await rejectWorkbenchOrder(
+        restaurantId,
+        order.id,
+        rejectionReason.trim(),
+      );
+      if (updated) onOrderUpdated(updated);
       setRejectionReason("");
       onReload();
     } catch (err) {
@@ -434,9 +450,9 @@ function OrderDetailPanel({
                       >
                         <td className="px-4 py-3 font-medium text-slate-800 dark:text-slate-100">
                           {item.name}
-                          {item.discountApplied > 0 && (
+                          {(item.discountApplied ?? 0) > 0 && (
                             <span className="ml-2 rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-extrabold text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400">
-                              -{item.discountApplied}%
+                              -{item.discountApplied ?? 0}%
                             </span>
                           )}
                         </td>

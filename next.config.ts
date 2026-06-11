@@ -21,6 +21,11 @@ const nextConfig: NextConfig = {
         hostname: "upload.wikimedia.org",
         pathname: "/**",
       },
+      {
+        protocol: "https",
+        hostname: "loivvbfjjtrvokahdurg.supabase.co",
+        pathname: "/storage/v1/object/public/eating-time/**",
+      },
     ],
   },
 };
