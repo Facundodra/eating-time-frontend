@@ -2,19 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { ReceiptPercentIcon } from "@heroicons/react/24/outline";
+import { ReceiptPercentIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 import {
-  getOrderLocalRating,
   getOrderHistory,
   getOrderHistoryRestaurants,
   type OrderHistoryFilter,
   type OrderHistoryRestaurant,
 } from "@/services/client/client-service";
-import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
-import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
-import OrderDetailModal from "@/ui/client/orders/order-detail-modal";
-import OrderRatingModal from "@/ui/client/ratings/order-rating-modal";
+import type { Order, OrderHistoryStatus } from "@/lib/client/types";
 
 const PAGE_SIZE = 10;
 
@@ -41,7 +37,7 @@ const statusColors: Record<OrderHistoryStatus, string> = {
 function StatusBadge({ status }: { status: OrderHistoryStatus }) {
   return (
     <span
-      className={`rounded-full px-3 py-1 text-xs font-bold ${
+      className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
         statusColors[status] ?? "bg-gray-100 text-gray-600"
       }`}
     >
@@ -68,23 +64,21 @@ function formatPrice(price: number) {
   return `$${price.toLocaleString("es-UY")}`;
 }
 
-function itemCount(order: Order) {
-  return order.items
-    .filter((item) => item.eliminacion == null)
-    .reduce((sum, item) => sum + item.cantidad, 0);
-}
-
-function OrderCardSkeleton() {
+function RowSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="h-4 bg-gray-200 rounded w-1/4" />
-        <div className="h-5 bg-gray-100 rounded-full w-20" />
+    <div className="grid grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_auto] sm:items-center sm:gap-8 animate-pulse">
+      <div className="space-y-2">
+        <div className="h-4 w-2/3 rounded bg-gray-200" />
+        <div className="h-3 w-1/3 rounded bg-gray-100" />
       </div>
-      <div className="h-3 bg-gray-100 rounded w-1/3" />
-      <div className="flex items-center justify-between pt-1">
-        <div className="h-3 bg-gray-100 rounded w-1/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/5" />
+      <div className="h-4 w-2/3 rounded bg-gray-200" />
+      <div className="space-y-2">
+        <div className="h-3 w-20 rounded bg-gray-100" />
+        <div className="h-3 w-3/4 rounded bg-gray-100" />
+      </div>
+      <div className="space-y-2 sm:items-end sm:justify-self-end">
+        <div className="h-4 w-24 rounded bg-gray-200" />
+        <div className="h-3 w-16 rounded bg-gray-100" />
       </div>
     </div>
   );
@@ -105,10 +99,31 @@ function toEndOfDay(date: string) {
   return `${date}T23:59:59`;
 }
 
+// Construye la secuencia de páginas a mostrar (1-indexada) con elipsis.
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  const delta = 1;
+  const range: number[] = [];
+  for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+    range.push(i);
+  }
+
+  const pages: (number | "ellipsis")[] = [];
+  if (range[0] > 1) {
+    pages.push(1);
+    if (range[0] > 2) pages.push("ellipsis");
+  }
+  pages.push(...range);
+  const last = range[range.length - 1];
+  if (last < total) {
+    if (last < total - 1) pages.push("ellipsis");
+    pages.push(total);
+  }
+  return pages;
+}
+
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
@@ -120,67 +135,36 @@ export default function OrderHistoryPage() {
   const [hasta, setHasta] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<OrderHistoryFilter>({});
 
-  // Locales con pedidos en el historial (para filtro y nombres en tarjetas)
+  // Locales con pedidos en el historial (para filtro y nombres en las filas)
   const [restaurants, setRestaurants] = useState<OrderHistoryRestaurant[]>([]);
-  const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(
-    null,
-  );
-  const [selectedRatingOrder, setSelectedRatingOrder] = useState<Order | null>(
-    null,
-  );
-  const [loadingRatingOrderId, setLoadingRatingOrderId] = useState<
-    number | null
-  >(null);
-  const [ratingLoadError, setRatingLoadError] = useState<string | null>(null);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(true);
 
   useEffect(() => {
+    setRestaurantsLoading(true);
     getOrderHistoryRestaurants()
       .then(setRestaurants)
-      .catch(() => setRestaurants([]));
+      .catch(() => setRestaurants([]))
+      .finally(() => setRestaurantsLoading(false));
   }, []);
 
   useEffect(() => {
-    let ignore = false;
+    setLoading(true);
+    setError(null);
 
-    async function loadOrders() {
-      const isNewSearch = page === 0;
-      if (isNewSearch) setLoading(true);
-      else setLoadingMore(true);
-      setError(null);
-
-      try {
-        const { orders: data, totalPages: total } = await getOrderHistory({
-          ...appliedFilter,
-          ...sortMap[sort],
-          page,
-          size: PAGE_SIZE,
-        });
-
-        if (ignore) return;
-
-        setOrders((prev) => (isNewSearch ? data : [...prev, ...data]));
+    getOrderHistory({
+      ...appliedFilter,
+      ...sortMap[sort],
+      page,
+      size: PAGE_SIZE,
+    })
+      .then(({ orders: data, totalPages: total }) => {
+        setOrders(data);
         setTotalPages(total);
-      } catch (err) {
-        if (!ignore) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "No se pudieron cargar los pedidos.",
-          );
-        }
-      } finally {
-        if (!ignore) {
-          if (isNewSearch) setLoading(false);
-          else setLoadingMore(false);
-        }
-      }
-    }
-
-    void loadOrders();
-
-    return () => {
-      ignore = true;
-    };
+      })
+      .catch((err) =>
+        setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos."),
+      )
+      .finally(() => setLoading(false));
   }, [appliedFilter, sort, page]);
 
   function applyFilters() {
@@ -193,91 +177,29 @@ export default function OrderHistoryPage() {
     setAppliedFilter(next);
   }
 
-  function mergeOrderRating(order: Order, rating: OrderRating): Order {
-    return {
-      ...order,
-      calificacionLocal: rating,
-      hasLocalRating: true,
-    };
-  }
-
-  function isOrderRated(order: Order) {
-    return order.hasLocalRating || Boolean(order.calificacionLocal);
-  }
-
-  function handleRatingSaved(orderId: number, rating: OrderRating) {
-    setOrders((currentOrders) =>
-      currentOrders.map((order) =>
-        order.id === orderId ? mergeOrderRating(order, rating) : order,
-      ),
-    );
-
-    window.dispatchEvent(new Event("order-rating-updated"));
-  }
-
-  async function handleOpenRating(order: Order) {
-    setRatingLoadError(null);
-
-    if (isOrderRated(order)) {
-      setSelectedRatingOrder(order);
-      return;
-    }
-
-    setLoadingRatingOrderId(order.id);
-
-    try {
-      const rating = await getOrderLocalRating(order.id);
-
-      if (rating) {
-        const ratedOrder = mergeOrderRating(order, rating);
-
-        setOrders((currentOrders) =>
-          currentOrders.map((currentOrder) =>
-            currentOrder.id === order.id ? ratedOrder : currentOrder,
-          ),
-        );
-        setSelectedRatingOrder(ratedOrder);
-        return;
-      }
-
-      setSelectedRatingOrder(order);
-    } catch (error) {
-      setRatingLoadError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo cargar la calificacion guardada.",
-      );
-    } finally {
-      setLoadingRatingOrderId(null);
+  function goToPage(target: number) {
+    setPage(target);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
     }
   }
 
-  const hasMore = page < totalPages - 1;
+  function getRestaurantName(id: number) {
+    return restaurants.find((r) => r.id === id)?.name ?? `Local #${id}`;
+  }
+
+  // Hasta que no terminen de cargar los locales, no se puede ordenar ni filtrar.
+  const controlsDisabled = restaurantsLoading;
+  const controlClasses =
+    "h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
+
+  const pageNumbers = getPageNumbers(page + 1, totalPages);
 
   return (
-    <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-6">
-      {selectedRatingOrder ? (
-        <OrderRatingModal
-          key={selectedRatingOrder.id}
-          onClose={() => setSelectedRatingOrder(null)}
-          onSaved={(rating) => handleRatingSaved(selectedRatingOrder.id, rating)}
-          order={selectedRatingOrder}
-        />
-      ) : null}
-
-      {selectedDetailOrder ? (
-        <OrderDetailModal
-          onClose={() => setSelectedDetailOrder(null)}
-          order={selectedDetailOrder}
-          restaurantId={selectedDetailOrder.restaurantId}
-        />
-      ) : null}
-
+    <div className="max-w-[1150px] mx-auto px-4 py-6 space-y-6">
       <section>
         <h1 className="text-2xl font-bold text-gray-900">Historial de pedidos</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Consultá tus pedidos anteriores.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Consultá tus pedidos anteriores.</p>
       </section>
 
       {/* Barra de filtros */}
@@ -287,11 +209,12 @@ export default function OrderHistoryPage() {
             <span className="mb-1.5 block text-sm font-semibold text-gray-700">Ordenar por</span>
             <select
               value={sort}
+              disabled={controlsDisabled}
               onChange={(e) => {
                 setPage(0);
                 setSort(e.target.value as SortKey);
               }}
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className={controlClasses}
             >
               <option value="fecha-desc">Fecha: más recientes</option>
               <option value="fecha-asc">Fecha: más antiguos</option>
@@ -304,10 +227,11 @@ export default function OrderHistoryPage() {
             <span className="mb-1.5 block text-sm font-semibold text-gray-700">Local</span>
             <select
               value={localId}
+              disabled={controlsDisabled}
               onChange={(e) => setLocalId(e.target.value)}
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className={controlClasses}
             >
-              <option value="">Todos los locales</option>
+              <option value="">{restaurantsLoading ? "Cargando locales..." : "Todos los locales"}</option>
               {restaurants.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
@@ -324,8 +248,9 @@ export default function OrderHistoryPage() {
               <input
                 type="date"
                 value={desde}
+                disabled={controlsDisabled}
                 onChange={(e) => setDesde(e.target.value)}
-                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                className={`${controlClasses} w-36`}
               />
             </label>
 
@@ -334,8 +259,9 @@ export default function OrderHistoryPage() {
               <input
                 type="date"
                 value={hasta}
+                disabled={controlsDisabled}
                 onChange={(e) => setHasta(e.target.value)}
-                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                className={`${controlClasses} w-36`}
               />
             </label>
           </div>
@@ -343,24 +269,25 @@ export default function OrderHistoryPage() {
           <button
             type="button"
             onClick={applyFilters}
-            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800"
+            disabled={controlsDisabled}
+            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800 disabled:cursor-not-allowed disabled:bg-orange-300"
           >
             Aplicar filtros
           </button>
         </div>
-      </div>
 
-      {ratingLoadError ? (
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {ratingLoadError}
-        </p>
-      ) : null}
+        {restaurantsLoading && (
+          <p className="text-xs text-gray-400">
+            Cargando locales… los filtros se habilitarán en un momento.
+          </p>
+        )}
+      </div>
 
       {/* Resultados */}
       {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <OrderCardSkeleton key={i} />
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <RowSkeleton key={i} />
           ))}
         </div>
       ) : error ? (
@@ -374,91 +301,101 @@ export default function OrderHistoryPage() {
         </div>
       ) : (
         <>
-          <div className="space-y-4">
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
             {orders.map((order) => (
               <div
                 key={order.id}
-                className="rounded-xl border border-gray-200 bg-white p-5 transition-colors hover:border-orange-300"
+                className="grid grid-cols-1 gap-3 px-5 py-4 transition-colors hover:bg-orange-50/40 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_auto] sm:items-center sm:gap-8"
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                      <h2 className="font-bold text-gray-900">Pedido #{order.id}</h2>
-                      <button
-                        className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
-                        onClick={() => setSelectedDetailOrder(order)}
-                        type="button"
-                      >
-                        Ver detalles
-                      </button>
-
-                      {order.estado === "FINALIZADO" ? (
-                        <button
-                          className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
-                          disabled={loadingRatingOrderId === order.id}
-                          onClick={() => void handleOpenRating(order)}
-                          type="button"
-                        >
-                          {loadingRatingOrderId === order.id
-                            ? "Cargando..."
-                            : isOrderRated(order)
-                            ? "Ver calificación"
-                            : "Calificar"}
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="mt-0.5 text-sm text-gray-500">
-                      <LocalNameWidget localId={order.restaurantId} />
-                    </div>
+                {/* Fecha + total + estado */}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+                    <span className="font-bold text-gray-900">{formatDate(order.creacion)}</span>
+                    <StatusBadge status={order.estado} />
                   </div>
-                  <StatusBadge status={order.estado} />
+                  <p className="mt-0.5 text-sm font-semibold text-orange-700">
+                    {formatPrice(order.total)}
+                  </p>
                 </div>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                  <span className="text-xs text-gray-400">{formatDate(order.creacion)}</span>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-400">
-                      {itemCount(order)} {itemCount(order) === 1 ? "ítem" : "ítems"}
-                    </span>
-                    <span className="text-sm font-bold text-orange-700">
-                      {formatPrice(order.total)}
-                    </span>
-                  </div>
+                {/* Local */}
+                <div className="min-w-0">
+                  <p className="font-semibold text-gray-900 line-clamp-2">
+                    {getRestaurantName(order.restaurantId)}
+                  </p>
                 </div>
 
-                {order.urlFactura && (
-                  <div className="mt-3">
-                    <Link
-                      href={order.urlFactura}
-                      target="_blank"
-                      className="text-xs font-semibold text-orange-700 hover:underline"
-                    >
-                      Ver factura
-                    </Link>
-                  </div>
-                )}
+                {/* Dirección de entrega del cliente */}
+                <div className="min-w-0">
+                  <p className="text-xs font-semibold text-gray-500">Envío a:</p>
+                  <p className="mt-0.5 text-sm text-gray-500 line-clamp-2">
+                    {order.direccion?.trim() ? order.direccion : "Sin dirección registrada"}
+                  </p>
+                </div>
+
+                {/* Ver detalles + id */}
+                <div className="sm:justify-self-end sm:text-right">
+                  <Link
+                    href={`/client/order-history/${order.id}`}
+                    className="text-sm font-semibold text-orange-700 transition-colors hover:text-orange-800 hover:underline"
+                  >
+                    Ver detalles
+                  </Link>
+                  <p className="mt-0.5 text-xs text-gray-400">
+                    Pedido <span className="font-semibold text-gray-600">#{order.id}</span>
+                  </p>
+                </div>
               </div>
             ))}
           </div>
 
-          {hasMore && (
-            <div className="flex justify-center pt-2">
+          {/* Paginación numerada */}
+          {totalPages > 1 && (
+            <nav className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
               <button
                 type="button"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={loadingMore}
-                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => goToPage(page - 1)}
+                disabled={page === 0}
+                className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Página anterior"
               >
-                {loadingMore ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-orange-600" />
-                    Cargando...
-                  </>
-                ) : (
-                  "Cargar más"
-                )}
+                <ChevronLeftIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Anterior</span>
               </button>
-            </div>
+
+              {pageNumbers.map((p, i) =>
+                p === "ellipsis" ? (
+                  <span key={`e-${i}`} className="px-2 text-sm text-gray-400">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => goToPage(p - 1)}
+                    aria-current={p - 1 === page ? "page" : undefined}
+                    className={`h-9 min-w-9 rounded-md px-3 text-sm font-semibold transition-colors ${
+                      p - 1 === page
+                        ? "bg-orange-700 text-white"
+                        : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+
+              <button
+                type="button"
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= totalPages - 1}
+                className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Página siguiente"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </nav>
           )}
         </>
       )}
