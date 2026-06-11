@@ -20,4 +20,5 @@ export type RestaurantDashboardData = {
   ordersError: string | null;
   recentOrders: RestaurantDashboardOrder[];
   stats: RestaurantDashboardStat[];
+  statsError: string | null;
 };

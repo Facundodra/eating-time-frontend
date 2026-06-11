@@ -3,7 +3,9 @@ import type {
   RestaurantDashboardOrder,
   RestaurantDashboardStat,
 } from "@/lib/restaurant/dashboard/types";
+import type { RestaurantClaim } from "@/lib/restaurant/claim/types";
 import type { OrderStatus, WorkbenchOrder } from "@/lib/restaurant/workbench/types";
+import { getRestaurantClaims } from "@/services/restaurant/claim-service";
 import { getRestaurantDishes } from "@/services/restaurant/dish-service";
 import { fetchWorkbenchOrders } from "@/services/restaurant/workbench-service";
 
@@ -60,44 +62,56 @@ function mapRecentOrder(order: WorkbenchOrder): RestaurantDashboardOrder {
 }
 
 function buildStats(
-  orders: WorkbenchOrder[],
-  dishes: Awaited<ReturnType<typeof getRestaurantDishes>>["dishes"],
+  orders: WorkbenchOrder[] | null,
+  dishes: Awaited<ReturnType<typeof getRestaurantDishes>>["dishes"] | null,
+  claims: RestaurantClaim[] | null,
 ): RestaurantDashboardStat[] {
-  const activeOrders = orders.filter((order) => activeStatuses.has(order.status));
+  const activeOrders = orders
+    ? orders.filter((order) => activeStatuses.has(order.status))
+    : null;
   const todayRevenue = orders
-    .filter(
-      (order) =>
-        isToday(order.createdAt) &&
-        order.status !== "RECHAZADO_LOCAL" &&
-        order.status !== "CANCELADO_CLIENTE",
-    )
-    .reduce((total, order) => total + order.total, 0);
-  const availableDishes = dishes.filter((dish) => dish.status === "available");
+    ? orders
+        .filter(
+          (order) =>
+            isToday(order.createdAt) &&
+            order.status !== "RECHAZADO_LOCAL" &&
+            order.status !== "CANCELADO_CLIENTE",
+        )
+        .reduce((total, order) => total + order.total, 0)
+    : null;
+  const availableDishes = dishes
+    ? dishes.filter((dish) => dish.status === "available")
+    : null;
+  const pendingClaims = claims
+    ? claims.filter(
+        (claim) => claim.status === "pending" || claim.status === "in_review",
+      )
+    : null;
 
   return [
     {
       label: "Pedidos activos",
-      value: activeOrders.length.toString(),
-      tag: "Ahora",
+      value: activeOrders ? activeOrders.length.toString() : "-",
+      tag: "En curso",
       tone: "amber",
     },
     {
       label: "Ingresos del día",
-      value: formatPrice(todayRevenue),
+      value: todayRevenue !== null ? formatPrice(todayRevenue) : "-",
       tag: "Hoy",
       tone: "emerald",
     },
     {
-      label: "Platos publicados",
-      value: dishes.length.toString(),
-      tag: "Menú",
-      tone: "slate",
-    },
-    {
       label: "Platos disponibles",
-      value: availableDishes.length.toString(),
+      value: availableDishes ? availableDishes.length.toString() : "-",
       tag: "Activos",
       tone: "emerald",
+    },
+    {
+      label: "Reclamos por atender",
+      value: pendingClaims ? pendingClaims.length.toString() : "-",
+      tag: "A revisar",
+      tone: "amber",
     },
   ];
 }
@@ -105,25 +119,44 @@ function buildStats(
 export async function getRestaurantDashboardData(
   restaurantId: string,
 ): Promise<RestaurantDashboardData> {
-  const [ordersResult, dishesResult] = await Promise.allSettled([
+  const [ordersResult, dishesResult, claimsResult] = await Promise.allSettled([
     fetchWorkbenchOrders(restaurantId, {
       direction: "desc",
       sortBy: "antiguedad",
     }),
     getRestaurantDishes(restaurantId),
+    getRestaurantClaims(restaurantId),
   ]);
 
   const orders =
-    ordersResult.status === "fulfilled" ? ordersResult.value : [];
+    ordersResult.status === "fulfilled" ? ordersResult.value : null;
   const dishes =
-    dishesResult.status === "fulfilled" ? dishesResult.value.dishes : [];
+    dishesResult.status === "fulfilled" ? dishesResult.value.dishes : null;
+  const claims =
+    claimsResult.status === "fulfilled" ? claimsResult.value.claims : null;
   const ordersError =
     ordersResult.status === "rejected"
       ? ordersResult.reason instanceof Error
         ? ordersResult.reason.message
         : "No se pudieron cargar los pedidos."
       : null;
-  const recentOrders = [...orders]
+  const dishesError =
+    dishesResult.status === "rejected"
+      ? dishesResult.reason instanceof Error
+        ? dishesResult.reason.message
+        : "No se pudieron cargar los platos."
+      : null;
+  const claimsError =
+    claimsResult.status === "rejected"
+      ? claimsResult.reason instanceof Error
+        ? claimsResult.reason.message
+        : "No se pudieron cargar los reclamos."
+      : null;
+  const statsError =
+    ordersError || dishesError || claimsError
+      ? "No se pudieron cargar todos los indicadores del local."
+      : null;
+  const recentOrders = [...(orders ?? [])]
     .sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
@@ -134,6 +167,7 @@ export async function getRestaurantDashboardData(
   return {
     ordersError,
     recentOrders,
-    stats: buildStats(orders, dishes),
+    statsError,
+    stats: buildStats(orders, dishes, claims),
   };
 }
