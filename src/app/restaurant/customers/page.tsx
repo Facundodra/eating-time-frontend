@@ -1,5 +1,5 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import RestaurantCustomersPage from "@/ui/restaurant/customers/customers-page";
 
 export default function CustomersPage() {
-  return <ComingSoonPage backHref="/restaurant" title="Clientes" />;
+  return <RestaurantCustomersPage />;
 }

@@ -9,6 +9,22 @@ export type OrderStatus =
   | "RECHAZADO_LOCAL"
   | "CANCELADO_CLIENTE";
 
+export type WorkbenchRatingValue = "P" | "N";
+
+export type WorkbenchOrderRating = {
+  id?: number;
+  pedidoId: number;
+  calificacion: WorkbenchRatingValue;
+  comentario: string | null;
+  creacion?: string | null;
+};
+
+export type WorkbenchLocalRating = {
+  id?: number;
+  orderId: number;
+  customerName: string | null;
+};
+
 export type WorkbenchOrderApiResponse = {
   id?: number;
   pedidoId?: number;
@@ -27,11 +43,46 @@ export type WorkbenchOrderApiResponse = {
   cantidadPlatos?: number;
   items?: WorkbenchOrderItemApiResponse[];
   detalles?: WorkbenchOrderItemApiResponse[];
+  detallePedido?: WorkbenchOrderItemApiResponse[];
   descuento?: number | null;
   tiempoEstimado?: string | null;
   urlFactura?: string | null;
+  clienteApellido?: string | null;
+  clienteApellidos?: string | null;
+  clienteNombreCompleto?: string | null;
   clienteNombre?: string | null;
+  clienteRazonSocial?: string | null;
+  clientName?: string | null;
+  customerName?: string | null;
+  fullName?: string | null;
   nombreCliente?: string | null;
+  nombreCompletoCliente?: string | null;
+  cliente?: unknown;
+  clienteDto?: unknown;
+  clienteDTO?: unknown;
+  clientePedido?: unknown;
+  clienteResponse?: unknown;
+  clienteResumen?: unknown;
+  clienteInfo?: unknown;
+  clienteLocal?: unknown;
+  usuarioCliente?: unknown;
+  usuario?: unknown;
+  customer?: unknown;
+  user?: unknown;
+  nombre?: string | null;
+  nombres?: string | null;
+  nombreUsuario?: string | null;
+  nombreCompleto?: string | null;
+  apellido?: string | null;
+  apellidos?: string | null;
+  apellidoCliente?: string | null;
+  apellidosCliente?: string | null;
+  clienteCedula?: string | number | null;
+  cedulaCliente?: string | number | null;
+  clienteDocumento?: string | number | null;
+  documentoCliente?: string | number | null;
+  cedula?: string | number | null;
+  documento?: string | number | null;
   comentario?: string | null;
   direccion?: string | null;
   indicaciones?: string | null;
@@ -40,6 +91,22 @@ export type WorkbenchOrderApiResponse = {
   fechaCreacion?: string;
   createdAt?: string;
   eliminacion?: string | null;
+  calificacionCliente?: unknown;
+  clienteCalificacion?: unknown;
+  calificacionDelCliente?: unknown;
+  calificacionACliente?: unknown;
+  calificacionClienteDto?: unknown;
+  calificacionClienteDTO?: unknown;
+  tieneCalificacionCliente?: unknown;
+  calificadoCliente?: unknown;
+  calificacionLocal?: unknown;
+  localCalificacion?: unknown;
+  tieneCalificacionLocal?: unknown;
+  calificadoLocal?: unknown;
+  tieneCalificacion?: unknown;
+  calificado?: unknown;
+  calificacion?: unknown;
+  rating?: unknown;
 };
 
 export type WorkbenchOrderItemApiResponse = {
@@ -79,6 +146,7 @@ export type WorkbenchOrder = {
   restaurantId: number;
   customerId: number;
   customerName: string | null;
+  customerDocument: string | null;
   couponId: number | null;
   status: OrderStatus;
   total: number;
@@ -93,6 +161,8 @@ export type WorkbenchOrder = {
   rejectionReason: string | null;
   createdAt: string;
   deletedAt: string | null;
+  customerRating: WorkbenchOrderRating | null;
+  hasCustomerRating: boolean;
 };
 
 export type WorkbenchFilters = {
@@ -101,4 +171,6 @@ export type WorkbenchFilters = {
   orderId?: string;
   startDateTime?: string;
   endDateTime?: string;
+  page?: number;
+  size?: number;
 };
