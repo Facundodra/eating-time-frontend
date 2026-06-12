@@ -14,11 +14,13 @@ import { useCallback, useMemo, useState } from "react";
 import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
   OrderStatus,
+  WorkbenchLocalRating,
   WorkbenchOrder,
   WorkbenchOrderRating,
   WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
 import {
+  fetchRestaurantLocalRatings,
   fetchRestaurantOrders,
   getWorkbenchOrderCustomerRating,
 } from "@/services/restaurant/workbench-service";
@@ -34,6 +36,8 @@ type SortKey =
   | "orders-asc"
   | "spent-desc"
   | "spent-asc"
+  | "name-asc"
+  | "name-desc"
   | "positive-desc"
   | "negative-desc"
   | "positive-rate-desc"
@@ -159,6 +163,35 @@ function isFallbackCustomerName(value: string) {
   return value === "Cliente sin identificar" || value.startsWith("Cliente #");
 }
 
+function getCustomerNamesByOrderId(ratings: WorkbenchLocalRating[]) {
+  const customerNames = new Map<number, string>();
+
+  ratings.forEach((rating) => {
+    if (rating.customerName) {
+      customerNames.set(rating.orderId, rating.customerName);
+    }
+  });
+
+  return customerNames;
+}
+
+function mergeOrderCustomerName(
+  order: WorkbenchOrder,
+  customerName: string | undefined,
+): WorkbenchOrder {
+  if (
+    !customerName ||
+    (order.customerName && !isFallbackCustomerName(order.customerName))
+  ) {
+    return order;
+  }
+
+  return {
+    ...order,
+    customerName,
+  };
+}
+
 function getCustomerDocument(order: WorkbenchOrder) {
   return order.customerDocument;
 }
@@ -248,6 +281,29 @@ async function hydrateCustomerRatings(
   );
 }
 
+async function hydrateCustomerNames(
+  restaurantId: string,
+  orders: WorkbenchOrder[],
+): Promise<WorkbenchOrder[]> {
+  try {
+    const ratings = await fetchRestaurantLocalRatings(restaurantId);
+    const customerNamesByOrderId = getCustomerNamesByOrderId(ratings);
+
+    if (customerNamesByOrderId.size === 0) return orders;
+
+    return orders.map((order) =>
+      mergeOrderCustomerName(order, customerNamesByOrderId.get(order.id)),
+    );
+  } catch (error) {
+    console.warn(
+      `No se pudieron cargar los nombres de clientes del local ${restaurantId}:`,
+      error,
+    );
+
+    return orders;
+  }
+}
+
 function buildCustomerSummaries(orders: WorkbenchOrder[]) {
   const customers = new Map<number, CustomerSummary>();
 
@@ -309,8 +365,25 @@ function buildCustomerSummaries(orders: WorkbenchOrder[]) {
   }));
 }
 
+function compareCustomerNames(first: CustomerSummary, second: CustomerSummary) {
+  return (
+    first.customerName.localeCompare(second.customerName, "es-UY", {
+      numeric: true,
+      sensitivity: "base",
+    }) || first.customerId - second.customerId
+  );
+}
+
 function sortCustomers(customers: CustomerSummary[], sort: SortKey) {
   return [...customers].sort((first, second) => {
+    if (sort === "name-asc") {
+      return compareCustomerNames(first, second);
+    }
+
+    if (sort === "name-desc") {
+      return compareCustomerNames(second, first);
+    }
+
     if (sort === "orders-desc") {
       return second.totalOrders - first.totalOrders;
     }
@@ -375,7 +448,12 @@ async function loadRestaurantOrders(): Promise<WorkbenchOrder[]> {
     sortBy: "antiguedad",
   });
 
-  return hydrateCustomerRatings(orders);
+  const ordersWithCustomerNames = await hydrateCustomerNames(
+    String(session.idTipoUsuario),
+    orders,
+  );
+
+  return hydrateCustomerRatings(ordersWithCustomerNames);
 }
 
 function CustomerMobileCard({
@@ -470,6 +548,20 @@ export default function RestaurantCustomersPage() {
   const isDataReady = Boolean(loadedOrders) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los clientes.";
+  const nameSortValue =
+    sort === "name-asc" || sort === "name-desc" ? sort : "";
+  const createdSortValue =
+    sort === "last-order-asc" || sort === "last-order-desc" ? sort : "";
+  const spentSortValue =
+    sort === "spent-asc" || sort === "spent-desc" ? sort : "";
+  const ratingSelectValue =
+    ratingFilter !== "all"
+      ? ratingFilter
+      : sort === "positive-desc" || sort === "negative-desc"
+        ? sort
+        : "";
+  const ordersSortValue =
+    sort === "orders-asc" || sort === "orders-desc" ? sort : "";
 
   return (
     <section className="space-y-6">
@@ -478,7 +570,7 @@ export default function RestaurantCustomersPage() {
       </h1>
 
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[minmax(260px,1fr)_200px_200px_200px_200px_auto]">
+        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_180px_180px_180px_180px_auto]">
           <label htmlFor="customer-search-filter" className="block">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
               Cliente
@@ -496,16 +588,37 @@ export default function RestaurantCustomersPage() {
             </span>
           </label>
 
+          <label htmlFor="customer-name-sort" className="block">
+            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+              Nombre
+            </span>
+            <select
+              id="customer-name-sort"
+              value={nameSortValue}
+              onChange={(event) => setSort(event.target.value as SortKey)}
+              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              <option value="" disabled>
+                Ordenar
+              </option>
+              <option value="name-asc">A-Z</option>
+              <option value="name-desc">Z-A</option>
+            </select>
+          </label>
+
           <label htmlFor="customer-created-sort" className="block">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
               Fecha de creacion
             </span>
             <select
               id="customer-created-sort"
-              value={sort}
+              value={createdSortValue}
               onChange={(event) => setSort(event.target.value as SortKey)}
               className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
+              <option value="" disabled>
+                Ordenar
+              </option>
               <option value="last-order-asc">Cliente mas antiguo</option>
               <option value="last-order-desc">Cliente mas nuevo</option>
             </select>
@@ -517,10 +630,13 @@ export default function RestaurantCustomersPage() {
             </span>
             <select
               id="customer-spent-sort"
-              value={sort}
+              value={spentSortValue}
               onChange={(event) => setSort(event.target.value as SortKey)}
               className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
+              <option value="" disabled>
+                Ordenar
+              </option>
               <option value="spent-desc">Mayor cifra</option>
               <option value="spent-asc">Menor cifra</option>
             </select>
@@ -532,7 +648,7 @@ export default function RestaurantCustomersPage() {
             </span>
             <select
               id="customer-rating-filter"
-              value={ratingFilter === "all" ? sort : ratingFilter}
+              value={ratingSelectValue}
               disabled={!isDataReady}
               onChange={(event) => {
                 const value = event.target.value;
@@ -547,6 +663,9 @@ export default function RestaurantCustomersPage() {
               }}
               className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
+              <option value="" disabled>
+                Ordenar/filtrar
+              </option>
               <option value="positive-desc">Mejor calificado</option>
               <option value="negative-desc">Peor calificado</option>
               <option value="P">Solo positivas</option>
@@ -561,10 +680,13 @@ export default function RestaurantCustomersPage() {
             </span>
             <select
               id="customer-orders-sort"
-              value={sort}
+              value={ordersSortValue}
               onChange={(event) => setSort(event.target.value as SortKey)}
               className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
+              <option value="" disabled>
+                Ordenar
+              </option>
               <option value="orders-desc">Mayor cantidad</option>
               <option value="orders-asc">Menor cantidad</option>
             </select>

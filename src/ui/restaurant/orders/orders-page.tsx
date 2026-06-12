@@ -21,11 +21,13 @@ import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
   OrderStatus,
   WorkbenchFilters,
+  WorkbenchLocalRating,
   WorkbenchOrder,
   WorkbenchOrderRating,
   WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
 import {
+  fetchRestaurantLocalRatings,
   fetchRestaurantOrders,
   getWorkbenchOrderCustomerRating,
   submitWorkbenchOrderCustomerRating,
@@ -149,6 +151,39 @@ function getCustomerLabel(order: WorkbenchOrder) {
   return order.customerId > 0 ? `${order.customerId}` : "Cliente sin identificar";
 }
 
+function isFallbackCustomerName(value: string) {
+  return value === "Cliente sin identificar" || value.startsWith("Cliente #");
+}
+
+function getCustomerNamesByOrderId(ratings: WorkbenchLocalRating[]) {
+  const customerNames = new Map<number, string>();
+
+  ratings.forEach((rating) => {
+    if (rating.customerName) {
+      customerNames.set(rating.orderId, rating.customerName);
+    }
+  });
+
+  return customerNames;
+}
+
+function mergeOrderCustomerName(
+  order: WorkbenchOrder,
+  customerName: string | undefined,
+): WorkbenchOrder {
+  if (
+    !customerName ||
+    (order.customerName && !isFallbackCustomerName(order.customerName))
+  ) {
+    return order;
+  }
+
+  return {
+    ...order,
+    customerName,
+  };
+}
+
 function getOrderDescription(order: WorkbenchOrder) {
   if (order.items.length > 0) {
     return order.items
@@ -169,6 +204,29 @@ function filterOrders(orders: WorkbenchOrder[], filter: OrderFilter) {
   return orders.filter((order) => order.status === filter);
 }
 
+async function hydrateCustomerNames(
+  restaurantId: string,
+  orders: WorkbenchOrder[],
+): Promise<WorkbenchOrder[]> {
+  try {
+    const ratings = await fetchRestaurantLocalRatings(restaurantId);
+    const customerNamesByOrderId = getCustomerNamesByOrderId(ratings);
+
+    if (customerNamesByOrderId.size === 0) return orders;
+
+    return orders.map((order) =>
+      mergeOrderCustomerName(order, customerNamesByOrderId.get(order.id)),
+    );
+  } catch (error) {
+    console.warn(
+      `No se pudieron cargar los nombres de clientes del local ${restaurantId}:`,
+      error,
+    );
+
+    return orders;
+  }
+}
+
 async function loadRestaurantOrders(
   filters: WorkbenchFilters,
 ): Promise<WorkbenchOrder[]> {
@@ -178,7 +236,10 @@ async function loadRestaurantOrders(
     throw new Error("No se encontro una sesion activa.");
   }
 
-  return fetchRestaurantOrders(String(session.idTipoUsuario), filters);
+  const restaurantId = String(session.idTipoUsuario);
+  const orders = await fetchRestaurantOrders(restaurantId, filters);
+
+  return hydrateCustomerNames(restaurantId, orders);
 }
 
 function OrderMobileCard({

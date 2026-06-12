@@ -19,6 +19,12 @@ export type WorkbenchOrderRating = {
   creacion?: string | null;
 };
 
+export type WorkbenchLocalRating = {
+  id?: number;
+  orderId: number;
+  customerName: string | null;
+};
+
 export type WorkbenchOrderApiResponse = {
   id?: number;
   pedidoId?: number;
