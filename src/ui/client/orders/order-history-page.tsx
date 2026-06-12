@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import Link from "next/link";
-import { ReceiptPercentIcon } from "@heroicons/react/24/outline";
+import { useEffect, useState, type ReactNode } from "react";
+import { ReceiptPercentIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
 
 import {
   getOrderLocalRating,
@@ -12,7 +11,6 @@ import {
   type OrderHistoryRestaurant,
 } from "@/services/client/client-service";
 import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
-import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 import OrderDetailModal from "@/ui/client/orders/order-detail-modal";
 import OrderRatingModal from "@/ui/client/ratings/order-rating-modal";
 
@@ -21,6 +19,7 @@ const PAGE_SIZE = 10;
 type SortKey = "fecha-desc" | "fecha-asc" | "precio-desc" | "precio-asc";
 
 const statusLabels: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "Esperando al local",
   ACEPTADO_LOCAL: "Aceptado",
   EN_CURSO_LOCAL: "En preparación",
   EN_CAMINO_LOCAL: "En camino",
@@ -30,6 +29,7 @@ const statusLabels: Record<OrderHistoryStatus, string> = {
 };
 
 const statusColors: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "bg-purple-100 text-purple-700",
   ACEPTADO_LOCAL: "bg-blue-100 text-blue-700",
   EN_CURSO_LOCAL: "bg-amber-100 text-amber-700",
   EN_CAMINO_LOCAL: "bg-indigo-100 text-indigo-700",
@@ -38,10 +38,13 @@ const statusColors: Record<OrderHistoryStatus, string> = {
   CANCELADO_CLIENTE: "bg-gray-200 text-gray-600",
 };
 
+const actionButtonClasses =
+  "inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50 disabled:cursor-not-allowed disabled:opacity-60";
+
 function StatusBadge({ status }: { status: OrderHistoryStatus }) {
   return (
     <span
-      className={`rounded-full px-3 py-1 text-xs font-bold ${
+      className={`shrink-0 rounded-full px-3 py-1 text-xs font-bold ${
         statusColors[status] ?? "bg-gray-100 text-gray-600"
       }`}
     >
@@ -68,24 +71,57 @@ function formatPrice(price: number) {
   return `$${price.toLocaleString("es-UY")}`;
 }
 
-function itemCount(order: Order) {
-  return order.items
-    .filter((item) => item.eliminacion == null)
-    .reduce((sum, item) => sum + item.cantidad, 0);
+const TABLE_GRID_CLASS =
+  "grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1.05fr)_minmax(0,0.95fr)_minmax(0,1.15fr)_minmax(108px,auto)_minmax(104px,auto)_minmax(112px,auto)] sm:items-stretch sm:gap-0";
+
+const TABLE_CELL_CLASS =
+  "flex min-w-0 flex-col items-center justify-center px-3 py-4 text-center sm:border-r sm:border-gray-100";
+
+const TABLE_HEADER_CLASS =
+  "hidden sm:grid text-[11px] font-semibold uppercase tracking-wide text-gray-400 bg-gray-50/80 border-b border-gray-200";
+
+function TableCell({
+  children,
+  className = "",
+  bordered = true,
+}: {
+  children: ReactNode;
+  className?: string;
+  bordered?: boolean;
+}) {
+  return (
+    <div
+      className={`${TABLE_CELL_CLASS} ${bordered ? "" : "sm:border-r-0"} ${className}`}
+    >
+      {children}
+    </div>
+  );
 }
 
-function OrderCardSkeleton() {
+function RowSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse space-y-3">
-      <div className="flex items-center justify-between">
-        <div className="h-4 bg-gray-200 rounded w-1/4" />
-        <div className="h-5 bg-gray-100 rounded-full w-20" />
-      </div>
-      <div className="h-3 bg-gray-100 rounded w-1/3" />
-      <div className="flex items-center justify-between pt-1">
-        <div className="h-3 bg-gray-100 rounded w-1/4" />
-        <div className="h-4 bg-gray-200 rounded w-1/5" />
-      </div>
+    <div className={`${TABLE_GRID_CLASS} animate-pulse`}>
+      <TableCell>
+        <div className="h-4 w-24 rounded bg-gray-200" />
+        <div className="mt-2 h-3 w-16 rounded bg-gray-100" />
+      </TableCell>
+      <TableCell>
+        <div className="h-4 w-28 rounded bg-gray-200" />
+      </TableCell>
+      <TableCell>
+        <div className="h-3 w-20 rounded bg-gray-100" />
+        <div className="mt-2 h-3 w-full max-w-40 rounded bg-gray-100" />
+      </TableCell>
+      <TableCell bordered={false}>
+        <div className="h-6 w-24 rounded-full bg-gray-100" />
+      </TableCell>
+      <TableCell>
+        <div className="h-7 w-20 rounded-md bg-gray-100" />
+      </TableCell>
+      <TableCell className="sm:border-r-0">
+        <div className="h-7 w-24 rounded-md bg-gray-100" />
+        <div className="mt-2 h-3 w-16 rounded bg-gray-100" />
+      </TableCell>
     </div>
   );
 }
@@ -105,83 +141,104 @@ function toEndOfDay(date: string) {
   return `${date}T23:59:59`;
 }
 
+function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
+  const delta = 1;
+  const range: number[] = [];
+  for (let i = Math.max(1, current - delta); i <= Math.min(total, current + delta); i++) {
+    range.push(i);
+  }
+
+  const pages: (number | "ellipsis")[] = [];
+  if (range[0] > 1) {
+    pages.push(1);
+    if (range[0] > 2) pages.push("ellipsis");
+  }
+  pages.push(...range);
+  const last = range[range.length - 1];
+  if (last < total) {
+    if (last < total - 1) pages.push("ellipsis");
+    pages.push(total);
+  }
+  return pages;
+}
+
 export default function OrderHistoryPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
 
-  // Filtros
   const [sort, setSort] = useState<SortKey>("fecha-desc");
   const [localId, setLocalId] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<OrderHistoryFilter>({});
 
-  // Locales con pedidos en el historial (para filtro y nombres en tarjetas)
   const [restaurants, setRestaurants] = useState<OrderHistoryRestaurant[]>([]);
-  const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(
-    null,
-  );
-  const [selectedRatingOrder, setSelectedRatingOrder] = useState<Order | null>(
-    null,
-  );
-  const [loadingRatingOrderId, setLoadingRatingOrderId] = useState<
-    number | null
-  >(null);
+  const [restaurantsLoading, setRestaurantsLoading] = useState(true);
+  const [restaurantsError, setRestaurantsError] = useState(false);
+
+  const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(null);
+  const [selectedRatingOrder, setSelectedRatingOrder] = useState<Order | null>(null);
+  const [loadingRatingOrderId, setLoadingRatingOrderId] = useState<number | null>(null);
   const [ratingLoadError, setRatingLoadError] = useState<string | null>(null);
 
   useEffect(() => {
+    setRestaurantsLoading(true);
+    setRestaurantsError(false);
+
     getOrderHistoryRestaurants()
       .then(setRestaurants)
-      .catch(() => setRestaurants([]));
+      .catch(() => {
+        setRestaurants([]);
+        setRestaurantsError(true);
+      })
+      .finally(() => setRestaurantsLoading(false));
   }, []);
 
+  const hasNoOrdersAtAll = !restaurantsLoading && !restaurantsError && restaurants.length === 0;
+
   useEffect(() => {
-    let ignore = false;
+    if (restaurantsLoading) return;
 
-    async function loadOrders() {
-      const isNewSearch = page === 0;
-      if (isNewSearch) setLoading(true);
-      else setLoadingMore(true);
+    if (hasNoOrdersAtAll) {
+      setOrders([]);
+      setTotalPages(0);
+      setLoading(false);
       setError(null);
-
-      try {
-        const { orders: data, totalPages: total } = await getOrderHistory({
-          ...appliedFilter,
-          ...sortMap[sort],
-          page,
-          size: PAGE_SIZE,
-        });
-
-        if (ignore) return;
-
-        setOrders((prev) => (isNewSearch ? data : [...prev, ...data]));
-        setTotalPages(total);
-      } catch (err) {
-        if (!ignore) {
-          setError(
-            err instanceof Error
-              ? err.message
-              : "No se pudieron cargar los pedidos.",
-          );
-        }
-      } finally {
-        if (!ignore) {
-          if (isNewSearch) setLoading(false);
-          else setLoadingMore(false);
-        }
-      }
+      return;
     }
 
-    void loadOrders();
+    let ignore = false;
+
+    setLoading(true);
+    setError(null);
+
+    getOrderHistory({
+      ...appliedFilter,
+      ...sortMap[sort],
+      page,
+      size: PAGE_SIZE,
+    })
+      .then(({ orders: data, totalPages: total }) => {
+        if (ignore) return;
+        setOrders(data);
+        setTotalPages(total);
+      })
+      .catch((err) => {
+        if (!ignore) {
+          setError(err instanceof Error ? err.message : "No se pudieron cargar los pedidos.");
+        }
+      })
+      .finally(() => {
+        if (!ignore) setLoading(false);
+      });
 
     return () => {
       ignore = true;
     };
-  }, [appliedFilter, sort, page]);
+  }, [appliedFilter, sort, page, restaurantsLoading, hasNoOrdersAtAll]);
 
   function applyFilters() {
     const next: OrderHistoryFilter = {};
@@ -191,6 +248,17 @@ export default function OrderHistoryPage() {
 
     setPage(0);
     setAppliedFilter(next);
+  }
+
+  function goToPage(target: number) {
+    setPage(target);
+    if (typeof window !== "undefined") {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  }
+
+  function getRestaurantName(id: number) {
+    return restaurants.find((r) => r.id === id)?.name ?? `Local #${id}`;
   }
 
   function mergeOrderRating(order: Order, rating: OrderRating): Order {
@@ -241,10 +309,10 @@ export default function OrderHistoryPage() {
       }
 
       setSelectedRatingOrder(order);
-    } catch (error) {
+    } catch (err) {
       setRatingLoadError(
-        error instanceof Error
-          ? error.message
+        err instanceof Error
+          ? err.message
           : "No se pudo cargar la calificacion guardada.",
       );
     } finally {
@@ -252,10 +320,15 @@ export default function OrderHistoryPage() {
     }
   }
 
-  const hasMore = page < totalPages - 1;
+  const controlsDisabled = restaurantsLoading;
+  const controlClasses =
+    "h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400";
+
+  const pageNumbers = getPageNumbers(page + 1, totalPages);
+  const showTableLoading = restaurantsLoading || loading;
 
   return (
-    <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-6">
+    <div className="max-w-[1150px] mx-auto px-4 py-6 space-y-6">
       {selectedRatingOrder ? (
         <OrderRatingModal
           key={selectedRatingOrder.id}
@@ -275,23 +348,21 @@ export default function OrderHistoryPage() {
 
       <section>
         <h1 className="text-2xl font-bold text-gray-900">Historial de pedidos</h1>
-        <p className="text-sm text-gray-500 mt-1">
-          Consultá tus pedidos anteriores.
-        </p>
+        <p className="text-sm text-gray-500 mt-1">Consultá tus pedidos anteriores.</p>
       </section>
 
-      {/* Barra de filtros */}
       <div className="rounded-xl border border-gray-100 bg-white p-4 space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <label className="block">
             <span className="mb-1.5 block text-sm font-semibold text-gray-700">Ordenar por</span>
             <select
               value={sort}
+              disabled={controlsDisabled}
               onChange={(e) => {
                 setPage(0);
                 setSort(e.target.value as SortKey);
               }}
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className={controlClasses}
             >
               <option value="fecha-desc">Fecha: más recientes</option>
               <option value="fecha-asc">Fecha: más antiguos</option>
@@ -304,10 +375,11 @@ export default function OrderHistoryPage() {
             <span className="mb-1.5 block text-sm font-semibold text-gray-700">Local</span>
             <select
               value={localId}
+              disabled={controlsDisabled}
               onChange={(e) => setLocalId(e.target.value)}
-              className="h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+              className={controlClasses}
             >
-              <option value="">Todos los locales</option>
+              <option value="">{restaurantsLoading ? "Cargando locales..." : "Todos los locales"}</option>
               {restaurants.map((r) => (
                 <option key={r.id} value={r.id}>
                   {r.name}
@@ -324,8 +396,9 @@ export default function OrderHistoryPage() {
               <input
                 type="date"
                 value={desde}
+                disabled={controlsDisabled}
                 onChange={(e) => setDesde(e.target.value)}
-                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                className={`${controlClasses} w-36`}
               />
             </label>
 
@@ -334,8 +407,9 @@ export default function OrderHistoryPage() {
               <input
                 type="date"
                 value={hasta}
+                disabled={controlsDisabled}
                 onChange={(e) => setHasta(e.target.value)}
-                className="h-10 w-36 rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+                className={`${controlClasses} w-36`}
               />
             </label>
           </div>
@@ -343,12 +417,25 @@ export default function OrderHistoryPage() {
           <button
             type="button"
             onClick={applyFilters}
-            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800"
+            disabled={controlsDisabled || hasNoOrdersAtAll}
+            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800 disabled:cursor-not-allowed disabled:bg-orange-300"
           >
             Aplicar filtros
           </button>
         </div>
+
+        {restaurantsLoading && (
+          <p className="text-xs text-gray-400">
+            Cargando locales… los filtros se habilitarán en un momento.
+          </p>
+        )}
       </div>
+
+      {restaurantsError && !restaurantsLoading && (
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+          No se pudieron cargar los locales desde el back.
+        </p>
+      )}
 
       {ratingLoadError ? (
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
@@ -356,109 +443,146 @@ export default function OrderHistoryPage() {
         </p>
       ) : null}
 
-      {/* Resultados */}
-      {loading ? (
-        <div className="space-y-4">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <OrderCardSkeleton key={i} />
+      {showTableLoading ? (
+        <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100">
+          {Array.from({ length: 5 }).map((_, i) => (
+            <RowSkeleton key={i} />
           ))}
         </div>
       ) : error ? (
         <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">{error}</p>
-      ) : orders.length === 0 ? (
+      ) : hasNoOrdersAtAll || orders.length === 0 ? (
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-16 text-center">
           <ReceiptPercentIcon className="mx-auto h-10 w-10 text-gray-300" />
           <p className="mt-3 text-sm text-gray-500">
-            No se encontraron pedidos para los filtros aplicados.
+            {hasNoOrdersAtAll
+              ? "No se encontraron pedidos realizados."
+              : "No se encontraron pedidos para los filtros aplicados."}
           </p>
         </div>
       ) : (
         <>
-          <div className="space-y-4">
-            {orders.map((order) => (
-              <div
-                key={order.id}
-                className="rounded-xl border border-gray-200 bg-white p-5 transition-colors hover:border-orange-300"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
-                      <h2 className="font-bold text-gray-900">Pedido #{order.id}</h2>
+          <div className="overflow-hidden rounded-xl border border-gray-200 bg-white">
+            <div className={`${TABLE_HEADER_CLASS} ${TABLE_GRID_CLASS}`}>
+              <TableCell>Fecha / Total</TableCell>
+              <TableCell>Local</TableCell>
+              <TableCell>Envío</TableCell>
+              <TableCell bordered={false}>Estado</TableCell>
+              <TableCell>Calificar</TableCell>
+              <TableCell className="sm:border-r-0">Detalle</TableCell>
+            </div>
+
+            <div className="divide-y divide-gray-100">
+              {orders.map((order) => (
+                <div
+                  key={order.id}
+                  className={`${TABLE_GRID_CLASS} transition-colors hover:bg-orange-50/40`}
+                >
+                  <TableCell>
+                    <span className="font-bold text-gray-900">{formatDate(order.creacion)}</span>
+                    <p className="mt-1 text-sm font-semibold text-orange-700">
+                      {formatPrice(order.total)}
+                    </p>
+                  </TableCell>
+
+                  <TableCell>
+                    <p className="font-semibold text-gray-900 line-clamp-2">
+                      {getRestaurantName(order.restaurantId)}
+                    </p>
+                  </TableCell>
+
+                  <TableCell>
+                    <p className="text-sm text-gray-500 line-clamp-3">
+                      {order.direccion?.trim() ? order.direccion : "Sin dirección registrada"}
+                    </p>
+                  </TableCell>
+
+                  <TableCell bordered={false}>
+                    <StatusBadge status={order.estado} />
+                  </TableCell>
+
+                  <TableCell>
+                    {order.estado === "FINALIZADO" ? (
                       <button
-                        className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
-                        onClick={() => setSelectedDetailOrder(order)}
+                        className={actionButtonClasses}
+                        disabled={loadingRatingOrderId === order.id}
+                        onClick={() => void handleOpenRating(order)}
                         type="button"
                       >
-                        Ver detalles
-                      </button>
-
-                      {order.estado === "FINALIZADO" ? (
-                        <button
-                          className="inline-flex shrink-0 items-center rounded-md border border-orange-200 px-3 py-1 text-xs font-semibold text-orange-700 transition-colors hover:border-orange-300 hover:bg-orange-50"
-                          disabled={loadingRatingOrderId === order.id}
-                          onClick={() => void handleOpenRating(order)}
-                          type="button"
-                        >
-                          {loadingRatingOrderId === order.id
-                            ? "Cargando..."
-                            : isOrderRated(order)
+                        {loadingRatingOrderId === order.id
+                          ? "Cargando..."
+                          : isOrderRated(order)
                             ? "Ver calificación"
                             : "Calificar"}
-                        </button>
-                      ) : null}
-                    </div>
-                    <div className="mt-0.5 text-sm text-gray-500">
-                      <LocalNameWidget localId={order.restaurantId} />
-                    </div>
-                  </div>
-                  <StatusBadge status={order.estado} />
-                </div>
+                      </button>
+                    ) : (
+                      <span className="text-xs text-gray-300">—</span>
+                    )}
+                  </TableCell>
 
-                <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-gray-100 pt-3">
-                  <span className="text-xs text-gray-400">{formatDate(order.creacion)}</span>
-                  <div className="flex items-center gap-4">
-                    <span className="text-xs text-gray-400">
-                      {itemCount(order)} {itemCount(order) === 1 ? "ítem" : "ítems"}
-                    </span>
-                    <span className="text-sm font-bold text-orange-700">
-                      {formatPrice(order.total)}
-                    </span>
-                  </div>
-                </div>
-
-                {order.urlFactura && (
-                  <div className="mt-3">
-                    <Link
-                      href={order.urlFactura}
-                      target="_blank"
-                      className="text-xs font-semibold text-orange-700 hover:underline"
+                  <TableCell className="sm:border-r-0">
+                    <button
+                      className={actionButtonClasses}
+                      onClick={() => setSelectedDetailOrder(order)}
+                      type="button"
                     >
-                      Ver factura
-                    </Link>
-                  </div>
-                )}
-              </div>
-            ))}
+                      Ver detalles
+                    </button>
+                    <p className="mt-2 text-xs text-gray-400">
+                      Pedido <span className="font-semibold text-gray-600">#{order.id}</span>
+                    </p>
+                  </TableCell>
+                </div>
+              ))}
+            </div>
           </div>
 
-          {hasMore && (
-            <div className="flex justify-center pt-2">
+          {totalPages > 1 && (
+            <nav className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
               <button
                 type="button"
-                onClick={() => setPage((p) => p + 1)}
-                disabled={loadingMore}
-                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                onClick={() => goToPage(page - 1)}
+                disabled={page === 0}
+                className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Página anterior"
               >
-                {loadingMore ? (
-                  <>
-                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-orange-600" />
-                    Cargando...
-                  </>
-                ) : (
-                  "Cargar más"
-                )}
+                <ChevronLeftIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Anterior</span>
               </button>
-            </div>
+
+              {pageNumbers.map((p, i) =>
+                p === "ellipsis" ? (
+                  <span key={`e-${i}`} className="px-2 text-sm text-gray-400">
+                    …
+                  </span>
+                ) : (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => goToPage(p - 1)}
+                    aria-current={p - 1 === page ? "page" : undefined}
+                    className={`h-9 min-w-9 rounded-md px-3 text-sm font-semibold transition-colors ${
+                      p - 1 === page
+                        ? "bg-orange-700 text-white"
+                        : "border border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    {p}
+                  </button>
+                ),
+              )}
+
+              <button
+                type="button"
+                onClick={() => goToPage(page + 1)}
+                disabled={page >= totalPages - 1}
+                className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+                aria-label="Página siguiente"
+              >
+                <span className="hidden sm:inline">Siguiente</span>
+                <ChevronRightIcon className="h-4 w-4" />
+              </button>
+            </nav>
           )}
         </>
       )}

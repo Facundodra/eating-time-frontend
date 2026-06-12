@@ -27,6 +27,12 @@ const accountLinks = [
     description: "Actualizá tu contraseña de acceso.",
     icon: LockClosedIcon,
   },
+  {
+    href: "/client/mi-cuenta/edit-user",
+    title: "Editar perfil",
+    description: "Actualizá tus datos personales.",
+    icon: UserCircleIcon,
+  },
 ];
 
 export default function AccountPage() {

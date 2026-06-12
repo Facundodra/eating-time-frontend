@@ -70,7 +70,9 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
                 <Image
                   src={restaurant.url_photo}
                   alt={restaurant.name}
-                  className="object-cover w-full h-full"
+                  width="100"
+                  height="100"
+                  className="object-cover w-full h-full rounded-full"
                 />
               ) : (
                 <span className="text-lg font-black text-orange-600">

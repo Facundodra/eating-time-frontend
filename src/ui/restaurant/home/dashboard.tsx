@@ -36,7 +36,11 @@ export default function RestaurantDashboard() {
         </div>
       ) : null}
 
-      <RestaurantStats isLoading={isLoading} stats={data?.stats ?? []} />
+      <RestaurantStats
+        error={data?.statsError}
+        isLoading={isLoading}
+        stats={data?.stats ?? []}
+      />
       <RestaurantQuickActions />
       <RestaurantRecentOrders
         error={data?.ordersError}

@@ -1,5 +1,5 @@
-import ComingSoonPage from "@/ui/shared/feedback/coming-soon-page";
+import EditUserPage from "@/ui/shared/auth/edit-user-page";
 
 export default function MyDataPage() {
-  return <ComingSoonPage backHref="/restaurant" title="Mis datos" />;
+  return <EditUserPage backHref="/restaurant" />;
 }

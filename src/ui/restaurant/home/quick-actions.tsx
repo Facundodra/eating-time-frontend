@@ -1,10 +1,13 @@
 import {
   ArrowTrendingUpIcon,
+  InboxIcon,
   ChatBubbleLeftIcon,
   ClockIcon,
   GiftIcon,
+  PercentBadgeIcon,
   Squares2X2Icon,
   BuildingStorefrontIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 
@@ -12,49 +15,73 @@ const actions = [
   {
     title: "Mesa de trabajo",
     description:
-      "Visualizar pedidos del dia por estado: pendientes, aceptados, en curso, en camino y finalizados.",
+      "Gestionar los pedidos activos del día y avanzar cada etapa de la operación.",
     href: "/restaurant/workbench",
-    linkLabel: "Gestionar pedidos",
+    linkLabel: "Abrir mesa",
     icon: Squares2X2Icon,
   },
   {
-    title: "Platos y disponibilidad",
+    title: "Reclamos",
     description:
-      "Dar de alta, modificar, eliminar y cambiar la disponibilidad de platos ofrecidos.",
-    href: "/restaurant/dishes",
-    linkLabel: "Administrar platos",
-    icon: BuildingStorefrontIcon,
-  },
-  {
-    title: "Cupones y descuentos",
-    description:
-      "Crear promociones con fecha de vencimiento, porcentaje de descuento y platos asociados.",
-    href: "/restaurant/coupons",
-    linkLabel: "Ver promociones",
-    icon: GiftIcon,
-  },
-  {
-    title: "Horarios y estado",
-    description:
-      "Definir horarios del dia y activar fuera de servicio cuando el local no pueda recibir pedidos.",
-    href: "/restaurant/schedules",
-    linkLabel: "Configurar horarios",
-    icon: ClockIcon,
-  },
-  {
-    title: "Reclamos y vouchers",
-    description:
-      "Evaluar reclamos, aceptar o rechazar la solicitud y generar vouchers de compensacion.",
+      "Revisar casos pendientes, consultar el pedido asociado y registrar una resolución.",
     href: "/restaurant/claims",
     linkLabel: "Atender reclamos",
     icon: ChatBubbleLeftIcon,
   },
   {
-    title: "Estadisticas",
+    title: "Platos",
     description:
-      "Consultar ventas, pedidos, platos mas vendidos, promociones utilizadas y calificacion del local.",
+      "Crear, editar y controlar la disponibilidad de los platos ofrecidos por el local.",
+    href: "/restaurant/dishes",
+    linkLabel: "Administrar platos",
+    icon: BuildingStorefrontIcon,
+  },
+  {
+    title: "Cupones",
+    description:
+      "Crear códigos promocionales con vencimiento, porcentaje y platos asociados.",
+    href: "/restaurant/coupons",
+    linkLabel: "Administrar cupones",
+    icon: GiftIcon,
+  },
+  {
+    title: "Descuentos",
+    description:
+      "Configurar descuentos directos sobre platos seleccionados y controlar su vigencia.",
+    href: "/restaurant/discounts",
+    linkLabel: "Administrar descuentos",
+    icon: PercentBadgeIcon,
+  },
+  {
+    title: "Horarios",
+    description:
+      "Definir horarios de servicio y mantener actualizada la disponibilidad operativa.",
+    href: "/restaurant/schedules",
+    linkLabel: "Configurar horarios",
+    icon: ClockIcon,
+  },
+  {
+    title: "Pedidos",
+    description:
+      "Consultar el historial de pedidos del local sin modificar su estado operativo.",
+    href: "/restaurant/orders",
+    linkLabel: "Ver pedidos",
+    icon: InboxIcon,
+  },
+  {
+    title: "Clientes",
+    description:
+      "Consultar clientes asociados al local y revisar información histórica de consumo.",
+    href: "/restaurant/customers",
+    linkLabel: "Ver clientes",
+    icon: UsersIcon,
+  },
+  {
+    title: "Estadísticas",
+    description:
+      "Analizar indicadores comerciales, ventas, pedidos y rendimiento del local.",
     href: "/restaurant/statistics",
-    linkLabel: "Ver estadisticas",
+    linkLabel: "Ver estadísticas",
     icon: ArrowTrendingUpIcon,
   },
 ];
@@ -67,7 +94,7 @@ export default function RestaurantQuickActions() {
           Accesos principales
         </h2>
         <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-          Opciones priorizadas segun las tareas mas frecuentes del local.
+          Opciones priorizadas según las tareas más frecuentes del local.
         </p>
       </div>
 
@@ -77,18 +104,18 @@ export default function RestaurantQuickActions() {
 
           return (
             <article
-              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-6 dark:border-slate-800 dark:bg-slate-900"
+              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5 dark:border-slate-800 dark:bg-slate-900"
               key={action.title}
             >
               <Icon className="h-5 w-5 text-orange-600" />
-              <h3 className="mt-4 text-sm font-bold text-slate-950 sm:mt-6 sm:text-base dark:text-white">
+              <h3 className="mt-3 text-sm font-bold text-slate-950 sm:mt-4 sm:text-base dark:text-white">
                 {action.title}
               </h3>
-              <p className="mt-2 min-h-12 text-xs leading-5 text-slate-500 sm:mt-3 sm:text-sm sm:leading-6 dark:text-slate-400">
+              <p className="mt-2 min-h-10 text-xs leading-5 text-slate-500 sm:text-sm dark:text-slate-400">
                 {action.description}
               </p>
               <Link
-                className="mt-4 inline-flex text-xs font-bold text-orange-600 transition hover:text-orange-700 sm:mt-6 sm:text-sm"
+                className="mt-3 inline-flex text-xs font-bold text-orange-600 transition hover:text-orange-700 sm:mt-4 sm:text-sm"
                 href={action.href}
               >
                 {action.linkLabel}
