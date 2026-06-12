@@ -13,11 +13,14 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import type { Cart, ClientDish, Discount } from "@/lib/client/types";
-import { getCart, getDishDiscount, updateCartItem } from "@/services/client/client-service";
+import { getCart, getDish, getDishDiscount, updateCartItem } from "@/services/client/client-service";
 import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 
-export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
+export default function DishesDetailPage({ id }: { id: string }) {
   const router = useRouter();
+  const [dish, setDish] = useState<ClientDish | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [cart, setCart] = useState<Cart | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);
   const [discount, setDiscount] = useState<Discount | null>(null);
@@ -26,24 +29,33 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
   const cartUpdateInFlight = useRef(false);
 
   useEffect(() => {
-    getCart(dish.localId).then(setCart).catch(() => setCart(null));
-  }, [dish.localId]);
+    getDish(id)
+      .then(setDish)
+      .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar"))
+      .finally(() => setLoading(false));
+  }, [id]);
 
   useEffect(() => {
+    if (!dish) return;
+    getCart(dish.localId).then(setCart).catch(() => setCart(null));
+  }, [dish]);
+
+  useEffect(() => {
+    if (!dish) return;
     setDiscountLoading(true);
     getDishDiscount(dish.id)
       .then(setDiscount)
       .catch(() => setDiscount(null))
       .finally(() => setDiscountLoading(false));
-  }, [dish.id]);
+  }, [dish]);
 
-  const discountedPrice = discount
+  const discountedPrice = discount && dish
     ? Math.round(dish.price * (1 - discount.porcentaje / 100) * 100) / 100
     : null;
 
   const currentQty =
     cart?.items
-      .filter((i) => i.eliminacion == null && i.platoId === Number(dish.id))
+      .filter((i) => i.eliminacion == null && i.platoId === Number(dish?.id))
       .reduce((sum, i) => sum + i.cantidad, 0) ?? 0;
 
   const cartItemCount =
@@ -52,7 +64,7 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
       .reduce((sum, i) => sum + i.cantidad, 0) ?? 0;
 
   async function handleCartUpdate(delta: number) {
-    if (cartUpdateInFlight.current) return;
+    if (!dish || cartUpdateInFlight.current) return;
     cartUpdateInFlight.current = true;
     setIsUpdating(true);
     try {
@@ -66,6 +78,18 @@ export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
       setIsUpdating(false);
     }
   }
+
+  if (error) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-6">
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {error}
+        </p>
+      </div>
+    );
+  }
+
+  if (loading || !dish) return null;
 
   return (
     <>
