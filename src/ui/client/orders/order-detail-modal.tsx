@@ -13,6 +13,7 @@ type OrderDetailModalProps = {
 };
 
 const statusLabels: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "Esperando al local",
   ACEPTADO_LOCAL: "Aceptado",
   EN_CURSO_LOCAL: "En preparación",
   EN_CAMINO_LOCAL: "En camino",
@@ -22,6 +23,7 @@ const statusLabels: Record<OrderHistoryStatus, string> = {
 };
 
 const statusColors: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-300",
   ACEPTADO_LOCAL: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
   EN_CURSO_LOCAL: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
   EN_CAMINO_LOCAL: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300",
