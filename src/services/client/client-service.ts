@@ -14,6 +14,8 @@ import type {
     CartItem,
     Order,
     OrderHistoryStatus,
+    CustomerRating,
+    CustomerRatingValue,
     OrderRating,
     OrderRatingValue,
     OrderRequest,
@@ -21,7 +23,7 @@ import type {
     LocalRating,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, CustomerRating, CustomerRatingValue, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = await requireCurrentSession();
@@ -284,11 +286,45 @@ export async function getRestaurant(id: string): Promise<Restaurant> {
 // ── Carrito ────────────────────────────────────────────────────────────────────
 
 /** Respuesta del backend (campo `localId` en PedidoDto). */
-type CartFromApi = Omit<Cart, "restaurantId"> & { localId: number };
+type CartItemFromApi = CartItem & {
+    nombrePlato?: string | null;
+    platoNombre?: string | null;
+    plato?: unknown;
+};
+
+type CartFromApi = Omit<Cart, "restaurantId" | "items"> & {
+    localId: number;
+    items: CartItemFromApi[] | null;
+};
+
+function getNestedCartDishName(item: CartItemFromApi) {
+    if (!item.plato || typeof item.plato !== "object") return null;
+
+    const dish = item.plato as Record<string, unknown>;
+    const name = dish.nombre ?? dish.name;
+
+    return typeof name === "string" && name.trim() ? name : null;
+}
+
+function mapCartItemFromApi(item: CartItemFromApi): CartItem {
+    return {
+        ...item,
+        nombre:
+            item.nombre ??
+            item.nombrePlato ??
+            item.platoNombre ??
+            getNestedCartDishName(item) ??
+            undefined,
+    };
+}
 
 function mapCartFromApi(cart: CartFromApi): Cart {
     const { localId, ...rest } = cart;
-    return { ...rest, restaurantId: localId };
+    return {
+        ...rest,
+        restaurantId: localId,
+        items: (cart.items ?? []).map(mapCartItemFromApi),
+    };
 }
 
 // Devuelve todos los carritos activos (EN_CARRITO) del cliente, uno por restaurante
@@ -400,6 +436,7 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
 export type OrderHistoryFilter = {
     orderId?: number;
     localId?: number;
+    estado?: OrderHistoryStatus;
     desde?: string; // ISO datetime enviado al backend, ej "2026-06-01T00:00:00"
     hasta?: string;
     ordenarPor?: "fecha" | "precio";
@@ -412,6 +449,11 @@ export type OrderHistoryFilter = {
 interface PedidoDtoFromApi {
     id: number;
     localId: number;
+    nombreLocal?: string | null;
+    localNombre?: string | null;
+    localName?: string | null;
+    restaurantName?: string | null;
+    local?: unknown;
     clienteId: number;
     cuponId: number | null;
     estado: OrderHistoryStatus;
@@ -428,13 +470,47 @@ interface PedidoDtoFromApi {
     items: CartItem[] | null;
     calificacionLocal?: unknown;
     localCalificacion?: unknown;
+    calificacionCliente?: unknown;
+    clienteCalificacion?: unknown;
+    calificacionDelCliente?: unknown;
+    calificacionACliente?: unknown;
+    calificacionClienteDto?: unknown;
+    calificacionClienteDTO?: unknown;
     tieneCalificacionLocal?: unknown;
     calificadoLocal?: unknown;
     localCalificado?: unknown;
+    tieneCalificacionCliente?: unknown;
+    calificadoCliente?: unknown;
     tieneCalificacion?: unknown;
     calificado?: unknown;
     calificacion?: unknown;
     rating?: unknown;
+}
+
+function getNestedStringField(value: unknown, keys: string[]): string | null {
+    if (!value || typeof value !== "object") return null;
+
+    const record = value as Record<string, unknown>;
+
+    for (const key of keys) {
+        const fieldValue = record[key];
+        if (typeof fieldValue === "string" && fieldValue.trim()) {
+            return fieldValue;
+        }
+    }
+
+    return null;
+}
+
+function getOrderRestaurantName(dto: PedidoDtoFromApi): string | null {
+    return (
+        dto.nombreLocal ??
+        dto.localNombre ??
+        dto.localName ??
+        dto.restaurantName ??
+        getNestedStringField(dto.local, ["nombre", "name", "nombreLocal"]) ??
+        null
+    );
 }
 
 interface OrderRatingDtoFromApi {
@@ -445,12 +521,17 @@ interface OrderRatingDtoFromApi {
     creacion?: string | null;
 }
 
-interface OrderHistoryPageResponse {
-    content: PedidoDtoFromApi[];
-    totalPages: number;
-    totalElements: number;
-    number: number;
-}
+type OrderHistoryApiResponse =
+    | PedidoDtoFromApi[]
+    | {
+          content?: PedidoDtoFromApi[];
+          data?: PedidoDtoFromApi[];
+          pedidos?: PedidoDtoFromApi[];
+          orders?: PedidoDtoFromApi[];
+          totalPages?: number;
+          totalElements?: number;
+          number?: number;
+      };
 
 function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
     const {
@@ -458,9 +539,17 @@ function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
         items,
         calificacionLocal,
         localCalificacion,
+        calificacionCliente,
+        clienteCalificacion,
+        calificacionDelCliente,
+        calificacionACliente,
+        calificacionClienteDto,
+        calificacionClienteDTO,
         tieneCalificacionLocal,
         calificadoLocal,
         localCalificado,
+        tieneCalificacionCliente,
+        calificadoCliente,
         tieneCalificacion,
         calificado,
         calificacion,
@@ -471,10 +560,21 @@ function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
         calificacionLocal ?? localCalificacion ?? calificacion ?? ratingValue ?? null,
         dto.id,
     );
+    const customerRating = mapOrderCustomerRatingFromApi(
+        calificacionCliente ??
+            clienteCalificacion ??
+            calificacionDelCliente ??
+            calificacionACliente ??
+            calificacionClienteDto ??
+            calificacionClienteDTO ??
+            null,
+        dto.id,
+    );
 
     return {
         ...rest,
         restaurantId: localId,
+        restaurantName: getOrderRestaurantName(dto),
         items: items ?? [],
         calificacionLocal: rating,
         hasLocalRating:
@@ -489,6 +589,19 @@ function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
                 calificado,
                 calificacion,
                 ratingValue,
+            ),
+        calificacionCliente: customerRating,
+        hasCustomerRating:
+            Boolean(customerRating) ||
+            hasOrderCustomerRatingFromApi(
+                calificacionCliente,
+                clienteCalificacion,
+                calificacionDelCliente,
+                calificacionACliente,
+                calificacionClienteDto,
+                calificacionClienteDTO,
+                tieneCalificacionCliente,
+                calificadoCliente,
             ),
     };
 }
@@ -514,6 +627,24 @@ function mapOrderRatingFromApi(
     if (typeof rating !== "object") return null;
 
     const record = rating as Record<string, unknown>;
+    const directRating = normalizeRatingValue(
+        record.calificacion ??
+            record.valor ??
+            record.value ??
+            record.puntaje ??
+            record.estrellas,
+    );
+
+    if (directRating != null) {
+        return {
+            id: typeof record.id === "number" ? record.id : undefined,
+            pedidoId: typeof record.pedidoId === "number" ? record.pedidoId : orderId,
+            calificacion: directRating,
+            comentario: typeof record.comentario === "string" ? record.comentario : null,
+            creacion: typeof record.creacion === "string" ? record.creacion : null,
+        };
+    }
+
     const nestedRating =
         record.calificacionLocal ??
         record.localCalificacion ??
@@ -521,42 +652,163 @@ function mapOrderRatingFromApi(
         record.rating ??
         record.data;
 
-    if (nestedRating && nestedRating !== rating) {
+    if (nestedRating != null && nestedRating !== rating) {
         const mappedNestedRating = mapOrderRatingFromApi(nestedRating, orderId);
         if (mappedNestedRating) return mappedNestedRating;
     }
 
-    const calificacion = normalizeRatingValue(record.calificacion);
-    if (calificacion == null) return null;
+    return null;
+}
 
-    return {
-        id: typeof record.id === "number" ? record.id : undefined,
-        pedidoId: typeof record.pedidoId === "number" ? record.pedidoId : orderId,
-        calificacion,
-        comentario: typeof record.comentario === "string" ? record.comentario : null,
-        creacion: typeof record.creacion === "string" ? record.creacion : null,
-    };
+interface CustomerRatingDtoFromApi {
+    id?: number;
+    pedidoId?: number;
+    idPedido?: number;
+    orderId?: number;
+    calificacion?: CustomerRatingValue | string | null;
+    valor?: CustomerRatingValue | string | null;
+    value?: CustomerRatingValue | string | null;
+    tipo?: CustomerRatingValue | string | null;
+    comentario?: string | null;
+    creacion?: string | null;
+}
+
+function normalizeCustomerRatingValue(value: unknown): CustomerRatingValue | null {
+    if (typeof value === "string") {
+        const normalized = value.trim().toUpperCase();
+
+        if (
+            normalized === "N" ||
+            normalized === "0" ||
+            normalized === "NO_ME_GUSTA" ||
+            normalized === "PULGAR_ABAJO" ||
+            normalized === "DISLIKE" ||
+            normalized === "DISLIKED"
+        ) {
+            return "N";
+        }
+
+        if (
+            normalized === "P" ||
+            normalized === "1" ||
+            normalized === "ME_GUSTA" ||
+            normalized === "PULGAR_ARRIBA" ||
+            normalized === "LIKE" ||
+            normalized === "LIKED"
+        ) {
+            return "P";
+        }
+    }
+
+    if (typeof value === "number") {
+        if (value === 0) return "N";
+        if (value === 1) return "P";
+    }
+
+    return null;
+}
+
+function mapOrderCustomerRatingFromApi(
+    rating: unknown,
+    orderId: number,
+): CustomerRating | null {
+    if (rating == null) return null;
+
+    if (typeof rating === "string" || typeof rating === "number") {
+        const calificacion = normalizeCustomerRatingValue(rating);
+        if (calificacion == null) return null;
+
+        return {
+            pedidoId: orderId,
+            calificacion,
+            comentario: null,
+            creacion: null,
+        };
+    }
+
+    if (typeof rating !== "object") return null;
+
+    const record = rating as Record<string, unknown>;
+    const directRating = normalizeCustomerRatingValue(
+        record.calificacion ?? record.valor ?? record.value ?? record.tipo,
+    );
+
+    if (directRating != null) {
+        return {
+            id: typeof record.id === "number" ? record.id : undefined,
+            pedidoId:
+                typeof record.pedidoId === "number"
+                    ? record.pedidoId
+                    : typeof record.idPedido === "number"
+                      ? record.idPedido
+                      : typeof record.orderId === "number"
+                        ? record.orderId
+                        : orderId,
+            calificacion: directRating,
+            comentario: typeof record.comentario === "string" ? record.comentario : null,
+            creacion: typeof record.creacion === "string" ? record.creacion : null,
+        };
+    }
+
+    const nestedRating =
+        record.calificacionCliente ??
+        record.clienteCalificacion ??
+        record.calificacionDelCliente ??
+        record.calificacionACliente ??
+        record.calificacionClienteDto ??
+        record.calificacionClienteDTO ??
+        record.calificacion ??
+        record.rating ??
+        record.data;
+
+    if (nestedRating != null && nestedRating !== rating) {
+        const mappedNestedRating = mapOrderCustomerRatingFromApi(nestedRating, orderId);
+        if (mappedNestedRating) return mappedNestedRating;
+    }
+
+    return null;
 }
 
 function normalizeRatingValue(value: unknown): OrderRatingValue | null {
-    if (typeof value === "number" && Number.isInteger(value) && (value === 0 || value === 1)) {
-        return value;
+    if (typeof value === "number" && Number.isInteger(value)) {
+        if (value >= 1 && value <= 5) return value as OrderRatingValue;
+        if (value === 0) return 1;
     }
 
     if (typeof value === "string") {
         const normalized = value.trim().toUpperCase();
+        const numericValue = Number(normalized);
 
-        if (normalized === "0" || normalized === "DISLIKE" || normalized === "DISLIKED") {
-            return 0;
+        if (
+            Number.isInteger(numericValue) &&
+            numericValue >= 1 &&
+            numericValue <= 5
+        ) {
+            return numericValue as OrderRatingValue;
         }
 
         if (
-            normalized === "1" ||
-            normalized === "LIKE" ||
-            normalized === "LIKED" ||
-            normalized === "1_ESTRELLA"
+            normalized === "0" ||
+            normalized === "DISLIKE" ||
+            normalized === "DISLIKED" ||
+            normalized === "NO_ME_GUSTA" ||
+            normalized === "PULGAR_ABAJO"
         ) {
             return 1;
+        }
+
+        if (
+            normalized === "LIKE" ||
+            normalized === "LIKED" ||
+            normalized === "ME_GUSTA" ||
+            normalized === "PULGAR_ARRIBA"
+        ) {
+            return 5;
+        }
+
+        const starMatch = normalized.match(/^([1-5])_?ESTRELLAS?$/);
+        if (starMatch) {
+            return Number(starMatch[1]) as OrderRatingValue;
         }
     }
 
@@ -595,6 +847,48 @@ function hasOrderRatingFromApi(...values: unknown[]): boolean {
             )
         );
     });
+}
+
+function hasOrderCustomerRatingFromApi(...values: unknown[]): boolean {
+    return values.some((value) => {
+        if (value == null) return false;
+        if (typeof value === "boolean") return value;
+        if (typeof value === "number") return value > 0;
+
+        if (typeof value === "string") {
+            const normalized = value.trim().toLowerCase();
+            return normalized !== "" && normalized !== "false";
+        }
+
+        if (typeof value !== "object") return false;
+
+        const record = value as Record<string, unknown>;
+        return (
+            normalizeCustomerRatingValue(record.calificacion) != null ||
+            hasOrderCustomerRatingFromApi(
+                record.id,
+                record.pedidoId,
+                record.idPedido,
+                record.orderId,
+                record.calificacionCliente,
+                record.clienteCalificacion,
+                record.calificacionDelCliente,
+                record.calificacionACliente,
+                record.calificacionClienteDto,
+                record.calificacionClienteDTO,
+                record.tieneCalificacionCliente,
+                record.calificadoCliente,
+                record.calificacion,
+                record.rating,
+                record.data,
+            )
+        );
+    });
+}
+
+function getOrderHistoryContent(data: OrderHistoryApiResponse): PedidoDtoFromApi[] {
+    if (Array.isArray(data)) return data;
+    return data.content ?? data.data ?? data.pedidos ?? data.orders ?? [];
 }
 
 async function hydrateOrdersWithLocalRatings(
@@ -665,6 +959,7 @@ export async function getOrderHistory(
     const params: Record<string, string | number> = {};
     if (filter.orderId != null) params.identificador = filter.orderId;
     if (filter.localId != null) params.localId = filter.localId;
+    if (filter.estado) params.estado = filter.estado;
     if (filter.desde) params.desde = filter.desde;
     if (filter.hasta) params.hasta = filter.hasta;
     if (filter.ordenarPor) params.ordenarPor = filter.ordenarPor;
@@ -673,19 +968,26 @@ export async function getOrderHistory(
     params.size = filter.size ?? 10;
 
     try {
-        const response = await api.get<OrderHistoryPageResponse>(
+        const response = await api.get<OrderHistoryApiResponse>(
             `/api/clientes/${session.idTipoUsuario}/pedidos`,
             { params }
         );
-        const mappedOrders = response.data.content.map(mapOrderFromApi);
+        const content = getOrderHistoryContent(response.data);
+        const mappedOrders = content.map(mapOrderFromApi);
         const orders = filter.includeRatings === false
             ? mappedOrders
             : await hydrateOrdersWithLocalRatings(session.idTipoUsuario, mappedOrders);
+        const totalPages = Array.isArray(response.data)
+            ? 1
+            : response.data.totalPages ?? 1;
+        const totalElements = Array.isArray(response.data)
+            ? response.data.length
+            : response.data.totalElements ?? content.length;
 
         return {
             orders,
-            totalPages: response.data.totalPages,
-            totalElements: response.data.totalElements,
+            totalPages,
+            totalElements,
         };
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -737,47 +1039,75 @@ export type SubmitOrderRatingRequest = {
 };
 
 function parseRatingValueToNumber(value: OrderRatingValue | string): number | null {
-    if (typeof value === "number" && Number.isInteger(value) && (value === 0 || value === 1)) {
-        return value;
-    }
-
-    if (typeof value !== "string") {
-        return null;
-    }
-
-    const normalized = value.trim().toUpperCase();
-
-    if (normalized === "0") return 0;
-    if (normalized === "1" || normalized === "1_ESTRELLA") return 1;
-
-    return null;
+    return normalizeRatingValue(value);
 }
 
 export async function getOrderLocalRating(orderId: number): Promise<OrderRating | null> {
     await requireCurrentSession();
 
-    const { orders } = await getOrderHistory({
-        orderId,
-        includeRatings: false,
-    });
+    try {
+        const response = await api.get<OrderRatingDtoFromApi | null>(
+            `/api/pedidos/${encodeURIComponent(orderId.toString())}/calificacion-local`,
+            { timeout: 10000 },
+        );
 
-    const order = orders.find((currentOrder) => currentOrder.id === orderId);
+        return mapOrderRatingFromApi(response.data, orderId);
+    } catch (error) {
+        if (
+            axios.isAxiosError(error) &&
+            (error.response?.status === 404 || error.response?.status === 405)
+        ) {
+            return null;
+        }
 
-    if (!order) {
-        throw new Error("No se encontró el pedido.");
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+            const message =
+                typeof data === "string"
+                    ? data
+                    : data?.error ??
+                      data?.message ??
+                      `Error al obtener calificacion del pedido (${error.response?.status})`;
+            throw new Error(message);
+        }
+
+        throw new Error("No se pudo cargar la calificacion del pedido.");
     }
+}
 
-    const localRatings = await fetchLocalRatings(order.restaurantId);
+export async function getOrderCustomerRating(orderId: number): Promise<CustomerRating | null> {
+    await requireCurrentSession();
 
-    for (const rawRating of localRatings) {
-        const ratingOrderId = getRatingOrderId(rawRating);
+    try {
+        const response = await api.get<CustomerRatingDtoFromApi | null>(
+            `/api/pedidos/${encodeURIComponent(orderId.toString())}/calificacion-cliente`,
+            { timeout: 10000 },
+        );
 
-        if (ratingOrderId !== orderId) continue;
+        return mapOrderCustomerRatingFromApi(response.data, orderId);
+    } catch (error) {
+        if (
+            axios.isAxiosError(error) &&
+            (error.response?.status === 403 ||
+                error.response?.status === 404 ||
+                error.response?.status === 405)
+        ) {
+            return null;
+        }
 
-        return mapOrderRatingFromApi(rawRating, orderId);
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+            const message =
+                typeof data === "string"
+                    ? data
+                    : data?.error ??
+                      data?.message ??
+                      `Error al obtener calificacion del cliente (${error.response?.status})`;
+            throw new Error(message);
+        }
+
+        throw new Error("No se pudo cargar la calificacion del cliente.");
     }
-
-    return null;
 }
 
 export async function submitOrderLocalRating(

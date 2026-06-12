@@ -13,10 +13,84 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import type { Cart, ClientDish, Discount } from "@/lib/client/types";
-import { getCart, getDishDiscount, updateCartItem } from "@/services/client/client-service";
+import {
+  getCart,
+  getDish,
+  getDishDiscount,
+  updateCartItem,
+} from "@/services/client/client-service";
 import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 
-export default function DishesDetailPage({ dish }: { dish: ClientDish }) {
+export default function DishesDetailPage({ dishId }: { dishId: string }) {
+  const [dishState, setDishState] = useState<{
+    dish: ClientDish | null;
+    error: string | null;
+    loadedDishId: string | null;
+  }>({
+    dish: null,
+    error: null,
+    loadedDishId: null,
+  });
+
+  useEffect(() => {
+    let isMounted = true;
+
+    getDish(dishId)
+      .then((loadedDish) => {
+        if (!isMounted) return;
+        setDishState({
+          dish: loadedDish,
+          error: null,
+          loadedDishId: dishId,
+        });
+      })
+      .catch((error) => {
+        if (!isMounted) return;
+        setDishState({
+          dish: null,
+          error:
+            error instanceof Error
+              ? error.message
+              : "No se pudo cargar el plato.",
+          loadedDishId: dishId,
+        });
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [dishId]);
+
+  const isLoadingDish = dishState.loadedDishId !== dishId;
+  const dish = dishState.dish;
+  const dishError = dishState.error;
+
+  if (isLoadingDish) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <div className="rounded-2xl border border-gray-200 bg-white p-6">
+          <div className="h-6 w-36 animate-pulse rounded bg-gray-200" />
+          <div className="mt-6 h-64 animate-pulse rounded-xl bg-orange-50" />
+          <div className="mt-6 h-8 w-48 animate-pulse rounded bg-gray-200" />
+        </div>
+      </div>
+    );
+  }
+
+  if (dishError || !dish) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+          {dishError ?? "No se encontro el plato."}
+        </p>
+      </div>
+    );
+  }
+
+  return <DishDetailContent dish={dish} />;
+}
+
+function DishDetailContent({ dish }: { dish: ClientDish }) {
   const router = useRouter();
   const [cart, setCart] = useState<Cart | null>(null);
   const [isUpdating, setIsUpdating] = useState(false);

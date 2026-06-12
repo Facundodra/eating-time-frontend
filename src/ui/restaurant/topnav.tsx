@@ -26,7 +26,7 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
 
   return (
     <>
-      <div className="restaurant-top-nav mb-5 flex flex-col gap-3 py-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+      <div className="restaurant-top-nav mb-5 flex flex-col gap-3 py-1 font-sans sm:flex-row sm:items-center sm:justify-between sm:gap-4">
         <div className="order-1 flex w-full items-center justify-between gap-3 sm:order-2 sm:w-auto sm:min-w-0 sm:justify-end">
           <button
             type="button"
@@ -91,20 +91,22 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
         </div>
         <aside
           className={clsx(
-            "relative flex h-full w-[min(86vw,320px)] flex-col overflow-y-auto border-r border-gray-200 bg-white p-5 shadow-2xl transition-transform duration-300 ease-out dark:border-slate-800 dark:bg-slate-950",
+            "relative flex h-full w-[min(88vw,340px)] flex-col overflow-y-auto border-r border-gray-200 bg-white p-5 font-sans shadow-2xl transition-transform duration-300 ease-out dark:border-slate-800 dark:bg-slate-950",
             isMobileMenuOpen ? "translate-x-0" : "-translate-x-full",
           )}
         >
             <div className="mb-6 flex items-start justify-between gap-4">
               <div className="flex min-w-0 items-center gap-3">
-                <Image
-                  src={EatingTimeLogo}
-                  alt="Eating Time Logo"
-                  width={32}
-                  height={32}
-                  className="h-8 w-8 shrink-0 rounded-lg"
-                  priority
-                />
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl bg-orange-50 ring-1 ring-orange-100 dark:bg-orange-500/10 dark:ring-orange-500/20">
+                  <Image
+                    src={EatingTimeLogo}
+                    alt="Eating Time Logo"
+                    width={40}
+                    height={40}
+                    className="h-10 w-10"
+                    priority
+                  />
+                </span>
                 <div className="min-w-0">
                   <p className="truncate text-lg font-black text-slate-950 dark:text-white">
                     Eating<span className="text-red-600 dark:text-red-500">Time</span>

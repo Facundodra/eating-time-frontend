@@ -3,12 +3,14 @@ import { NextResponse } from "next/server";
 import { BACKEND_SESSION_COOKIE_NAME } from "@/lib/shared/auth/session-cookies";
 
 const sessionCookiePattern = /(?:^|;\s*)JSESSIONID=([^;]+)/;
+const DEFAULT_BACKEND_API_BASE_URL =
+  "https://eatingtimebackend-testing-60fe.up.railway.app";
 
 export function getBackendApiBaseUrl() {
   return (
     process.env.NEXT_PUBLIC_API_BASE_URL ??
     process.env.NEXT_PUBLIC_API_URL ??
-    ""
+    DEFAULT_BACKEND_API_BASE_URL
   ).replace(/\/$/, "");
 }
 

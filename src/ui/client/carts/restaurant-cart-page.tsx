@@ -408,7 +408,7 @@ export default function RestaurantCartPage({
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-800 text-sm truncate">
-                      Plato #{item.platoId}
+                      {item.nombre ?? `Plato #${item.platoId}`}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       ${item.costoUnitario.toFixed(2)} c/u

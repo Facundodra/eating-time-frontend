@@ -3,18 +3,33 @@
 import {
   ArrowPathIcon,
   ArrowRightIcon,
+  HandThumbDownIcon,
+  HandThumbUpIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
 import clsx from "clsx";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 
 import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
   OrderStatus,
   WorkbenchFilters,
   WorkbenchOrder,
+  WorkbenchOrderRating,
+  WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
-import { fetchRestaurantOrders } from "@/services/restaurant/workbench-service";
+import {
+  fetchRestaurantOrders,
+  getWorkbenchOrderCustomerRating,
+  submitWorkbenchOrderCustomerRating,
+} from "@/services/restaurant/workbench-service";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
@@ -62,6 +77,28 @@ const sortOptions: Record<SortKey, WorkbenchFilters> = {
   "items-asc": { sortBy: "items", direction: "asc" },
 };
 
+const ratingOptions: Array<{
+  activeClassName: string;
+  icon: typeof HandThumbUpIcon;
+  label: string;
+  value: WorkbenchRatingValue;
+}> = [
+  {
+    activeClassName:
+      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
+    icon: HandThumbUpIcon,
+    label: "Me gusta",
+    value: "P",
+  },
+  {
+    activeClassName:
+      "border-red-200 bg-red-50 text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
+    icon: HandThumbDownIcon,
+    label: "No me gusta",
+    value: "N",
+  },
+];
+
 function StatusBadge({ status }: { status: OrderStatus }) {
   return (
     <span
@@ -97,8 +134,19 @@ function formatPrice(value: number) {
   return `$${value.toLocaleString("es-UY")}`;
 }
 
+function getRatingLabel(value: WorkbenchRatingValue | null | undefined) {
+  if (value === "P") return "Positiva";
+  if (value === "N") return "Negativa";
+  return "Sin calificar";
+}
+
+function formatRatingTimestamp(value: string | null | undefined) {
+  return value ? formatDateTimeLabel(value) : null;
+}
+
 function getCustomerLabel(order: WorkbenchOrder) {
-  return order.customerName ?? `Cliente #${order.customerId}`;
+  if (order.customerName) return order.customerName;
+  return order.customerId > 0 ? `${order.customerId}` : "Cliente sin identificar";
 }
 
 function getOrderDescription(order: WorkbenchOrder) {
@@ -213,6 +261,21 @@ export default function RestaurantOrdersPage() {
   const isDataReady = Boolean(loadedOrders) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los pedidos.";
+
+  function handleCustomerRatingSaved(
+    orderId: number,
+    rating: WorkbenchOrderRating,
+  ) {
+    setSelectedOrder((currentOrder) =>
+      currentOrder?.id === orderId
+        ? {
+            ...currentOrder,
+            customerRating: rating,
+            hasCustomerRating: true,
+          }
+        : currentOrder,
+    );
+  }
 
   return (
     <section className="space-y-6">
@@ -411,6 +474,7 @@ export default function RestaurantOrdersPage() {
       {selectedOrder ? (
         <OrderDetailModal
           order={selectedOrder}
+          onCustomerRatingSaved={handleCustomerRatingSaved}
           onClose={() => setSelectedOrder(null)}
         />
       ) : null}
@@ -419,12 +483,102 @@ export default function RestaurantOrdersPage() {
 }
 
 function OrderDetailModal({
+  onCustomerRatingSaved,
   onClose,
   order,
 }: {
+  onCustomerRatingSaved: (orderId: number, rating: WorkbenchOrderRating) => void;
   onClose: () => void;
   order: WorkbenchOrder;
 }) {
+  const [showRating, setShowRating] = useState(false);
+  const [loadedRating, setLoadedRating] = useState<WorkbenchOrderRating | null>(
+    order.customerRating,
+  );
+  const savedRating = loadedRating ?? order.customerRating;
+  const hasSavedCustomerRating = order.hasCustomerRating || Boolean(savedRating);
+  const isRatingReadOnly = Boolean(savedRating);
+  const ratingTimestamp = formatRatingTimestamp(savedRating?.creacion);
+  const [selectedRating, setSelectedRating] =
+    useState<WorkbenchRatingValue | null>(savedRating?.calificacion ?? null);
+  const [ratingComment, setRatingComment] = useState(
+    savedRating?.comentario ?? "",
+  );
+  const [isRatingSubmitting, setIsRatingSubmitting] = useState(false);
+  const [ratingError, setRatingError] = useState<string | null>(null);
+  const [isRatingLoading, setIsRatingLoading] = useState(false);
+  const canRateCustomer = order.status === "FINALIZADO";
+
+  useEffect(() => {
+    const initialRating = order.customerRating;
+    setLoadedRating(initialRating);
+    setSelectedRating(initialRating?.calificacion ?? null);
+    setRatingComment(initialRating?.comentario ?? "");
+    setRatingError(null);
+    setIsRatingSubmitting(false);
+    setShowRating(Boolean(initialRating));
+  }, [order.customerRating, order.id]);
+
+  async function handleOpenRating() {
+    setShowRating(true);
+    setRatingError(null);
+
+    if (savedRating || isRatingLoading) return;
+
+    setIsRatingLoading(true);
+
+    try {
+      const rating = await getWorkbenchOrderCustomerRating(order.id);
+
+      if (rating) {
+        setLoadedRating(rating);
+        setSelectedRating(rating.calificacion);
+        setRatingComment(rating.comentario ?? "");
+        onCustomerRatingSaved(order.id, rating);
+      }
+    } catch (error) {
+      setRatingError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo cargar la calificacion del cliente.",
+      );
+    } finally {
+      setIsRatingLoading(false);
+    }
+  }
+
+  async function handleSubmitCustomerRating(
+    event: FormEvent<HTMLFormElement>,
+  ) {
+    event.preventDefault();
+
+    if (selectedRating == null || isRatingSubmitting || isRatingReadOnly) {
+      return;
+    }
+
+    setIsRatingSubmitting(true);
+    setRatingError(null);
+
+    try {
+      const rating = await submitWorkbenchOrderCustomerRating(order.id, {
+        calificacion: selectedRating,
+        comentario: ratingComment,
+      });
+      setLoadedRating(rating);
+      setSelectedRating(rating.calificacion);
+      setRatingComment(rating.comentario ?? "");
+      onCustomerRatingSaved(order.id, rating);
+    } catch (error) {
+      setRatingError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo registrar la calificacion.",
+      );
+    } finally {
+      setIsRatingSubmitting(false);
+    }
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 p-4"
@@ -517,6 +671,114 @@ function OrderDetailModal({
               Ver factura
             </a>
           ) : null}
+
+          <div className="border-t border-gray-100 pt-4 dark:border-slate-800">
+            <div className="mb-3 flex items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-black text-slate-700 dark:text-slate-200">
+                  Calificacion del cliente
+                </h3>
+                <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+                  {canRateCustomer || isRatingReadOnly
+                    ? "Registra si la experiencia con este cliente fue positiva."
+                    : "Disponible cuando el pedido este finalizado."}
+                </p>
+              </div>
+              {canRateCustomer || isRatingReadOnly ? (
+                <button
+                  type="button"
+                  onClick={() => void handleOpenRating()}
+                  className="h-10 shrink-0 rounded-xl bg-orange-50 px-4 text-sm font-black text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20"
+                >
+                  {hasSavedCustomerRating ? "Ver calificación" : "Calificar"}
+                </button>
+              ) : null}
+            </div>
+
+            {showRating ? (
+              isRatingLoading ? (
+                <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
+                  Buscando calificacion registrada...
+                </p>
+              ) : (
+                <form onSubmit={handleSubmitCustomerRating} className="space-y-3">
+                  {isRatingReadOnly ? (
+                    <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 dark:bg-slate-950 dark:text-slate-300">
+                      <p>{getRatingLabel(savedRating?.calificacion ?? selectedRating)}</p>
+                      {ratingTimestamp ? (
+                        <p className="mt-1 text-xs text-slate-400">
+                          {ratingTimestamp}
+                        </p>
+                      ) : null}
+                    </div>
+                  ) : null}
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {ratingOptions.map((option) => {
+                      const Icon = option.icon;
+                      const isActive = selectedRating === option.value;
+
+                      return (
+                        <button
+                          key={option.value}
+                          type="button"
+                          disabled={isRatingReadOnly || isRatingSubmitting}
+                          aria-pressed={isActive}
+                          onClick={() => {
+                            if (!isRatingReadOnly) {
+                              setSelectedRating(option.value);
+                            }
+                          }}
+                          className={clsx(
+                            "flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black transition disabled:cursor-default",
+                            isActive
+                              ? option.activeClassName
+                              : "border-gray-200 bg-white text-slate-600 hover:bg-slate-50 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:bg-slate-800",
+                          )}
+                        >
+                          <Icon className="h-5 w-5" />
+                          {option.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  <textarea
+                    value={ratingComment}
+                    onChange={(event) => setRatingComment(event.target.value)}
+                    readOnly={isRatingReadOnly}
+                    placeholder="Agrega un comentario interno sobre el cliente."
+                    rows={3}
+                    className={clsx(
+                      "w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20",
+                      isRatingReadOnly &&
+                        "cursor-default bg-slate-50 text-slate-800 focus:border-gray-200 focus:ring-0 dark:bg-slate-950 dark:text-slate-100",
+                    )}
+                  />
+
+                  {ratingError ? (
+                    <p className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+                      {ratingError}
+                    </p>
+                  ) : null}
+
+                  {!isRatingReadOnly ? (
+                    <div className="flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={selectedRating == null || isRatingSubmitting}
+                        className="h-10 rounded-xl bg-orange-600 px-4 text-sm font-black text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                      >
+                        {isRatingSubmitting
+                          ? "Guardando..."
+                          : "Guardar calificacion"}
+                      </button>
+                    </div>
+                  ) : null}
+                </form>
+              )
+            ) : null}
+          </div>
         </div>
       </div>
     </div>

@@ -13,6 +13,7 @@ import {
   getOrderHistory,
   getOrderHistoryRestaurants,
   getOrderLocalRating,
+  getRestaurantName as fetchRestaurantName,
   type OrderHistoryFilter,
   type OrderHistoryRestaurant,
 } from "@/services/client/client-service";
@@ -154,10 +155,14 @@ export default function OrderHistoryPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [sort, setSort] = useState<SortKey>("fecha-desc");
   const [localId, setLocalId] = useState("");
+  const [status, setStatus] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<OrderHistoryFilter>({});
   const [restaurants, setRestaurants] = useState<OrderHistoryRestaurant[]>([]);
+  const [restaurantNames, setRestaurantNames] = useState<Record<number, string>>(
+    {},
+  );
   const [restaurantsLoading, setRestaurantsLoading] = useState(true);
   const [selectedDetailOrder, setSelectedDetailOrder] = useState<Order | null>(
     null,
@@ -177,7 +182,16 @@ export default function OrderHistoryPage() {
 
     getOrderHistoryRestaurants()
       .then((data) => {
-        if (!ignore) setRestaurants(data);
+        if (!ignore) {
+          setRestaurants(data);
+          setRestaurantNames((currentNames) => {
+            const nextNames = { ...currentNames };
+            data.forEach((restaurant) => {
+              nextNames[restaurant.id] = restaurant.name;
+            });
+            return nextNames;
+          });
+        }
       })
       .catch(() => {
         if (!ignore) setRestaurants([]);
@@ -190,6 +204,58 @@ export default function OrderHistoryPage() {
       ignore = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (orders.length === 0) return;
+
+    let ignore = false;
+    const missingRestaurantIds = Array.from(
+      new Set(
+        orders
+          .map((order) => order.restaurantId)
+          .filter((restaurantId) => restaurantNames[restaurantId] == null),
+      ),
+    );
+
+    if (missingRestaurantIds.length === 0) return;
+
+    async function loadRestaurantNames() {
+      const loadedNames = await Promise.all(
+        missingRestaurantIds.map(async (restaurantId) => {
+          try {
+            return {
+              id: restaurantId,
+              name: await fetchRestaurantName(restaurantId),
+            };
+          } catch {
+            return null;
+          }
+        }),
+      );
+
+      if (ignore) return;
+
+      setRestaurantNames((currentNames) => {
+        const nextNames = { ...currentNames };
+        let hasNewName = false;
+
+        loadedNames.forEach((restaurant) => {
+          if (restaurant && nextNames[restaurant.id] !== restaurant.name) {
+            nextNames[restaurant.id] = restaurant.name;
+            hasNewName = true;
+          }
+        });
+
+        return hasNewName ? nextNames : currentNames;
+      });
+    }
+
+    void loadRestaurantNames();
+
+    return () => {
+      ignore = true;
+    };
+  }, [orders, restaurantNames]);
 
   useEffect(() => {
     let ignore = false;
@@ -209,6 +275,17 @@ export default function OrderHistoryPage() {
         if (ignore) return;
 
         setOrders(data);
+        setRestaurantNames((currentNames) => {
+          const nextNames = { ...currentNames };
+
+          data.forEach((order) => {
+            if (order.restaurantName) {
+              nextNames[order.restaurantId] = order.restaurantName;
+            }
+          });
+
+          return nextNames;
+        });
         setTotalPages(total);
       } catch (err) {
         if (!ignore) {
@@ -233,6 +310,7 @@ export default function OrderHistoryPage() {
   function applyFilters() {
     const next: OrderHistoryFilter = {};
     if (localId !== "") next.localId = Number(localId);
+    if (status !== "") next.estado = status as OrderHistoryStatus;
     if (desde) next.desde = toStartOfDay(desde);
     if (hasta) next.hasta = toEndOfDay(hasta);
 
@@ -248,14 +326,16 @@ export default function OrderHistoryPage() {
     };
   }
 
-  function isOrderRated(order: Order) {
-    return order.hasLocalRating || Boolean(order.calificacionLocal);
+  function getCachedOrderRating(order: Order) {
+    return order.calificacionLocal;
   }
 
   async function handleOpenRating(order: Order) {
     setRatingLoadError(null);
 
-    if (order.calificacionLocal) {
+    const cachedRating = getCachedOrderRating(order);
+
+    if (cachedRating) {
       setSelectedRatingOrder(order);
       return;
     }
@@ -266,7 +346,7 @@ export default function OrderHistoryPage() {
       const rating = await getOrderLocalRating(order.id);
 
       if (!rating) {
-        throw new Error("No se encontro la calificacion guardada.");
+        throw new Error("Este pedido todavia no tiene calificacion.");
       }
 
       const ratedOrder = mergeOrderRating(order, rating);
@@ -281,7 +361,7 @@ export default function OrderHistoryPage() {
       setRatingLoadError(
         err instanceof Error
           ? err.message
-          : "No se pudo cargar la calificacion guardada.",
+          : "No se pudo cargar la calificacion del pedido.",
       );
     } finally {
       setLoadingRatingOrderId(null);
@@ -304,8 +384,14 @@ export default function OrderHistoryPage() {
     }
   }
 
-  function getRestaurantName(id: number) {
-    return restaurants.find((restaurant) => restaurant.id === id)?.name ?? `Local #${id}`;
+  function getRestaurantDisplayName(order: Order) {
+    return (
+      order.restaurantName ??
+      restaurantNames[order.restaurantId] ??
+      restaurants.find((restaurant) => restaurant.id === order.restaurantId)
+        ?.name ??
+      "Cargando local..."
+    );
   }
 
   const controlsDisabled = restaurantsLoading;
@@ -342,7 +428,7 @@ export default function OrderHistoryPage() {
       </section>
 
       <div className="space-y-4 rounded-xl border border-gray-100 bg-white p-4">
-        <div className="grid gap-4 sm:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-3">
           <label className="block">
             <span className="mb-1.5 block text-sm font-semibold text-gray-700">
               Ordenar por
@@ -381,6 +467,26 @@ export default function OrderHistoryPage() {
                   {restaurant.name}
                 </option>
               ))}
+            </select>
+          </label>
+
+          <label className="block">
+            <span className="mb-1.5 block text-sm font-semibold text-gray-700">
+              Estado
+            </span>
+            <select
+              className={controlClasses}
+              disabled={controlsDisabled}
+              onChange={(event) => setStatus(event.target.value)}
+              value={status}
+            >
+              <option value="">Todos los estados</option>
+              <option value="ACEPTADO_LOCAL">Aceptado</option>
+              <option value="EN_CURSO_LOCAL">En preparacion</option>
+              <option value="EN_CAMINO_LOCAL">En camino</option>
+              <option value="FINALIZADO">Finalizado</option>
+              <option value="RECHAZADO_LOCAL">Rechazado</option>
+              <option value="CANCELADO_CLIENTE">Cancelado</option>
             </select>
           </label>
         </div>
@@ -476,12 +582,12 @@ export default function OrderHistoryPage() {
 
                 <div className="min-w-0">
                   <p className="line-clamp-2 font-semibold text-gray-900">
-                    {getRestaurantName(order.restaurantId)}
+                    {getRestaurantDisplayName(order)}
                   </p>
                 </div>
 
                 <div className="min-w-0">
-                  <p className="text-xs font-semibold text-gray-500">Envio a:</p>
+                  <p className="text-xs font-semibold text-gray-500">Envío a:</p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-gray-500">
                     {order.direccion?.trim()
                       ? order.direccion
@@ -498,7 +604,7 @@ export default function OrderHistoryPage() {
                     Ver detalles
                   </button>
 
-                  {order.estado === "FINALIZADO" && isOrderRated(order) ? (
+                  {order.estado === "FINALIZADO" ? (
                     <button
                       className="block text-sm font-semibold text-orange-700 transition-colors hover:text-orange-800 hover:underline disabled:cursor-not-allowed disabled:opacity-60 sm:ml-auto"
                       disabled={loadingRatingOrderId === order.id}
@@ -507,7 +613,7 @@ export default function OrderHistoryPage() {
                     >
                       {loadingRatingOrderId === order.id
                         ? "Cargando..."
-                        : "Ver calificacion"}
+                        : "Ver calificación"}
                     </button>
                   ) : null}
 

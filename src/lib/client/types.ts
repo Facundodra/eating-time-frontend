@@ -77,7 +77,7 @@ export type PaymentResponse = {
 // Estado devuelto por Mercado Pago en el callback
 export type PaymentStatus = "approved" | "failure" | "pending";
 
-export type OrderRatingValue = 0 | 1;
+export type OrderRatingValue = 1 | 2 | 3 | 4 | 5;
 
 export type OrderRating = {
   id?: number;
@@ -87,11 +87,23 @@ export type OrderRating = {
   creacion?: string | null;
 };
 
+export type CustomerRatingValue = "P" | "N";
+
+export type CustomerRating = {
+  id?: number;
+  pedidoId: number;
+  calificacion: CustomerRatingValue;
+  comentario: string | null;
+  creacion?: string | null;
+};
+
 export type CartItem = {
   id: number;
   pedidoId: number;
   platoId: number;
   nombre?: string;
+  nombrePlato?: string;
+  platoNombre?: string;
   descuentoId: number | null;
   cantidad: number;
   costoUnitario: number;
@@ -134,6 +146,7 @@ export type OrderHistoryStatus =
 export type Order = {
   id: number;
   restaurantId: number;
+  restaurantName: string | null;
   clienteId: number;
   cuponId: number | null;
   estado: OrderHistoryStatus;
@@ -150,6 +163,8 @@ export type Order = {
   items: CartItem[];
   calificacionLocal: OrderRating | null;
   hasLocalRating: boolean;
+  calificacionCliente: CustomerRating | null;
+  hasCustomerRating: boolean;
 };
 
 

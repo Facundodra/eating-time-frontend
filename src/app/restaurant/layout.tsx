@@ -25,10 +25,10 @@ export default async function RestaurantLayout({
   }
 
   return (
-    <div className="flex min-h-screen flex-wrap">
+    <div className="flex min-h-screen flex-wrap bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-50">
       <SideNav session={session} />
 
-      <main className="min-w-0 flex-1 p-6 lg:p-10">
+      <main className="min-w-0 flex-1 px-4 py-5 sm:px-6 lg:px-10 lg:py-8">
         <Topnav session={session} />
         {children}
       </main>

@@ -1,15 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import {
-  HandThumbDownIcon,
-  HandThumbUpIcon,
-  XMarkIcon,
-} from "@heroicons/react/24/outline";
-import {
-  HandThumbDownIcon as HandThumbDownSolidIcon,
-  HandThumbUpIcon as HandThumbUpSolidIcon,
-} from "@heroicons/react/24/solid";
+import { StarIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import { StarIcon as StarSolidIcon } from "@heroicons/react/24/solid";
 import clsx from "clsx";
 
 import type { Order, OrderRating, OrderRatingValue } from "@/lib/client/types";
@@ -21,30 +14,7 @@ type OrderRatingModalProps = {
   order: Order;
 };
 
-const ratingOptions: Array<{
-  activeClassName: string;
-  Icon: typeof HandThumbUpIcon;
-  SolidIcon: typeof HandThumbUpSolidIcon;
-  label: string;
-  value: OrderRatingValue;
-}> = [
-  {
-    activeClassName:
-      "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300",
-    Icon: HandThumbUpIcon,
-    SolidIcon: HandThumbUpSolidIcon,
-    label: "Me gusta",
-    value: 1,
-  },
-  {
-    activeClassName:
-      "border-red-200 bg-red-50 text-red-700 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-300",
-    Icon: HandThumbDownIcon,
-    SolidIcon: HandThumbDownSolidIcon,
-    label: "No me gusta",
-    value: 0,
-  },
-];
+const ratingOptions: OrderRatingValue[] = [1, 2, 3, 4, 5];
 
 function formatDate(dateStr: string) {
   const date = new Date(dateStr);
@@ -63,8 +33,7 @@ function formatDate(dateStr: string) {
 }
 
 function getRatingLabel(value: OrderRatingValue | null) {
-  if (value === 1) return "Me gusta";
-  if (value === 0) return "No me gusta";
+  if (value != null) return `${value} de 5`;
   return "Sin calificación";
 }
 
@@ -124,10 +93,10 @@ export default function OrderRatingModal({
       <section
         aria-labelledby="order-rating-title"
         aria-modal="true"
-        className="w-full max-w-[670px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+        className="w-full max-w-[646px] overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-white/25 dark:bg-black"
         role="dialog"
       >
-        <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5 dark:border-slate-800">
+        <div className="flex items-start justify-between gap-4 border-b border-gray-100 px-6 py-5 dark:border-white/50">
           <div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <p className="text-xs font-extrabold uppercase text-slate-400 dark:text-slate-500">
@@ -138,7 +107,7 @@ export default function OrderRatingModal({
               </span>
             </div>
             <h2
-              className="mt-3 text-xl font-black text-slate-950 dark:text-white"
+              className="mt-3 text-2xl font-black text-slate-950 dark:text-indigo-100"
               id="order-rating-title"
             >
               PED-{order.id}
@@ -147,7 +116,7 @@ export default function OrderRatingModal({
 
           <button
             aria-label="Cerrar"
-            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-100"
+            className="rounded-full p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 dark:text-slate-200 dark:hover:bg-white/10 dark:hover:text-white"
             disabled={isSubmitting}
             onClick={onClose}
             type="button"
@@ -156,31 +125,33 @@ export default function OrderRatingModal({
           </button>
         </div>
 
-        <form className="space-y-5 px-6 py-5" onSubmit={handleSubmit}>
+        <form className="space-y-6 px-6 py-6" onSubmit={handleSubmit}>
           <fieldset disabled={isSubmitting || isReadOnly}>
-            <legend className="mb-3 text-sm font-extrabold text-slate-700 dark:text-slate-200">
+            <legend className="mb-3 text-sm font-extrabold text-slate-700 dark:text-indigo-100">
               Calificación
             </legend>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="flex flex-wrap gap-3 sm:gap-5">
               {ratingOptions.map((option) => {
-                const isActive = selectedRating === option.value;
-                const Icon = isActive ? option.SolidIcon : option.Icon;
+                const isFilled =
+                  selectedRating != null && option <= selectedRating;
+                const isSelected = selectedRating === option;
+                const Icon = isFilled ? StarSolidIcon : StarIcon;
 
                 return (
                   <button
-                    aria-pressed={isActive}
+                    aria-pressed={isSelected}
+                    aria-label={`${option} de 5`}
                     className={clsx(
-                      "flex h-16 items-center justify-center gap-3 rounded-xl border px-4 text-sm font-extrabold transition disabled:cursor-default",
-                      isActive
-                        ? option.activeClassName
-                        : "border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:bg-orange-500/10 dark:hover:text-orange-300",
+                      "grid h-14 w-14 place-items-center rounded-lg transition focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200 disabled:cursor-default sm:h-[68px] sm:w-[68px] dark:focus-visible:ring-orange-400/30",
+                      isFilled
+                        ? "text-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,0.28)] dark:text-yellow-300"
+                        : "text-slate-300 hover:text-yellow-300 dark:text-zinc-400 dark:hover:text-yellow-300",
                     )}
-                    key={option.value}
-                    onClick={() => setSelectedRating(option.value)}
+                    key={option}
+                    onClick={() => setSelectedRating(option)}
                     type="button"
                   >
-                    <Icon className="h-6 w-6" />
-                    {option.label}
+                    <Icon className="h-12 w-12 stroke-[1.6] sm:h-16 sm:w-16" />
                   </button>
                 );
               })}
@@ -193,11 +164,11 @@ export default function OrderRatingModal({
           </fieldset>
 
           <label className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-indigo-100">
               Comentario
             </span>
             <textarea
-              className="min-h-32 w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 disabled:bg-slate-50 disabled:text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:disabled:bg-slate-950/60 dark:disabled:text-slate-400 dark:focus:ring-orange-500/20"
+              className="min-h-32 w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-medium text-slate-800 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 disabled:bg-slate-50 disabled:text-slate-500 dark:border-white dark:bg-black dark:text-slate-100 dark:placeholder:text-indigo-100 dark:disabled:bg-black dark:disabled:text-slate-400 dark:focus:border-orange-400 dark:focus:ring-orange-500/20"
               disabled={isSubmitting || isReadOnly}
               maxLength={280}
               onChange={(event) => setComment(event.target.value)}
@@ -212,19 +183,19 @@ export default function OrderRatingModal({
             </p>
           ) : null}
 
-          <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end dark:border-slate-800">
+          <div className="flex flex-col-reverse gap-3 border-t border-gray-100 pt-5 sm:flex-row sm:justify-end dark:border-white/80">
             <button
-              className="h-11 rounded-xl border border-gray-200 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:text-slate-200 dark:hover:bg-slate-800"
+              className="h-11 rounded-xl border border-gray-200 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-white dark:text-indigo-100 dark:hover:bg-white/10"
               disabled={isSubmitting}
               onClick={onClose}
               type="button"
             >
-              Cerrar
+              {isReadOnly ? "Cerrar" : "Cancelar"}
             </button>
 
             {!isReadOnly ? (
               <button
-                className="h-11 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(234,88,12,0.22)] transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
+                className="h-11 rounded-xl bg-orange-500 px-5 text-sm font-extrabold text-white shadow-[0_12px_22px_rgba(249,115,22,0.25)] transition hover:bg-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:ring-8 dark:ring-white"
                 disabled={selectedRating == null || isSubmitting}
                 type="submit"
               >

@@ -12,7 +12,6 @@ import {
 } from "@heroicons/react/24/outline";
 
 import Link from "next/link";
-import Image from "next/image";
 import DishesList from "@/ui/client/dishes/dishes-list";
 
 export default function RestaurantDetailPage({ id }: { id: string }) {
@@ -36,6 +35,21 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
 
   const cartItemCount =
     cart?.items.filter((i) => i.eliminacion == null).reduce((sum, i) => sum + i.cantidad, 0) ?? 0;
+
+  if (loading) {
+    return (
+      <div className="mx-auto max-w-[1440px] px-4 py-6">
+        <div className="mb-6 h-5 w-32 animate-pulse rounded bg-gray-200" />
+        <div className="restaurant-card flex items-center gap-6 overflow-hidden p-6">
+          <div className="h-[100px] w-[100px] animate-pulse rounded-full bg-orange-50" />
+          <div className="space-y-3">
+            <div className="h-5 w-48 animate-pulse rounded bg-gray-200" />
+            <div className="h-4 w-72 animate-pulse rounded bg-gray-200" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (error) {
     return (
@@ -65,12 +79,12 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
         <div className="restaurant-card flex align-center overflow-hidden mb-7">
           {/* Imagen */}
           <div>
-            <div className="flex items-center justify-center bg-orange-50 h-64 rounded-full w-[100px] h-[100px]">
+            <div className="relative flex h-[100px] w-[100px] items-center justify-center overflow-hidden rounded-full bg-orange-50">
               {restaurant.url_photo ? (
-                <Image
+                <img
                   src={restaurant.url_photo}
                   alt={restaurant.name}
-                  className="object-cover w-full h-full"
+                  className="h-full w-full object-cover"
                 />
               ) : (
                 <span className="text-lg font-black text-orange-600">
