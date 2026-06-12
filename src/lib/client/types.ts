@@ -126,9 +126,9 @@ export type Cart = {
   items: CartItem[];
 };
 
-// Estados de un pedido que aparecen en el historial del cliente
-// (ya confirmados por el local: en curso o terminados, más los cerrados)
+// Estados de un pedido que aparecen en el historial del cliente (pedidos realizados).
 export type OrderHistoryStatus =
+  | "PENDIENTE_CONFIRMACION_LOCAL"
   | "ACEPTADO_LOCAL"
   | "EN_CURSO_LOCAL"
   | "EN_CAMINO_LOCAL"
