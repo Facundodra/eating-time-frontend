@@ -46,6 +46,7 @@ function CheckoutSection({ restaurantId, onSuccess }: CheckoutSectionProps) {
   const [numero, setNumero] = useState("");
   const [nroApto, setNroApto] = useState("");
   const [indicaciones, setIndicaciones] = useState("");
+  const [localNotes, setLocalNotes] = useState("");
   const [guardarEnCuenta, setGuardarEnCuenta] = useState(false);
 
   const [placing, setPlacing] = useState(false);
@@ -67,9 +68,10 @@ function CheckoutSection({ restaurantId, onSuccess }: CheckoutSectionProps) {
     setError(null);
 
     let body: OrderRequest;
+    const trimmedLocalNotes = localNotes.trim() || undefined;
 
     if (mode === "saved" && selectedPointId != null) {
-      body = { puntoDeEntregaId: selectedPointId };
+      body = { puntoDeEntregaId: selectedPointId, notasLocal: trimmedLocalNotes };
     } else {
       if (!localidad || !calle || !numero) {
         setError("Localidad, calle y número son obligatorios.");
@@ -82,6 +84,7 @@ function CheckoutSection({ restaurantId, onSuccess }: CheckoutSectionProps) {
         nroApto: nroApto || undefined,
         indicaciones: indicaciones || undefined,
         guardarEnCuenta,
+        notasLocal: trimmedLocalNotes,
       };
     }
 
@@ -244,6 +247,19 @@ function CheckoutSection({ restaurantId, onSuccess }: CheckoutSectionProps) {
             </label>
           </div>
         )}
+
+        <div className="border-t border-orange-100 pt-4">
+          <label className="block text-xs font-medium text-gray-600 mb-1">
+            Notas para el local (opcional)
+          </label>
+          <textarea
+            value={localNotes}
+            onChange={(e) => setLocalNotes(e.target.value)}
+            placeholder="Ej: Sin cebolla, bien cocido, traer cubiertos"
+            rows={3}
+            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+          />
+        </div>
 
         {/* Error */}
         {error && (

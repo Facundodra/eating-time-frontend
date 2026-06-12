@@ -60,7 +60,7 @@ export type OrderStatus = "EN_CARRITO" | "ETAPA_DE_PAGO" | "PENDIENTE_CONFIRMACI
 
 // Body del PATCH para realizar pedido — punto guardado o dirección manual
 export type OrderRequest =
-  | { puntoDeEntregaId: number }
+  | { puntoDeEntregaId: number; notasLocal?: string }
   | {
       localidad: string;
       calle: string;
@@ -68,6 +68,7 @@ export type OrderRequest =
       nroApto?: string;
       indicaciones?: string;
       guardarEnCuenta?: boolean;
+      notasLocal?: string;
     };
 
 export type PaymentResponse = {
