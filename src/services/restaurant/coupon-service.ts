@@ -1,110 +1,170 @@
+import axios from "axios";
+
 import type {
+  CouponDish,
   RestaurantCoupon,
+  RestaurantCouponApiResponse,
+  RestaurantCouponRequest,
   RestaurantCouponsResponse,
 } from "@/lib/restaurant/coupon/types";
+import { clientApi as api } from "@/services/shared/api-client";
 
-const mockCoupons: Record<string, RestaurantCouponsResponse> = {
-  "dev-restaurant": {
-    restaurantId: "dev-restaurant",
-    availableDishes: [
-      { id: "1", name: "Pizza Muzzarella" },
-      { id: "2", name: "Empanadas" },
-      { id: "3", name: "Milanesa napolitana" },
-      { id: "4", name: "Tiramisu clasico" },
-    ],
-    coupons: [
-      {
-        id: "1",
-        code: "PIZZA20",
-        description: "Promo para pizzas seleccionadas",
-        percentage: 20,
-        status: "active",
-        createdAt: "2026-05-12T09:30:00",
-        expiresAt: "2026-07-15T23:59:00",
-        dishes: [{ id: "1", name: "Pizza Muzzarella" }],
-      },
-      {
-        id: "2",
-        code: "POSTRE15",
-        description: "Descuento en postres",
-        percentage: 15,
-        status: "inactive",
-        createdAt: "2026-05-01T11:45:00",
-        expiresAt: "2026-06-20T23:59:00",
-        dishes: [{ id: "4", name: "Tiramisu clasico" }],
-      },
-    ],
-  },
+type CouponErrorResponse = {
+  error?: string;
+  message?: string;
+  detail?: string;
 };
 
-function cloneCouponsResponse(response: RestaurantCouponsResponse) {
+type DishApiResponse = {
+  id: number;
+  nombre: string;
+};
+
+type CouponMutationResponse = {
+  mensaje?: string;
+  id?: number;
+};
+
+function mapApiDish(dish: DishApiResponse): CouponDish {
   return {
-    ...response,
-    availableDishes: response.availableDishes.map((dish) => ({ ...dish })),
-    coupons: response.coupons.map((coupon) => ({
-      ...coupon,
-      dishes: coupon.dishes.map((dish) => ({ ...dish })),
-    })),
+    id: String(dish.id),
+    name: dish.nombre,
   };
 }
 
-function getStore(restaurantId: string) {
-  const fallback = mockCoupons["dev-restaurant"];
+function mapApiCoupon(
+  coupon: RestaurantCouponApiResponse,
+  availableDishes: CouponDish[],
+): RestaurantCoupon {
+  const couponDishes =
+    coupon.platos?.map((dish) => ({
+      id: String(dish.id),
+      name: dish.nombre,
+    })) ??
+    coupon.idPlatos
+      ?.map((dishId) =>
+        availableDishes.find((dish) => dish.id === String(dishId)),
+      )
+      .filter((dish): dish is CouponDish => Boolean(dish)) ??
+    [];
 
-  if (!mockCoupons[restaurantId]) {
-    mockCoupons[restaurantId] = {
-      ...cloneCouponsResponse(fallback),
-      restaurantId,
-    };
+  return {
+    id: String(coupon.id),
+    code: coupon.codigo,
+    description: coupon.descripcion ?? "",
+    percentage: coupon.porcentaje,
+    status: coupon.estado && coupon.eliminacion === null ? "active" : "inactive",
+    createdAt: coupon.creacion,
+    expiresAt: coupon.vencimiento,
+    dishes: couponDishes,
+  };
+}
+
+function normalizeApiDateTime(value: string) {
+  const trimmedValue = value.trim();
+
+  if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(trimmedValue)) {
+    return `${trimmedValue}:00`;
   }
 
-  return mockCoupons[restaurantId];
+  return trimmedValue;
+}
+
+function mapCouponRequest(
+  coupon: RestaurantCoupon,
+  options: { includeStatus?: boolean } = {},
+): RestaurantCouponRequest {
+  const request: RestaurantCouponRequest = {
+    codigo: coupon.code.trim(),
+    descripcion: coupon.description.trim(),
+    porcentaje: coupon.percentage,
+    vencimiento: normalizeApiDateTime(coupon.expiresAt),
+    idPlatos: coupon.dishes.map((dish) => Number(dish.id)),
+  };
+
+  if (options.includeStatus) {
+    request.estado = coupon.status === "active";
+  }
+
+  return request;
+}
+
+function getCouponErrorMessage(error: unknown, fallbackMessage: string) {
+  if (!axios.isAxiosError<CouponErrorResponse>(error)) {
+    return fallbackMessage;
+  }
+
+  const data = error.response?.data;
+  return data?.error ?? data?.message ?? data?.detail ?? fallbackMessage;
 }
 
 export async function getRestaurantCoupons(
   restaurantId: string,
 ): Promise<RestaurantCouponsResponse> {
-  return cloneCouponsResponse(getStore(restaurantId));
+  const [couponsResponse, dishesResponse] = await Promise.all([
+    api.get<RestaurantCouponApiResponse[]>(
+      `/api/cupones/local/${restaurantId}`,
+    ),
+    api.get<DishApiResponse[]>("/api/platos", {
+      params: { idLocal: restaurantId },
+    }),
+  ]);
+
+  const availableDishes = dishesResponse.data.map(mapApiDish);
+
+  return {
+    restaurantId,
+    coupons: couponsResponse.data.map((coupon) =>
+      mapApiCoupon(coupon, availableDishes),
+    ),
+    availableDishes,
+  };
 }
 
 export async function createRestaurantCoupon(
-  restaurantId: string,
+  _restaurantId: string,
   coupon: RestaurantCoupon,
-): Promise<void> {
-  const store = getStore(restaurantId);
-
-  if (store.coupons.some((item) => item.code === coupon.code)) {
-    throw new Error("Ya existe un cupon con ese codigo.");
+): Promise<CouponMutationResponse> {
+  try {
+    const response = await api.post<CouponMutationResponse>(
+      "/api/cupones",
+      mapCouponRequest(coupon),
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(getCouponErrorMessage(error, "No se pudo crear el cupon."));
   }
-
-  store.coupons = [
-    {
-      ...coupon,
-      id: String(Date.now()),
-      status: "active",
-      createdAt: new Date().toISOString(),
-      isNew: undefined,
-    },
-    ...store.coupons,
-  ];
 }
 
 export async function updateRestaurantCoupon(
-  restaurantId: string,
+  _restaurantId: string,
   coupon: RestaurantCoupon,
-): Promise<void> {
-  const store = getStore(restaurantId);
-
-  store.coupons = store.coupons.map((item) =>
-    item.id === coupon.id ? { ...coupon, isNew: undefined } : item,
-  );
+): Promise<CouponMutationResponse> {
+  try {
+    const response = await api.patch<CouponMutationResponse>(
+      `/api/cupones/${coupon.id}`,
+      mapCouponRequest(coupon, { includeStatus: true }),
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getCouponErrorMessage(error, "No se pudo guardar el cupon."),
+    );
+  }
 }
 
 export async function deleteRestaurantCoupon(
-  restaurantId: string,
+  _restaurantId: string,
   couponId: string,
-): Promise<void> {
-  const store = getStore(restaurantId);
-
-  store.coupons = store.coupons.filter((item) => item.id !== couponId);
+): Promise<CouponMutationResponse> {
+  try {
+    const response = await api.delete<CouponMutationResponse>(
+      `/api/cupones/${couponId}`,
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getCouponErrorMessage(error, "No se pudo eliminar el cupon."),
+    );
+  }
 }
