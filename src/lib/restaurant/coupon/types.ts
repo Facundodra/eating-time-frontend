@@ -22,3 +22,31 @@ export type RestaurantCouponsResponse = {
   coupons: RestaurantCoupon[];
   availableDishes: CouponDish[];
 };
+
+export type RestaurantCouponApiDish = {
+  id: number;
+  nombre: string;
+};
+
+export type RestaurantCouponApiResponse = {
+  id: number;
+  codigo: string;
+  descripcion: string | null;
+  porcentaje: number;
+  estado: boolean;
+  creacion: string;
+  vencimiento: string;
+  eliminacion: string | null;
+  localId: number;
+  platos: RestaurantCouponApiDish[];
+  idPlatos?: number[];
+};
+
+export type RestaurantCouponRequest = {
+  codigo: string;
+  descripcion?: string;
+  porcentaje: number;
+  vencimiento: string;
+  idPlatos: number[];
+  estado?: boolean;
+};
