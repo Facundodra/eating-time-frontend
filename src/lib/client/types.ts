@@ -140,6 +140,7 @@ export type OrderHistoryStatus =
 export type Order = {
   id: number;
   restaurantId: number;
+  restaurantName?: string | null;
   clienteId: number;
   cuponId: number | null;
   estado: OrderHistoryStatus;
