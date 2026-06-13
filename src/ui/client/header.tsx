@@ -12,7 +12,10 @@ import { useEffect, useState } from "react";
 
 import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
 import type { LoginWebResponse } from "@/lib/shared/auth/types";
-import { getPendingOrderRatingsCount } from "@/services/client/client-service";
+import {
+  getPendingConfirmationOrdersCount,
+  getPendingOrderRatingsCount,
+} from "@/services/client/client-service";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
@@ -21,6 +24,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
   const { imageUrl, profileAlt } = getSessionDisplayData(session);
   const [pendingRatingCount, setPendingRatingCount] = useState(0);
+  const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
   // Si estamos en un restaurante, el ícono del carrito apunta a su carrito
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
@@ -31,28 +35,43 @@ export default function Header({ session }: { session: LoginWebResponse }) {
   useEffect(() => {
     let ignore = false;
 
-    async function loadPendingRatingCount() {
+    async function loadPendingCounts() {
       try {
-        const count = await getPendingOrderRatingsCount();
-        if (!ignore) setPendingRatingCount(count);
+        const [ratingsCount, ordersCount] = await Promise.all([
+          getPendingOrderRatingsCount(),
+          getPendingConfirmationOrdersCount(),
+        ]);
+
+        if (!ignore) {
+          setPendingRatingCount(ratingsCount);
+          setPendingOrdersCount(ordersCount);
+        }
       } catch {
-        if (!ignore) setPendingRatingCount(0);
+        if (!ignore) {
+          setPendingRatingCount(0);
+          setPendingOrdersCount(0);
+        }
       }
     }
 
-    void loadPendingRatingCount();
+    void loadPendingCounts();
 
-    function handleOrderRatingUpdated() {
-      void loadPendingRatingCount();
+    function handlePendingCountsUpdated() {
+      void loadPendingCounts();
     }
 
-    window.addEventListener("order-rating-updated", handleOrderRatingUpdated);
+    window.addEventListener("order-rating-updated", handlePendingCountsUpdated);
+    window.addEventListener("pending-orders-updated", handlePendingCountsUpdated);
 
     return () => {
       ignore = true;
       window.removeEventListener(
         "order-rating-updated",
-        handleOrderRatingUpdated,
+        handlePendingCountsUpdated,
+      );
+      window.removeEventListener(
+        "pending-orders-updated",
+        handlePendingCountsUpdated,
       );
     };
   }, []);
@@ -110,10 +129,20 @@ export default function Header({ session }: { session: LoginWebResponse }) {
         {/* <Link href="/client/mi-cuenta" className="relative bottom-[3px]"> */}
         <span className="relative inline-block">
           <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+          {pendingOrdersCount > 0 ? (
+            <span
+              aria-label={`${pendingOrdersCount} pedidos en curso cancelables`}
+              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
+            >
+              {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
+            </span>
+          ) : null}
           {pendingRatingCount > 0 ? (
             <span
               aria-label={`${pendingRatingCount} pedidos pendientes de calificacion`}
-              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
+              className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950 ${
+                pendingOrdersCount > 0 ? "-left-1 -top-1" : "-right-1 -top-1"
+              }`}
             >
               {pendingRatingCount > 9 ? "9+" : pendingRatingCount}
             </span>
@@ -124,7 +153,16 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           <li><Link href="/client/mi-cuenta" className="text-sm text-gray-800 hover:text-orange-700 transition">Mi cuenta</Link></li>
           <li>
             <Link
-              href="/client/order-ratings"
+              href="/client/pending-orders"
+              className="text-sm text-gray-800 hover:text-orange-700 transition"
+            >
+              Pedidos en curso
+              {pendingOrdersCount > 0 ? ` (${pendingOrdersCount})` : ""}
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/client/order-history"
               className="text-sm text-gray-800 hover:text-orange-700 transition"
             >
               Calificación de pedidos
