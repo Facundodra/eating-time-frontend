@@ -83,9 +83,7 @@ function buildStats(
     ? dishes.filter((dish) => dish.status === "available")
     : null;
   const pendingClaims = claims
-    ? claims.filter(
-        (claim) => claim.status === "pending" || claim.status === "in_review",
-      )
+    ? claims.filter((claim) => claim.status === "pending")
     : null;
 
   return [

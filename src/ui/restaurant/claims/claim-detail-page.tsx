@@ -2,8 +2,6 @@
 
 import {
   ArrowLeftIcon,
-  BanknotesIcon,
-  ClockIcon,
   TicketIcon,
   XCircleIcon,
   XMarkIcon,
@@ -15,14 +13,15 @@ import { useCallback, useEffect, useState } from "react";
 import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
   ClaimOrder,
-  ClaimResolutionAction,
+  ClaimVoucher,
   ClaimStatus,
   RestaurantClaim,
   RestaurantClaimDetail,
 } from "@/lib/restaurant/claim/types";
 import {
+  approveRestaurantClaim,
   getRestaurantClaimDetail,
-  updateRestaurantClaim,
+  rejectRestaurantClaim,
 } from "@/services/restaurant/claim-service";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
@@ -31,42 +30,34 @@ import PanelError from "@/ui/shared/feedback/panel-error";
 type ClaimDetailPageProps = {
   claimId: string;
 };
-type ClaimDecisionAction = "later" | ClaimResolutionAction;
+type ClaimDecisionAction = "rejection" | "voucher";
 
 const statusLabels: Record<ClaimStatus, string> = {
   pending: "Pendiente",
-  in_review: "En revision",
-  resolved: "Resuelto",
+  resolved: "Aprobado",
   rejected: "Rechazado",
 };
 
 const statusColors: Record<ClaimStatus, string> = {
   pending:
     "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
-  in_review:
-    "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
   resolved:
     "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
   rejected: "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400",
 };
 
-const resolutionLabels: Record<ClaimResolutionAction, string> = {
+const resolutionLabels: Record<ClaimDecisionAction, string> = {
   rejection: "Rechazo",
-  refund: "Reembolso",
   voucher: "Voucher",
 };
 
 const decisionLabels: Record<ClaimDecisionAction, string> = {
-  later: "Retomar mas tarde",
   rejection: "Rechazo",
-  refund: "Reembolso",
   voucher: "Voucher",
 };
 
 const decisionDescriptions: Record<ClaimDecisionAction, string> = {
-  later: "Deja el reclamo en revision para continuarlo despues.",
   rejection: "Cierra el reclamo rechazando la solicitud del cliente.",
-  refund: "Cierra el reclamo aprobando un reembolso.",
   voucher: "Cierra el reclamo generando una compensacion por voucher.",
 };
 
@@ -119,29 +110,31 @@ function InfoField({ label, value }: { label: string; value: string }) {
 function OrderItemsTable({ order }: { order: ClaimOrder }) {
   return (
     <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
-      {order.items.map((item) => (
-        <div
-          key={item.id}
-          className="grid gap-3 border-b border-gray-100 px-4 py-4 text-sm last:border-b-0 md:grid-cols-[minmax(0,1fr)_80px_120px] md:items-start dark:border-slate-800"
-        >
-          <div className="min-w-0">
-            <p className="font-extrabold text-slate-900 dark:text-white">
-              {item.name}
+      {order.items.length === 0 ? (
+        <p className="px-4 py-4 text-sm font-medium text-slate-400 dark:text-slate-500">
+          No hay platos para mostrar.
+        </p>
+      ) : (
+        order.items.map((item) => (
+          <div
+            key={item.id}
+            className="grid gap-3 border-b border-gray-100 px-4 py-4 text-sm last:border-b-0 md:grid-cols-[minmax(0,1fr)_80px_120px_120px] md:items-center dark:border-slate-800"
+          >
+            <p className="min-w-0 font-extrabold text-slate-900 dark:text-white">
+              {item.dishName}
             </p>
-            {item.notes ? (
-              <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                {item.notes}
-              </p>
-            ) : null}
+            <p className="font-extrabold text-slate-700 dark:text-slate-200">
+              x{item.quantity}
+            </p>
+            <p className="font-extrabold text-slate-700 dark:text-slate-200">
+              {formatPrice(item.unitPrice)}
+            </p>
+            <p className="font-extrabold text-slate-900 dark:text-white">
+              {formatPrice(item.subtotal)}
+            </p>
           </div>
-          <p className="font-extrabold text-slate-700 dark:text-slate-200">
-            x{item.quantity}
-          </p>
-          <p className="font-extrabold text-slate-900 dark:text-white">
-            {formatPrice(item.unitPrice * item.quantity)}
-          </p>
-        </div>
-      ))}
+        ))
+      )}
     </div>
   );
 }
@@ -152,6 +145,7 @@ export default function RestaurantClaimDetailPage({
   const [restaurantId, setRestaurantId] = useState("");
   const [claim, setClaim] = useState<RestaurantClaim | null>(null);
   const [order, setOrder] = useState<ClaimOrder | null>(null);
+  const [voucher, setVoucher] = useState<ClaimVoucher | null>(null);
   const [editResponse, setEditResponse] = useState("");
   const [voucherAmount, setVoucherAmount] = useState("");
   const [selectedDecisionAction, setSelectedDecisionAction] =
@@ -178,6 +172,7 @@ export default function RestaurantClaimDetailPage({
       onSuccess: (data) => {
         setClaim(data.claim);
         setOrder(data.order);
+        setVoucher(data.voucher);
         resetEditForm(data.claim);
       },
     },
@@ -207,13 +202,11 @@ export default function RestaurantClaimDetailPage({
 
     setClaim(data.claim);
     setOrder(data.order);
+    setVoucher(data.voucher);
     resetEditForm(data.claim);
   }
 
-  async function saveClaim(
-    nextStatus = claim?.status ?? "pending",
-    nextResolutionAction = claim?.resolutionAction ?? null,
-  ) {
+  async function saveClaim(nextResolutionAction: ClaimDecisionAction) {
     if (!claim) {
       return;
     }
@@ -221,14 +214,23 @@ export default function RestaurantClaimDetailPage({
     try {
       setIsSavingChanges(true);
       setFormError(null);
-      await updateRestaurantClaim(restaurantId, {
-        ...claim,
-        status: nextStatus,
-        resolutionAction: nextResolutionAction,
-        voucherAmount:
-          nextResolutionAction === "voucher" ? Number(voucherAmount) : null,
-        response: editResponse.trim(),
-      });
+
+      const nota = editResponse.trim();
+
+      if (nextResolutionAction === "voucher") {
+        const parsedVoucherAmount = Number(voucherAmount);
+        await approveRestaurantClaim(claim.id, {
+          ...(nota ? { nota } : {}),
+          ...(voucherAmount.trim() && Number.isFinite(parsedVoucherAmount)
+            ? { valorVoucher: parsedVoucherAmount }
+            : {}),
+        });
+      } else {
+        await rejectRestaurantClaim(claim.id, {
+          ...(nota ? { nota } : {}),
+        });
+      }
+
       await refreshClaimDetail();
     } catch (error) {
       // Las acciones sobre reclamos no limpian el formulario si fallan, para
@@ -245,37 +247,41 @@ export default function RestaurantClaimDetailPage({
 
   async function confirmDecision() {
     if (!selectedDecisionAction) {
-      await saveClaim();
+      setFormError("Selecciona una accion para resolver el reclamo.");
       return;
     }
 
-    if (selectedDecisionAction === "later") {
-      await saveClaim("in_review", null);
+    if (selectedDecisionAction === "voucher" && voucherAmount.trim()) {
+      const parsedVoucherAmount = Number(voucherAmount);
+      if (!Number.isFinite(parsedVoucherAmount)) {
+        setFormError("Ingresa un monto valido para el voucher.");
+        return;
+      }
+    }
+
+    if (selectedDecisionAction === "rejection" && !editResponse.trim()) {
+      setFormError("Ingresa una nota para rechazar el reclamo.");
       return;
     }
 
-    const parsedVoucherAmount = Number(voucherAmount);
+    await saveClaim(selectedDecisionAction);
+  }
 
-    if (
-      selectedDecisionAction === "voucher" &&
-      (!Number.isFinite(parsedVoucherAmount) || parsedVoucherAmount <= 0)
-    ) {
-      setFormError("Ingresa un monto valido para el voucher.");
-      return;
+  function selectDecisionAction(action: ClaimDecisionAction) {
+    setSelectedDecisionAction(action);
+
+    if (action === "voucher" && !voucherAmount.trim() && order) {
+      setVoucherAmount(String(order.total));
     }
-
-    await saveClaim(
-      selectedDecisionAction === "rejection" ? "rejected" : "resolved",
-      selectedDecisionAction,
-    );
   }
 
   const hasChanges =
     Boolean(claim) &&
+    selectedDecisionAction !== null &&
     (editResponse !== claim?.response ||
-      selectedDecisionAction !== null ||
       voucherAmount !==
-        (claim?.voucherAmount ? String(claim.voucherAmount) : ""));
+        (claim?.voucherAmount ? String(claim.voucherAmount) : "") ||
+      selectedDecisionAction !== claim?.resolutionAction);
   const isClaimClosed = claim?.status === "resolved" || claim?.status === "rejected";
   const loadErrorMessage =
     loadError?.message ?? "No se pudo cargar el detalle del reclamo.";
@@ -400,16 +406,13 @@ export default function RestaurantClaimDetailPage({
 
               <div className="space-y-5 p-5">
                 <div className="grid gap-4 md:grid-cols-2">
+                  <InfoField label="Pedido" value={`#${order.id}`} />
                   <InfoField
                     label="Fecha del pedido"
                     value={formatDateTimeLabel(order.createdAt)}
                   />
                   <InfoField label="Estado del pedido" value={order.status} />
-                  <InfoField
-                    label="Direccion de entrega"
-                    value={order.deliveryAddress}
-                  />
-                  <InfoField label="Metodo de pago" value={order.paymentMethod} />
+                  <InfoField label="Total del pedido" value={formatPrice(order.total)} />
                 </div>
 
                 <div>
@@ -417,21 +420,6 @@ export default function RestaurantClaimDetailPage({
                     Platos del pedido
                   </span>
                   <OrderItemsTable order={order} />
-                </div>
-
-                <div className="grid gap-3 rounded-xl border border-gray-200 bg-slate-50 p-4 text-sm dark:border-slate-800 dark:bg-slate-950">
-                  <div className="flex justify-between gap-4 font-bold text-slate-600 dark:text-slate-300">
-                    <span>Subtotal</span>
-                    <span>{formatPrice(order.subtotal)}</span>
-                  </div>
-                  <div className="flex justify-between gap-4 font-bold text-slate-600 dark:text-slate-300">
-                    <span>Envio</span>
-                    <span>{formatPrice(order.deliveryFee)}</span>
-                  </div>
-                  <div className="flex justify-between gap-4 border-t border-gray-200 pt-3 text-base font-black text-slate-950 dark:border-slate-800 dark:text-white">
-                    <span>Total</span>
-                    <span>{formatPrice(order.total)}</span>
-                  </div>
                 </div>
               </div>
             </section>
@@ -458,29 +446,7 @@ export default function RestaurantClaimDetailPage({
                   <div className="grid gap-3">
                     <button
                       type="button"
-                      onClick={() => setSelectedDecisionAction("later")}
-                      disabled={isSavingChanges}
-                      className={clsx(
-                        "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
-                        selectedDecisionAction === "later"
-                          ? "border-blue-200 bg-blue-50 dark:border-blue-500/30 dark:bg-blue-500/10"
-                          : "border-gray-200 bg-white hover:border-blue-200 hover:bg-blue-50/50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-blue-500/30 dark:hover:bg-blue-500/10",
-                      )}
-                    >
-                      <ClockIcon className="mt-0.5 h-5 w-5 shrink-0 text-blue-600 dark:text-blue-400" />
-                      <span>
-                        <span className="block text-sm font-extrabold text-slate-900 dark:text-white">
-                          {decisionLabels.later}
-                        </span>
-                        <span className="mt-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {decisionDescriptions.later}
-                        </span>
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDecisionAction("rejection")}
+                      onClick={() => selectDecisionAction("rejection")}
                       disabled={isSavingChanges}
                       className={clsx(
                         "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
@@ -502,29 +468,7 @@ export default function RestaurantClaimDetailPage({
 
                     <button
                       type="button"
-                      onClick={() => setSelectedDecisionAction("refund")}
-                      disabled={isSavingChanges}
-                      className={clsx(
-                        "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
-                        selectedDecisionAction === "refund"
-                          ? "border-emerald-200 bg-emerald-50 dark:border-emerald-500/30 dark:bg-emerald-500/10"
-                          : "border-gray-200 bg-white hover:border-emerald-200 hover:bg-emerald-50/50 dark:border-slate-800 dark:bg-slate-950 dark:hover:border-emerald-500/30 dark:hover:bg-emerald-500/10",
-                      )}
-                    >
-                      <BanknotesIcon className="mt-0.5 h-5 w-5 shrink-0 text-emerald-600 dark:text-emerald-400" />
-                      <span>
-                        <span className="block text-sm font-extrabold text-slate-900 dark:text-white">
-                          {decisionLabels.refund}
-                        </span>
-                        <span className="mt-1 block text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {decisionDescriptions.refund}
-                        </span>
-                      </span>
-                    </button>
-
-                    <button
-                      type="button"
-                      onClick={() => setSelectedDecisionAction("voucher")}
+                      onClick={() => selectDecisionAction("voucher")}
                       disabled={isSavingChanges}
                       className={clsx(
                         "flex cursor-pointer items-start gap-3 rounded-xl border px-4 py-3 text-left transition disabled:cursor-not-allowed disabled:opacity-60",
@@ -554,10 +498,9 @@ export default function RestaurantClaimDetailPage({
                   </span>
                   <input
                     type="number"
-                    min={1}
                     value={voucherAmount}
                     onChange={(event) => setVoucherAmount(event.target.value)}
-                    placeholder="Ej: 300"
+                    placeholder={`Por defecto: ${formatPrice(order.total)}`}
                     className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                   />
                 </label>
@@ -576,6 +519,49 @@ export default function RestaurantClaimDetailPage({
                   className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
               </label>
+
+              {isClaimClosed && claim.resolutionAction === "voucher" ? (
+                <div className="rounded-xl border border-orange-200 bg-orange-50 p-4 dark:border-orange-500/30 dark:bg-orange-500/10">
+                  <div className="flex items-start gap-3">
+                    <TicketIcon className="mt-0.5 h-5 w-5 shrink-0 text-orange-600 dark:text-orange-400" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-extrabold text-slate-950 dark:text-white">
+                        Voucher generado
+                      </p>
+                      <div className="mt-3 grid gap-3 text-sm">
+                        {voucher?.code ? (
+                          <div className="flex justify-between gap-4">
+                            <span className="font-medium text-slate-500 dark:text-slate-400">
+                              Codigo
+                            </span>
+                            <span className="font-extrabold text-slate-900 dark:text-white">
+                              {voucher.code}
+                            </span>
+                          </div>
+                        ) : null}
+                        <div className="flex justify-between gap-4">
+                          <span className="font-medium text-slate-500 dark:text-slate-400">
+                            Monto
+                          </span>
+                          <span className="font-extrabold text-slate-900 dark:text-white">
+                            {formatPrice(voucher?.amount ?? claim.voucherAmount ?? order.total)}
+                          </span>
+                        </div>
+                        {voucher?.expiresAt ? (
+                          <div className="flex justify-between gap-4">
+                            <span className="font-medium text-slate-500 dark:text-slate-400">
+                              Vencimiento
+                            </span>
+                            <span className="font-extrabold text-slate-900 dark:text-white">
+                              {formatDateTimeLabel(voucher.expiresAt)}
+                            </span>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ) : null}
 
               {formError && (
                 <div className="flex items-start justify-between gap-3 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
@@ -603,7 +589,7 @@ export default function RestaurantClaimDetailPage({
                     ? "Guardando..."
                     : selectedDecisionAction
                       ? `Confirmar ${decisionLabels[selectedDecisionAction]}`
-                      : "Guardar nota interna"}
+                      : "Confirmar accion"}
                 </button>
                 {hasChanges ? (
                   <button

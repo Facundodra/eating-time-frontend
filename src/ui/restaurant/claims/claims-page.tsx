@@ -20,16 +20,13 @@ type ClaimFilter = "all" | ClaimStatus;
 
 const statusLabels: Record<ClaimStatus, string> = {
   pending: "Pendiente",
-  in_review: "En revision",
-  resolved: "Resuelto",
+  resolved: "Aprobado",
   rejected: "Rechazado",
 };
 
 const statusColors: Record<ClaimStatus, string> = {
   pending:
     "bg-amber-50 text-amber-600 dark:bg-amber-500/10 dark:text-amber-400",
-  in_review:
-    "bg-blue-50 text-blue-600 dark:bg-blue-500/10 dark:text-blue-400",
   resolved:
     "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-400",
   rejected: "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400",
@@ -181,8 +178,7 @@ export default function RestaurantClaimsPage() {
           >
             <option value="all">Todos</option>
             <option value="pending">Pendientes</option>
-            <option value="in_review">En revision</option>
-            <option value="resolved">Resueltos</option>
+            <option value="resolved">Aprobados</option>
             <option value="rejected">Rechazados</option>
           </select>
         </label>

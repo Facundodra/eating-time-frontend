@@ -14,6 +14,7 @@ Contrato de integracion para la atencion de reclamos del local.
 | Accion | Metodo | Endpoint |
 | --- | --- | --- |
 | Listar reclamos del local | `GET` | `/api/reclamos/local/{idLocal}` |
+| Obtener detalle del reclamo | `GET` | `/api/reclamos/{id}` |
 | Aprobar reclamo y generar voucher | `PATCH` | `/api/reclamos/{id}/aprobar` |
 | Rechazar reclamo | `PATCH` | `/api/reclamos/{id}/rechazar` |
 
@@ -29,15 +30,49 @@ El campo `estado` puede tomar estos valores:
 
 ## Modelo de reclamo
 
-Respuesta esperada como `ReclamoDto`.
+Los endpoints `GET /api/reclamos/local/{idLocal}`, `GET /api/reclamos/{id}` y `PATCH /api/reclamos/{id}/rechazar` devuelven `ReclamoDto` con datos del reclamo, cliente, pedido e items del pedido.
+
+Campos principales:
+
+- `id`: identificador del reclamo.
+- `descripcion`: detalle ingresado por el cliente.
+- `nota`: respuesta guardada al aprobar o rechazar; llega `null` si esta pendiente.
+- `estado`: `PENDIENTE`, `APROBADO` o `RECHAZADO`.
+- `creacion`: fecha de creacion del reclamo.
+- `clienteId`, `clienteNombre`, `clienteEmail`: datos del cliente asociado al pedido.
+- `pedidoId`, `pedidoTotal`, `pedidoEstado`, `pedidoCreacion`: resumen del pedido asociado.
+- `items`: platos del pedido, con `plato`, `cantidad`, `precioUnitario` y `subtotal`.
+
+Ejemplo:
 
 ```json
 {
   "id": 7,
   "descripcion": "El pedido llego frio y con items faltantes",
+  "nota": null,
   "estado": "PENDIENTE",
   "creacion": "2026-05-22T20:15:00",
-  "pedidoId": 15
+  "pedidoId": 15,
+  "pedidoTotal": 850.0,
+  "pedidoEstado": "FINALIZADO",
+  "pedidoCreacion": "2026-05-22T19:00:00",
+  "clienteId": 3,
+  "clienteNombre": "Juan Perez",
+  "clienteEmail": "juan@gmail.com",
+  "items": [
+    {
+      "plato": "Milanesa napolitana",
+      "cantidad": 2,
+      "precioUnitario": 350.0,
+      "subtotal": 700.0
+    },
+    {
+      "plato": "Gaseosa",
+      "cantidad": 1,
+      "precioUnitario": 150.0,
+      "subtotal": 150.0
+    }
+  ]
 }
 ```
 
@@ -51,30 +86,23 @@ GET /api/reclamos/local/{idLocal}
 
 `200 OK`
 
-```json
-[
-  {
-    "id": 7,
-    "descripcion": "El pedido llego frio y con items faltantes",
-    "estado": "PENDIENTE",
-    "creacion": "2026-05-22T20:15:00",
-    "pedidoId": 15
-  },
-  {
-    "id": 4,
-    "descripcion": "Producto incorrecto entregado",
-    "estado": "APROBADO",
-    "creacion": "2026-05-18T18:00:00",
-    "pedidoId": 11
-  }
-]
-```
-
-Si no hay reclamos, devuelve una lista vacia:
+Devuelve `ReclamoDto[]`. Si no hay reclamos, devuelve una lista vacia:
 
 ```json
 []
 ```
+
+## Detalle del reclamo
+
+```http
+GET /api/reclamos/{id}
+```
+
+### Respuesta exitosa
+
+`200 OK`
+
+Devuelve un `ReclamoDto`.
 
 ## Aprobar reclamo
 
@@ -96,26 +124,13 @@ Aprueba el reclamo y genera un voucher de compensacion para el cliente.
 | Campo | Tipo | Obligatorio | Descripcion |
 | --- | --- | --- | --- |
 | `nota` | `string` | No | Mensaje para el cliente |
-| `valorVoucher` | `number` | No | Monto del voucher; si se omite usa el valor del pedido |
+| `valorVoucher` | `number` | No | Monto del voucher; si se omite usa el total del pedido |
 
 ### Respuesta exitosa
 
 `201 Created`
 
 Devuelve un `VoucherDto`.
-
-```json
-{
-  "id": 1,
-  "codigo": "VCHR-ABC123",
-  "descripcion": "Voucher por reclamo aprobado",
-  "valor": 350.0,
-  "creacion": "2026-05-22T21:00:00",
-  "vencimiento": "2026-06-22T21:00:00",
-  "reclamoId": 7,
-  "pedidoId": 15
-}
-```
 
 ## Rechazar reclamo
 
@@ -141,16 +156,6 @@ PATCH /api/reclamos/{id}/rechazar
 
 Devuelve el `ReclamoDto` actualizado.
 
-```json
-{
-  "id": 7,
-  "descripcion": "El pedido llego frio y con items faltantes",
-  "estado": "RECHAZADO",
-  "creacion": "2026-05-22T20:15:00",
-  "pedidoId": 15
-}
-```
-
 ## Errores comunes
 
 | Codigo | Motivo |
@@ -163,19 +168,11 @@ Devuelve el `ReclamoDto` actualizado.
 
 - Las llamadas deben usar sesion HTTP con credenciales, igual que el resto de servicios del local.
 - La pantalla de listado puede cargarse con `GET /api/reclamos/local/{idLocal}`.
+- La pantalla de detalle puede cargarse con `GET /api/reclamos/{id}`.
 - Los estados `APROBADO` y `RECHAZADO` deben bloquear nuevas acciones sobre el reclamo.
-- Para aprobar con voucher, el frontend debe permitir ingresar `valorVoucher`.
+- Para aprobar con voucher, el frontend debe permitir ingresar `valorVoucher`; si queda vacio, backend usa el total del pedido.
 - Para rechazar, el frontend debe permitir ingresar una `nota`.
-- Luego de aprobar o rechazar, conviene refrescar el listado o actualizar el reclamo en memoria.
-
-## Pendientes a confirmar
-
-- El contrato no incluye un endpoint de detalle del reclamo.
-- El contrato no incluye la informacion del pedido asociado. La UI actual necesita mostrar datos del pedido para decidir la accion.
-- No aparece una accion de "retomar mas tarde"; podria resolverse solo no enviando ninguna accion, pero no queda registro de que el local reviso el caso.
-- No hay accion de reembolso directo. El contrato solo permite aprobar con voucher o rechazar.
-- Confirmar si `valorVoucher` acepta decimales y moneda, y si tiene minimo/maximo.
-- Confirmar si `nota` se persiste y luego se devuelve en algun DTO.
+- La `nota` se persiste al aprobar o rechazar y se devuelve en los endpoints.
 
 ## Referencia backend
 
@@ -184,4 +181,4 @@ Devuelve el `ReclamoDto` actualizado.
 | Controller | `ReclamoController.java` |
 | Logica | `ReclamoService.java` |
 | Entidades | `Reclamo.java`, `Voucher.java`, `EstadoAprobacion.java` |
-| DTOs | `ReclamoDto.java`, `ReclamoRequestDto.java`, `VoucherDto.java` |
+| DTOs | `ReclamoDto.java`, `ItemReclamoDto.java`, `ReclamoRequestDto.java`, `VoucherDto.java` |
