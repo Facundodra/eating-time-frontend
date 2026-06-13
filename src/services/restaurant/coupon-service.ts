@@ -153,6 +153,25 @@ export async function updateRestaurantCoupon(
   }
 }
 
+export async function updateRestaurantCouponStatus(
+  coupon: RestaurantCoupon,
+  status: RestaurantCoupon["status"],
+): Promise<CouponMutationResponse> {
+  const nextCoupon = { ...coupon, status };
+
+  try {
+    const response = await api.patch<CouponMutationResponse>(
+      `/api/cupones/${coupon.id}`,
+      mapCouponRequest(nextCoupon, { includeStatus: true }),
+    );
+    return response.data;
+  } catch (error) {
+    throw new Error(
+      getCouponErrorMessage(error, "No se pudo cambiar el estado del cupon."),
+    );
+  }
+}
+
 export async function deleteRestaurantCoupon(
   _restaurantId: string,
   couponId: string,

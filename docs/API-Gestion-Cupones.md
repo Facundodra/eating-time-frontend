@@ -33,7 +33,17 @@ Respuesta esperada como `CuponDto`.
   "creacion": "2026-05-10T10:00:00",
   "vencimiento": "2026-08-31T23:59:00",
   "eliminacion": null,
-  "localId": 3
+  "localId": 3,
+  "platos": [
+    {
+      "id": 5,
+      "nombre": "Milanesa napolitana"
+    },
+    {
+      "id": 6,
+      "nombre": "Milanesa con papas"
+    }
+  ]
 }
 ```
 
@@ -60,7 +70,17 @@ Devuelve solo cupones no eliminados, es decir, con `eliminacion IS NULL`.
     "creacion": "2026-05-10T10:00:00",
     "vencimiento": "2026-08-31T23:59:00",
     "eliminacion": null,
-    "localId": 3
+    "localId": 3,
+    "platos": [
+      {
+        "id": 5,
+        "nombre": "Milanesa napolitana"
+      },
+      {
+        "id": 6,
+        "nombre": "Milanesa con papas"
+      }
+    ]
   }
 ]
 ```
@@ -166,11 +186,11 @@ Realiza baja logica seteando `eliminacion = now()`. Luego el cupon no aparece ma
 - Las llamadas deben usar sesion HTTP con credenciales, igual que el resto de servicios del local.
 - El formulario puede seguir la misma estrategia que descuentos: editar una copia local, persistir al guardar y descartar cambios al cambiar de seleccion.
 - Al modificar platos asociados, el frontend debe enviar la lista completa de `idPlatos` para reemplazar la asociacion.
+- El `GET /api/cupones/local/{idLocal}` devuelve los platos asociados en `platos`, con el mismo criterio que descuentos.
 - Si `DELETE` devuelve `200 OK`, el frontend puede quitar el cupon del listado localmente y luego refrescar desde backend.
 
 ## Pendientes a confirmar
 
-- El `CuponDto` no incluye los platos asociados. Para mostrar y editar la lista de platos del cupon, el frontend necesita que el backend devuelva esos platos o al menos sus IDs.
 - Confirmar si `estado` se puede modificar con `PATCH` y cual es el nombre exacto esperado en el body.
 - Confirmar si el codigo del cupon debe normalizarse en backend, por ejemplo mayusculas y trim, o si debe hacerlo el frontend.
 

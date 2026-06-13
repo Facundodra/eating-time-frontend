@@ -38,7 +38,7 @@ export type RestaurantCouponApiResponse = {
   vencimiento: string;
   eliminacion: string | null;
   localId: number;
-  platos?: RestaurantCouponApiDish[];
+  platos: RestaurantCouponApiDish[];
   idPlatos?: number[];
 };
 
