@@ -959,7 +959,7 @@ export async function getOrderHistory(
     const params: Record<string, string | number> = {};
     if (filter.orderId != null) params.identificador = filter.orderId;
     if (filter.localId != null) params.localId = filter.localId;
-    if (filter.estado) params.estado = filter.estado;
+    if (filter.estado) params.estados = filter.estado;
     if (filter.desde) params.desde = filter.desde;
     if (filter.hasta) params.hasta = filter.hasta;
     if (filter.ordenarPor) params.ordenarPor = filter.ordenarPor;

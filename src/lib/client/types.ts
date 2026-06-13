@@ -132,15 +132,16 @@ export type Cart = {
   items: CartItem[];
 };
 
-// Estados de un pedido que aparecen en el historial del cliente
-// (ya confirmados por el local: en curso o terminados, más los cerrados)
+// Estados de un pedido que aparecen en el historial del cliente.
 export type OrderHistoryStatus =
+  | "PENDIENTE_CONFIRMACION_LOCAL"
   | "ACEPTADO_LOCAL"
   | "EN_CURSO_LOCAL"
   | "EN_CAMINO_LOCAL"
   | "FINALIZADO"
   | "RECHAZADO_LOCAL"
-  | "CANCELADO_CLIENTE";
+  | "CANCELADO_CLIENTE"
+  | "EN_CARRITO";
 
 // Pedido cerrado del historial del cliente (mapea PedidoDto del backend)
 export type Order = {

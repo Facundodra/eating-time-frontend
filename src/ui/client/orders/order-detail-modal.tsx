@@ -13,21 +13,25 @@ type OrderDetailModalProps = {
 };
 
 const statusLabels: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente confirmacion",
   ACEPTADO_LOCAL: "Aceptado",
-  EN_CURSO_LOCAL: "En preparación",
+  EN_CURSO_LOCAL: "En curso",
   EN_CAMINO_LOCAL: "En camino",
   FINALIZADO: "Finalizado",
   RECHAZADO_LOCAL: "Rechazado",
-  CANCELADO_CLIENTE: "Cancelado",
+  CANCELADO_CLIENTE: "Cancelo",
+  EN_CARRITO: "En carrito",
 };
 
 const statusColors: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "bg-orange-100 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300",
   ACEPTADO_LOCAL: "bg-blue-100 text-blue-700 dark:bg-blue-500/10 dark:text-blue-300",
   EN_CURSO_LOCAL: "bg-amber-100 text-amber-700 dark:bg-amber-500/10 dark:text-amber-300",
   EN_CAMINO_LOCAL: "bg-indigo-100 text-indigo-700 dark:bg-indigo-500/10 dark:text-indigo-300",
   FINALIZADO: "bg-green-100 text-green-800 dark:bg-green-500/10 dark:text-green-300",
   RECHAZADO_LOCAL: "bg-red-100 text-red-700 dark:bg-red-500/10 dark:text-red-300",
   CANCELADO_CLIENTE: "bg-gray-200 text-gray-600 dark:bg-slate-800 dark:text-slate-300",
+  EN_CARRITO: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300",
 };
 
 function formatDate(dateStr: string) {

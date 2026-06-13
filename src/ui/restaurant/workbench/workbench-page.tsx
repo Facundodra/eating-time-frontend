@@ -21,6 +21,7 @@ import {
 import type {
   OrderStatus,
   WorkbenchFilters,
+  WorkbenchLocalRating,
   WorkbenchOrder,
   WorkbenchOrderRating,
   WorkbenchRatingValue,
@@ -30,6 +31,7 @@ import {
   changeWorkbenchOrderStatus,
   fetchWorkbenchOrders,
   confirmWorkbenchOrder,
+  fetchRestaurantLocalRatings,
   getWorkbenchOrderCustomerRating,
   rejectWorkbenchOrder,
   submitWorkbenchOrderCustomerRating,
@@ -87,6 +89,36 @@ const itemBadgeClassName: Record<BoardStatus, string> = {
     "bg-emerald-50 text-emerald-600 dark:bg-emerald-500/10 dark:text-emerald-300",
   RECHAZADO_LOCAL:
     "bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-300",
+};
+
+const columnStatusClassName: Record<
+  BoardStatus,
+  { count: string; title: string }
+> = {
+  PENDIENTE_CONFIRMACION_LOCAL: {
+    title: "text-[#633806]",
+    count: "bg-[#FAEEDA] text-[#633806]",
+  },
+  ACEPTADO_LOCAL: {
+    title: "text-[#0C447C]",
+    count: "bg-[#E6F1FB] text-[#0C447C]",
+  },
+  EN_CURSO_LOCAL: {
+    title: "text-[#534AB7]",
+    count: "bg-[#EEEDFE] text-[#534AB7]",
+  },
+  EN_CAMINO_LOCAL: {
+    title: "text-[#085041]",
+    count: "bg-[#E1F5EE] text-[#085041]",
+  },
+  FINALIZADO: {
+    title: "text-[#27500A]",
+    count: "bg-[#EAF3DE] text-[#27500A]",
+  },
+  RECHAZADO_LOCAL: {
+    title: "text-red-700 dark:text-red-300",
+    count: "bg-red-50 text-red-700 dark:bg-red-500/10 dark:text-red-300",
+  },
 };
 
 type PendingOrderAction = {
@@ -164,7 +196,66 @@ function formatPrice(price: number) {
 }
 
 function getCustomerLabel(order: WorkbenchOrder) {
-  return order.customerName ?? `Cliente #${order.customerId}`;
+  if (order.customerName) return order.customerName;
+  return order.customerId > 0
+    ? `${order.customerId}`
+    : "Cliente sin identificar";
+}
+
+function isFallbackCustomerName(value: string) {
+  return value === "Cliente sin identificar" || value.startsWith("Cliente #");
+}
+
+function getCustomerNamesByOrderId(ratings: WorkbenchLocalRating[]) {
+  const customerNames = new Map<number, string>();
+
+  ratings.forEach((rating) => {
+    if (rating.customerName) {
+      customerNames.set(rating.orderId, rating.customerName);
+    }
+  });
+
+  return customerNames;
+}
+
+function mergeOrderCustomerName(
+  order: WorkbenchOrder,
+  customerName: string | undefined,
+): WorkbenchOrder {
+  if (
+    !customerName ||
+    (order.customerName && !isFallbackCustomerName(order.customerName))
+  ) {
+    return order;
+  }
+
+  return {
+    ...order,
+    customerName,
+  };
+}
+
+async function hydrateCustomerNames(
+  restaurantId: string,
+  orders: WorkbenchOrder[],
+): Promise<WorkbenchOrder[]> {
+  try {
+    const ratings = await fetchRestaurantLocalRatings(restaurantId);
+    const customerNamesByOrderId = getCustomerNamesByOrderId(ratings);
+
+    if (customerNamesByOrderId.size === 0) return orders;
+
+    return orders.map((order) =>
+      mergeOrderCustomerName(order, customerNamesByOrderId.get(order.id)),
+    );
+  } catch (error) {
+    console.warn(
+      `No se pudieron cargar los nombres de clientes del local ${restaurantId}:`,
+      error,
+    );
+
+    return orders;
+  }
 }
 
 function getRatingLabel(value: WorkbenchRatingValue | null | undefined) {
@@ -237,8 +328,16 @@ export default function RestaurantWorkbenchPage() {
 
       try {
         const data = await fetchWorkbenchOrders(restaurantId, workbenchFilters);
+        const ordersWithCustomerNames = await hydrateCustomerNames(
+          restaurantId,
+          data,
+        );
         if (ignore) return;
-        setOrders(data.filter((order) => isBoardStatus(order.status)));
+        setOrders(
+          ordersWithCustomerNames.filter((order) =>
+            isBoardStatus(order.status),
+          ),
+        );
       } catch (err) {
         if (ignore) return;
         setError(
@@ -478,6 +577,7 @@ export default function RestaurantWorkbenchPage() {
         <div className="grid min-w-[1320px] grid-cols-6 gap-4">
           {boardColumns.map((column) => {
             const columnOrders = ordersByStatus.get(column.status) ?? [];
+            const columnClassName = columnStatusClassName[column.status];
 
             return (
               <section
@@ -485,10 +585,20 @@ export default function RestaurantWorkbenchPage() {
                 className="min-h-[360px] rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50"
               >
                 <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                  <h2 className="text-sm font-black text-slate-700 dark:text-slate-200">
+                  <h2
+                    className={clsx(
+                      "text-sm font-black",
+                      columnClassName.title,
+                    )}
+                  >
                     {column.title}
                   </h2>
-                  <span className="grid h-7 min-w-7 place-items-center rounded-full bg-white px-2 text-xs font-black text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                  <span
+                    className={clsx(
+                      "grid h-7 min-w-7 place-items-center rounded-full px-2 text-xs font-black shadow-sm",
+                      columnClassName.count,
+                    )}
+                  >
                     {columnOrders.length}
                   </span>
                 </div>

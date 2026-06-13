@@ -25,22 +25,40 @@ const PAGE_SIZE = 10;
 type SortKey = "fecha-desc" | "fecha-asc" | "precio-desc" | "precio-asc";
 
 const statusLabels: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente confirmacion",
   ACEPTADO_LOCAL: "Aceptado",
-  EN_CURSO_LOCAL: "En preparacion",
+  EN_CURSO_LOCAL: "En curso",
   EN_CAMINO_LOCAL: "En camino",
   FINALIZADO: "Finalizado",
   RECHAZADO_LOCAL: "Rechazado",
-  CANCELADO_CLIENTE: "Cancelado",
+  CANCELADO_CLIENTE: "Cancelo",
+  EN_CARRITO: "En carrito",
 };
 
 const statusColors: Record<OrderHistoryStatus, string> = {
+  PENDIENTE_CONFIRMACION_LOCAL: "bg-orange-100 text-orange-700",
   ACEPTADO_LOCAL: "bg-blue-100 text-blue-700",
   EN_CURSO_LOCAL: "bg-amber-100 text-amber-700",
   EN_CAMINO_LOCAL: "bg-indigo-100 text-indigo-700",
   FINALIZADO: "bg-green-100 text-green-800",
   RECHAZADO_LOCAL: "bg-red-100 text-red-700",
   CANCELADO_CLIENTE: "bg-gray-200 text-gray-600",
+  EN_CARRITO: "bg-slate-100 text-slate-700",
 };
+
+const statusOptions: Array<{ label: string; value: OrderHistoryStatus }> = [
+  {
+    label: statusLabels.PENDIENTE_CONFIRMACION_LOCAL,
+    value: "PENDIENTE_CONFIRMACION_LOCAL",
+  },
+  { label: statusLabels.ACEPTADO_LOCAL, value: "ACEPTADO_LOCAL" },
+  { label: statusLabels.FINALIZADO, value: "FINALIZADO" },
+  { label: statusLabels.RECHAZADO_LOCAL, value: "RECHAZADO_LOCAL" },
+  { label: statusLabels.EN_CAMINO_LOCAL, value: "EN_CAMINO_LOCAL" },
+  { label: statusLabels.EN_CURSO_LOCAL, value: "EN_CURSO_LOCAL" },
+  { label: statusLabels.CANCELADO_CLIENTE, value: "CANCELADO_CLIENTE" },
+  { label: statusLabels.EN_CARRITO, value: "EN_CARRITO" },
+];
 
 const sortMap: Record<
   SortKey,
@@ -155,7 +173,7 @@ export default function OrderHistoryPage() {
   const [totalPages, setTotalPages] = useState(0);
   const [sort, setSort] = useState<SortKey>("fecha-desc");
   const [localId, setLocalId] = useState("");
-  const [status, setStatus] = useState("");
+  const [status, setStatus] = useState<OrderHistoryStatus | "">("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
   const [appliedFilter, setAppliedFilter] = useState<OrderHistoryFilter>({});
@@ -310,7 +328,7 @@ export default function OrderHistoryPage() {
   function applyFilters() {
     const next: OrderHistoryFilter = {};
     if (localId !== "") next.localId = Number(localId);
-    if (status !== "") next.estado = status as OrderHistoryStatus;
+    if (status !== "") next.estado = status;
     if (desde) next.desde = toStartOfDay(desde);
     if (hasta) next.hasta = toEndOfDay(hasta);
 
@@ -477,16 +495,17 @@ export default function OrderHistoryPage() {
             <select
               className={controlClasses}
               disabled={controlsDisabled}
-              onChange={(event) => setStatus(event.target.value)}
+              onChange={(event) =>
+                setStatus(event.target.value as OrderHistoryStatus | "")
+              }
               value={status}
             >
               <option value="">Todos los estados</option>
-              <option value="ACEPTADO_LOCAL">Aceptado</option>
-              <option value="EN_CURSO_LOCAL">En preparacion</option>
-              <option value="EN_CAMINO_LOCAL">En camino</option>
-              <option value="FINALIZADO">Finalizado</option>
-              <option value="RECHAZADO_LOCAL">Rechazado</option>
-              <option value="CANCELADO_CLIENTE">Cancelado</option>
+              {statusOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
             </select>
           </label>
         </div>
