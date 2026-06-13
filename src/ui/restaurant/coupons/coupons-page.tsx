@@ -22,6 +22,7 @@ import {
   deleteRestaurantCoupon,
   getRestaurantCoupons,
   updateRestaurantCoupon,
+  updateRestaurantCouponStatus,
 } from "@/services/restaurant/coupon-service";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
@@ -557,21 +558,11 @@ export default function RestaurantCouponsPage() {
 
     const nextStatus: CouponStatus =
       editableSelectedCoupon.status === "active" ? "inactive" : "active";
-    const nextCoupon = {
-      ...editableSelectedCoupon,
-      status: nextStatus,
-    };
-    const validationError = validateCouponForm(nextCoupon);
-
-    if (validationError) {
-      setFormError(validationError);
-      return;
-    }
 
     try {
       setIsSavingChanges(true);
       setFormError(null);
-      await updateRestaurantCoupon(restaurantId, nextCoupon);
+      await updateRestaurantCouponStatus(editableSelectedCoupon, nextStatus);
       setFilter("all");
       await refreshCouponsData("all");
       setMobileEditingCouponId("");
@@ -724,7 +715,7 @@ export default function RestaurantCouponsPage() {
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(420px,1fr)]">
-        <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <section className="order-2 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:order-1 dark:border-slate-800 dark:bg-slate-900">
           <div className="flex flex-col gap-4 border-b border-gray-200 px-5 py-5 sm:flex-row sm:items-center sm:justify-between dark:border-slate-800">
             <div>
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
@@ -823,6 +814,11 @@ export default function RestaurantCouponsPage() {
                         <p className="mt-2 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-sm font-medium text-slate-500 dark:text-slate-400">
                           {coupon.description}
                         </p>
+                        <p className="mt-1 max-w-full overflow-hidden text-ellipsis whitespace-nowrap text-xs font-bold text-slate-500 dark:text-slate-500">
+                          {coupon.dishes.length > 0
+                            ? coupon.dishes.map((dish) => dish.name).join(", ")
+                            : "Sin platos asociados"}
+                        </p>
                         <div className="mt-3 flex flex-wrap gap-2">
                           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-extrabold text-slate-700 dark:bg-slate-800 dark:text-slate-200">
                             Creado: {formatDateTimeLabel(coupon.createdAt)}
@@ -870,7 +866,7 @@ export default function RestaurantCouponsPage() {
         </section>
 
         {isLoading && (
-          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-900">
+          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:order-2 xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
                 Detalle del cupon
@@ -886,7 +882,7 @@ export default function RestaurantCouponsPage() {
         )}
 
         {loadError && (
-          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:block dark:border-slate-800 dark:bg-slate-900">
+          <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:order-2 xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
                 Detalle del cupon
@@ -902,51 +898,55 @@ export default function RestaurantCouponsPage() {
         )}
 
         {isDataReady && showCreateForm && (
-          <CouponFormPanel
-            availableDishes={availableDishes}
-            coupon={createCoupon}
-            error={formError}
-            isAddingDish={isAddingDish}
-            isAddingDishRow={isAddingDishRow}
-            isSaving={isSavingChanges}
-            mode="create"
-            onAddDish={() => startAddingDishRow(createCoupon)}
-            onCancel={handleCancelCreate}
-            onCancelDish={cancelAddingDishRow}
-            onChange={updateCreateCoupon}
-            onCloseError={() => setFormError(null)}
-            onConfirmDish={addDishToCreateCoupon}
-            onPendingDishChange={setPendingDishId}
-            onRemoveDish={removeDishFromCreateCoupon}
-            onSave={handleCreateCoupon}
-            pendingDishId={pendingDishId}
-          />
+          <div className="order-1 xl:order-2">
+            <CouponFormPanel
+              availableDishes={availableDishes}
+              coupon={createCoupon}
+              error={formError}
+              isAddingDish={isAddingDish}
+              isAddingDishRow={isAddingDishRow}
+              isSaving={isSavingChanges}
+              mode="create"
+              onAddDish={() => startAddingDishRow(createCoupon)}
+              onCancel={handleCancelCreate}
+              onCancelDish={cancelAddingDishRow}
+              onChange={updateCreateCoupon}
+              onCloseError={() => setFormError(null)}
+              onConfirmDish={addDishToCreateCoupon}
+              onPendingDishChange={setPendingDishId}
+              onRemoveDish={removeDishFromCreateCoupon}
+              onSave={handleCreateCoupon}
+              pendingDishId={pendingDishId}
+            />
+          </div>
         )}
 
         {isDataReady && !showCreateForm && selectedCoupon && editableSelectedCoupon && (
-          <CouponFormPanel
-            availableDishes={availableDishes}
-            coupon={editableSelectedCoupon}
-            error={formError}
-            hasChanges={hasSelectedCouponChanges}
-            isAddingDish={isAddingDish}
-            isAddingDishRow={isAddingDishRow}
-            isDeleting={isDeletingCoupon}
-            isSaving={isSavingChanges}
-            mode="edit"
-            onAddDish={() => startAddingDishRow(editableSelectedCoupon)}
-            onCancel={handleCancelChanges}
-            onCancelDish={cancelAddingDishRow}
-            onChange={updateSelectedCoupon}
-            onCloseError={() => setFormError(null)}
-            onConfirmDish={addDishToSelectedCoupon}
-            onDelete={handleDeleteCoupon}
-            onPendingDishChange={setPendingDishId}
-            onRemoveDish={removeDishFromSelectedCoupon}
-            onSave={handleSaveChanges}
-            onToggleStatus={toggleSelectedCouponStatus}
-            pendingDishId={pendingDishId}
-          />
+          <div className="hidden xl:order-2 xl:block">
+            <CouponFormPanel
+              availableDishes={availableDishes}
+              coupon={editableSelectedCoupon}
+              error={formError}
+              hasChanges={hasSelectedCouponChanges}
+              isAddingDish={isAddingDish}
+              isAddingDishRow={isAddingDishRow}
+              isDeleting={isDeletingCoupon}
+              isSaving={isSavingChanges}
+              mode="edit"
+              onAddDish={() => startAddingDishRow(editableSelectedCoupon)}
+              onCancel={handleCancelChanges}
+              onCancelDish={cancelAddingDishRow}
+              onChange={updateSelectedCoupon}
+              onCloseError={() => setFormError(null)}
+              onConfirmDish={addDishToSelectedCoupon}
+              onDelete={handleDeleteCoupon}
+              onPendingDishChange={setPendingDishId}
+              onRemoveDish={removeDishFromSelectedCoupon}
+              onSave={handleSaveChanges}
+              onToggleStatus={toggleSelectedCouponStatus}
+              pendingDishId={pendingDishId}
+            />
+          </div>
         )}
       </div>
     </section>
@@ -1061,10 +1061,11 @@ function CouponFormPanel({
               type="number"
               min={1}
               max={100}
-              value={coupon.percentage}
-              onChange={(event) =>
-                onChange({ percentage: Number(event.target.value) })
-              }
+              value={coupon.percentage || ""}
+              onChange={(event) => {
+                const nextValue = event.target.value;
+                onChange({ percentage: nextValue ? Number(nextValue) : 0 });
+              }}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             />
           </label>
