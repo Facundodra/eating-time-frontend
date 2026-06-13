@@ -682,6 +682,103 @@ export async function getOrderHistory(
     }
 }
 
+export class CancelOrderError extends Error {
+    constructor(
+        message: string,
+        public readonly status?: number,
+        public readonly notCancelable = false,
+    ) {
+        super(message);
+        this.name = "CancelOrderError";
+    }
+}
+
+export async function getPendingConfirmationOrders(): Promise<Order[]> {
+    const session = await requireCurrentSession();
+
+    try {
+        const response = await api.get<PedidoDtoFromApi[]>(
+            `/api/clientes/${session.idTipoUsuario}/pedidos/pendientes-confirmacion`,
+        );
+
+        return response.data.map(mapOrderFromApi);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const status = error.response?.status;
+            const message = getApiErrorMessage(error.response?.data);
+
+            if (status === 404) {
+                throw new Error(
+                    "Los pedidos pendientes de confirmación no están disponibles en el servidor.",
+                );
+            }
+
+            throw new Error(
+                message ?? `Error al obtener pedidos pendientes (${status})`,
+            );
+        }
+
+        throw new Error("No se pudieron cargar los pedidos en curso.");
+    }
+}
+
+export async function getPendingConfirmationOrdersCount(): Promise<number> {
+    try {
+        const orders = await getPendingConfirmationOrders();
+        return orders.length;
+    } catch {
+        return 0;
+    }
+}
+
+export async function cancelClientOrder(orderId: number): Promise<Order> {
+    const session = await requireCurrentSession();
+
+    try {
+        const response = await api.patch<PedidoDtoFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/pedidos/${orderId}/cancelar`,
+        );
+
+        return mapOrderFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const status = error.response?.status;
+            const message = getApiErrorMessage(error.response?.data);
+
+            if (status === 409) {
+                throw new CancelOrderError(
+                    "Tu pedido ya no es cancelable.",
+                    409,
+                    true,
+                );
+            }
+
+            if (status === 404) {
+                throw new CancelOrderError(
+                    message ?? "Pedido no encontrado.",
+                    404,
+                );
+            }
+
+            if (status === 403) {
+                throw new CancelOrderError(
+                    message ?? "No tenés permiso para cancelar este pedido.",
+                    403,
+                );
+            }
+
+            throw new CancelOrderError(
+                message ?? "No se pudo cancelar el pedido. Intentalo nuevamente.",
+                status,
+            );
+        }
+
+        throw new CancelOrderError(
+            "No se pudo cancelar el pedido. Intentalo nuevamente.",
+        );
+    }
+}
+
 export async function getPendingOrderRatingsCount(): Promise<number> {
     let page = 0;
     let totalPages = 1;
