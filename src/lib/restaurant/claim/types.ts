@@ -1,9 +1,10 @@
-export type ClaimStatus = "pending" | "in_review" | "resolved" | "rejected";
-export type ClaimResolutionAction = "rejection" | "refund" | "voucher";
+export type ClaimStatus = "pending" | "resolved" | "rejected";
+export type ClaimResolutionAction = "rejection" | "voucher";
 
 export type RestaurantClaim = {
   id: string;
   orderId: string;
+  customerId: string;
   customerName: string;
   customerEmail: string;
   reason: string;
@@ -19,29 +20,33 @@ export type RestaurantClaim = {
 
 export type ClaimOrderItem = {
   id: string;
-  name: string;
+  dishName: string;
   quantity: number;
   unitPrice: number;
-  notes?: string;
+  subtotal: number;
 };
 
 export type ClaimOrder = {
   id: string;
   createdAt: string;
   status: string;
-  customerName: string;
-  customerEmail: string;
-  deliveryAddress: string;
-  paymentMethod: string;
-  subtotal: number;
-  deliveryFee: number;
   total: number;
   items: ClaimOrderItem[];
+};
+
+export type ClaimVoucher = {
+  id: string;
+  code: string;
+  description: string;
+  amount: number;
+  createdAt: string;
+  expiresAt: string;
 };
 
 export type RestaurantClaimDetail = {
   claim: RestaurantClaim;
   order: ClaimOrder;
+  voucher: ClaimVoucher | null;
 };
 
 export type RestaurantClaimsResponse = {
