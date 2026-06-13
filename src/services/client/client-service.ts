@@ -400,6 +400,7 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
 export type OrderHistoryFilter = {
     orderId?: number;
     localId?: number;
+    estado?: OrderHistoryStatus;
     desde?: string; // ISO datetime enviado al backend, ej "2026-06-01T00:00:00"
     hasta?: string;
     ordenarPor?: "fecha" | "precio";
@@ -412,6 +413,11 @@ export type OrderHistoryFilter = {
 interface PedidoDtoFromApi {
     id: number;
     localId: number;
+    nombreLocal?: string | null;
+    localNombre?: string | null;
+    localName?: string | null;
+    restaurantName?: string | null;
+    local?: unknown;
     clienteId: number;
     cuponId: number | null;
     estado: OrderHistoryStatus;
@@ -432,6 +438,32 @@ interface PedidoDtoFromApi {
     calificadoLocal?: unknown;
 }
 
+function getNestedStringField(value: unknown, keys: string[]): string | null {
+    if (!value || typeof value !== "object") return null;
+
+    const record = value as Record<string, unknown>;
+
+    for (const key of keys) {
+        const fieldValue = record[key];
+        if (typeof fieldValue === "string" && fieldValue.trim()) {
+            return fieldValue;
+        }
+    }
+
+    return null;
+}
+
+function getOrderRestaurantName(dto: PedidoDtoFromApi): string | null {
+    return (
+        dto.nombreLocal ??
+        dto.localNombre ??
+        dto.localName ??
+        dto.restaurantName ??
+        getNestedStringField(dto.local, ["nombre", "name", "nombreLocal"]) ??
+        null
+    );
+}
+
 interface OrderRatingDtoFromApi {
     id?: number;
     pedidoId?: number;
@@ -445,6 +477,18 @@ interface OrderHistoryPageResponse {
     totalPages: number;
     totalElements: number;
     number: number;
+}
+
+async function fetchOrderHistoryPage(
+    clientId: number,
+    params: Record<string, string | number>,
+): Promise<OrderHistoryPageResponse> {
+    const response = await api.get<OrderHistoryPageResponse>(
+        `/api/clientes/${clientId}/pedidos`,
+        { params },
+    );
+
+    return response.data;
 }
 
 function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
@@ -465,6 +509,7 @@ function mapOrderFromApi(dto: PedidoDtoFromApi): Order {
     return {
         ...rest,
         restaurantId: localId,
+        restaurantName: getOrderRestaurantName(dto),
         items: items ?? [],
         calificacionLocal: rating,
         hasLocalRating:
@@ -635,31 +680,74 @@ export async function getOrderHistory(
     filter: OrderHistoryFilter = {}
 ): Promise<{ orders: Order[]; totalPages: number; totalElements: number }> {
     const session = await requireCurrentSession();
+    const requestedPage = filter.page ?? 0;
+    const requestedSize = filter.size ?? 10;
 
     const params: Record<string, string | number> = {};
     if (filter.orderId != null) params.identificador = filter.orderId;
     if (filter.localId != null) params.localId = filter.localId;
+    if (filter.estado) params.estado = filter.estado;
     if (filter.desde) params.desde = filter.desde;
     if (filter.hasta) params.hasta = filter.hasta;
     if (filter.ordenarPor) params.ordenarPor = filter.ordenarPor;
     if (filter.direccion) params.direccion = filter.direccion;
-    params.page = filter.page ?? 0;
-    params.size = filter.size ?? 10;
 
     try {
-        const response = await api.get<OrderHistoryPageResponse>(
-            `/api/clientes/${session.idTipoUsuario}/pedidos`,
-            { params }
-        );
-        const mappedOrders = response.data.content.map(mapOrderFromApi);
+        if (filter.estado) {
+            const fetchSize = Math.max(requestedSize, 100);
+            let currentPage = 0;
+            let totalBackendPages = 1;
+            const matchingOrders: Order[] = [];
+
+            while (currentPage < totalBackendPages) {
+                const data = await fetchOrderHistoryPage(session.idTipoUsuario, {
+                    ...params,
+                    page: currentPage,
+                    size: fetchSize,
+                });
+
+                totalBackendPages = data.totalPages;
+                matchingOrders.push(
+                    ...data.content
+                        .map(mapOrderFromApi)
+                        .filter((order) => order.estado === filter.estado),
+                );
+                currentPage += 1;
+            }
+
+            const totalElements = matchingOrders.length;
+            const totalPages = Math.ceil(totalElements / requestedSize);
+            const start = requestedPage * requestedSize;
+            const paginatedOrders = matchingOrders.slice(start, start + requestedSize);
+            const orders =
+                filter.includeRatings === false
+                    ? paginatedOrders
+                    : await hydrateOrdersWithLocalRatings(
+                          session.idTipoUsuario,
+                          paginatedOrders,
+                      );
+
+            return {
+                orders,
+                totalPages,
+                totalElements,
+            };
+        }
+
+        const response = await fetchOrderHistoryPage(session.idTipoUsuario, {
+            ...params,
+            page: requestedPage,
+            size: requestedSize,
+        });
+        const mappedOrders = response.content.map(mapOrderFromApi);
         const orders = filter.includeRatings === false
             ? mappedOrders
             : await hydrateOrdersWithLocalRatings(session.idTipoUsuario, mappedOrders);
 
         return {
             orders,
-            totalPages: response.data.totalPages,
-            totalElements: response.data.totalElements,
+            totalPages: response.totalPages,
+            totalElements: response.totalElements,
         };
     } catch (error) {
         if (axios.isAxiosError(error)) {

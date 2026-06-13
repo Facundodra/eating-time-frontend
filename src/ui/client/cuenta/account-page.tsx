@@ -1,6 +1,7 @@
 import Link from "next/link";
 import {
   ClockIcon,
+  HandThumbUpIcon,
   LockClosedIcon,
   MapPinIcon,
   UserCircleIcon,
@@ -14,6 +15,12 @@ const accountLinks = [
     title: "Puntos de entrega",
     description: "Gestioná las direcciones para recibir tus pedidos.",
     icon: MapPinIcon,
+  },
+  {
+    href: "/client/order-ratings",
+    title: "Calificación de pedidos",
+    description: "Califica tus pedidos finalizados.",
+    icon: HandThumbUpIcon,
   },
   {
     href: "/client/order-history",
