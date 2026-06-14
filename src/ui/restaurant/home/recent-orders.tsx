@@ -46,7 +46,7 @@ export default function RestaurantRecentOrders({
           </p>
         </div>
         <Link
-          className="w-fit rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
+          className="w-fit text-sm font-bold text-orange-600 transition hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
           href="/restaurant/workbench"
         >
           Ver mesa completa
