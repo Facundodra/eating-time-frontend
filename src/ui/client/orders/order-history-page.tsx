@@ -2,13 +2,15 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
   ReceiptPercentIcon,
 } from "@heroicons/react/24/outline";
 
-import type { Order, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
+import type { Order, OrderClaim, OrderHistoryStatus, OrderRating } from "@/lib/client/types";
+import { loadOrderClaimsByOrderId } from "@/services/client/claim-service";
 import {
   getOrderHistory,
   getOrderHistoryRestaurants,
@@ -17,10 +19,23 @@ import {
   type OrderHistoryFilter,
   type OrderHistoryRestaurant,
 } from "@/services/client/client-service";
+import ViewClaimModal from "@/ui/client/complaints/view-claim-modal";
 import OrderDetailModal from "@/ui/client/orders/order-detail-modal";
 import OrderRatingModal from "@/ui/client/ratings/order-rating-modal";
 
 const PAGE_SIZE = 10;
+
+const CLAIM_ELIGIBLE_STATUSES: OrderHistoryStatus[] = [
+  "RECHAZADO_LOCAL",
+  "ACEPTADO_LOCAL",
+  "EN_CURSO_LOCAL",
+  "EN_CAMINO_LOCAL",
+  "FINALIZADO",
+];
+
+function isClaimEligible(status: OrderHistoryStatus) {
+  return CLAIM_ELIGIBLE_STATUSES.includes(status);
+}
 
 type SortKey = "fecha-desc" | "fecha-asc" | "precio-desc" | "precio-asc";
 
@@ -165,6 +180,9 @@ function getPageNumbers(current: number, total: number): (number | "ellipsis")[]
 }
 
 export default function OrderHistoryPage() {
+  const searchParams = useSearchParams();
+  const showClaimSuccessBanner = searchParams.get("reclamoEnviado") === "1";
+
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -184,6 +202,9 @@ export default function OrderHistoryPage() {
   const [selectedRatingOrder, setSelectedRatingOrder] = useState<Order | null>(null);
   const [loadingRatingOrderId, setLoadingRatingOrderId] = useState<number | null>(null);
   const [ratingLoadError, setRatingLoadError] = useState<string | null>(null);
+  const [orderClaims, setOrderClaims] = useState<Record<number, OrderClaim>>({});
+  const [claimsLoading, setClaimsLoading] = useState(false);
+  const [selectedClaimOrder, setSelectedClaimOrder] = useState<Order | null>(null);
 
   useEffect(() => {
     let ignore = false;
@@ -328,6 +349,36 @@ export default function OrderHistoryPage() {
     };
   }, [appliedFilter, sort, page]);
 
+  useEffect(() => {
+    const eligibleOrderIds = orders
+      .filter((order) => isClaimEligible(order.estado))
+      .map((order) => order.id);
+
+    if (eligibleOrderIds.length === 0) {
+      setOrderClaims({});
+      setClaimsLoading(false);
+      return;
+    }
+
+    let ignore = false;
+    setClaimsLoading(true);
+
+    loadOrderClaimsByOrderId(eligibleOrderIds)
+      .then((claims) => {
+        if (!ignore) setOrderClaims(claims);
+      })
+      .catch(() => {
+        if (!ignore) setOrderClaims({});
+      })
+      .finally(() => {
+        if (!ignore) setClaimsLoading(false);
+      });
+
+    return () => {
+      ignore = true;
+    };
+  }, [orders]);
+
   function applyFilters() {
     const next: OrderHistoryFilter = {};
 
@@ -420,6 +471,8 @@ export default function OrderHistoryPage() {
     "h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-400 dark:focus:ring-orange-500/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500";
   const actionClasses =
     "text-sm font-semibold text-orange-700 transition-colors hover:text-orange-800 hover:underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-orange-300 dark:hover:text-orange-200";
+  const viewClaimClasses =
+    "block text-sm font-semibold text-indigo-700 transition-colors hover:text-indigo-800 hover:underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-indigo-300 dark:hover:text-indigo-200";
   const pageNumbers = getPageNumbers(page + 1, totalPages);
 
   return (
@@ -438,6 +491,14 @@ export default function OrderHistoryPage() {
           onClose={() => setSelectedRatingOrder(null)}
           onSaved={(rating) => handleRatingSaved(selectedRatingOrder.id, rating)}
           order={selectedRatingOrder}
+        />
+      ) : null}
+
+      {selectedClaimOrder && orderClaims[selectedClaimOrder.id] ? (
+        <ViewClaimModal
+          claim={orderClaims[selectedClaimOrder.id]}
+          onClose={() => setSelectedClaimOrder(null)}
+          restaurantName={getRestaurantDisplayName(selectedClaimOrder)}
         />
       ) : null}
 
@@ -571,6 +632,12 @@ export default function OrderHistoryPage() {
         </p>
       ) : null}
 
+      {showClaimSuccessBanner ? (
+        <p className="rounded-lg bg-green-50 px-4 py-3 text-sm font-medium text-green-800 dark:bg-green-500/10 dark:text-green-300">
+          Tu reclamo fue enviado correctamente. El local lo revisará a la brevedad.
+        </p>
+      ) : null}
+
       {loading ? (
         <div className="overflow-hidden rounded-xl border border-gray-200 bg-white divide-y divide-gray-100 dark:border-slate-800 dark:bg-slate-900 dark:divide-slate-800">
           {Array.from({ length: 5 }).map((_, index) => (
@@ -647,6 +714,29 @@ export default function OrderHistoryPage() {
                           ? "Ver calificacion"
                           : "Calificar"}
                     </button>
+                  ) : null}
+
+                  {isClaimEligible(order.estado) ? (
+                    claimsLoading ? (
+                      <span className="block text-xs text-gray-400 dark:text-slate-500 sm:ml-auto sm:text-right">
+                        ...
+                      </span>
+                    ) : orderClaims[order.id] ? (
+                      <button
+                        className={`block sm:ml-auto ${viewClaimClasses}`}
+                        onClick={() => setSelectedClaimOrder(order)}
+                        type="button"
+                      >
+                        Ver reclamo
+                      </button>
+                    ) : (
+                      <Link
+                        className={`block sm:ml-auto ${actionClasses}`}
+                        href={`/client/complaint/${order.id}`}
+                      >
+                        Iniciar reclamo
+                      </Link>
+                    )
                   ) : null}
 
                   {order.urlFactura ? (
