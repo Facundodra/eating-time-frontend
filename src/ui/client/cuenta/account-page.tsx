@@ -19,7 +19,7 @@ const accountLinks = [
   {
     href: "/client/order-ratings",
     title: "Calificación de pedidos",
-    description: "Califica tus pedidos finalizados.",
+    description: "Calificá tus pedidos finalizados.",
     icon: HandThumbUpIcon,
   },
   {

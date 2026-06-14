@@ -155,19 +155,17 @@ export default function OrderRatingsPage() {
           Calificación de pedidos
         </h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-          Califica los pedidos finalizados que todavia no tienen calificacion.
+          Calificá los pedidos finalizados que todavía no tienen calificación.
         </p>
       </section>
 
-      <div className="rounded-xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
-        {loading
-          ? "Cargando pedidos pendientes de calificacion..."
-          : orders.length === 0
-            ? "No tenes pedidos pendientes de calificacion."
-            : `${orders.length} ${
-                orders.length === 1 ? "pedido pendiente" : "pedidos pendientes"
-              } de calificacion.`}
-      </div>
+      {!loading && !error && orders.length > 0 ? (
+        <div className="rounded-xl border border-orange-100 bg-orange-50 px-4 py-3 text-sm font-semibold text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-200">
+          {`${orders.length} ${
+            orders.length === 1 ? "pedido pendiente" : "pedidos pendientes"
+          } de calificación.`}
+        </div>
+      ) : null}
 
       {loading ? (
         <div className="space-y-4">
@@ -183,7 +181,7 @@ export default function OrderRatingsPage() {
         <div className="rounded-xl border border-gray-100 bg-white px-4 py-16 text-center dark:border-slate-800 dark:bg-slate-900">
           <HandThumbUpIcon className="mx-auto h-10 w-10 text-gray-300 dark:text-slate-600" />
           <p className="mt-3 text-sm text-gray-500 dark:text-slate-400">
-            No tenes pedidos pendientes de calificacion.
+            No tenés pedidos pendientes de calificación.
           </p>
         </div>
       ) : (
@@ -229,7 +227,7 @@ export default function OrderRatingsPage() {
                 </span>
                 <div className="flex items-center gap-4">
                   <span className="text-xs text-gray-400 dark:text-slate-500">
-                    {itemCount(order)} {itemCount(order) === 1 ? "item" : "items"}
+                    {itemCount(order)} {itemCount(order) === 1 ? "ítem" : "ítems"}
                   </span>
                   <span className="text-sm font-bold text-orange-700 dark:text-orange-300">
                     {formatPrice(order.total)}

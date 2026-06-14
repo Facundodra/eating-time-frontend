@@ -27,7 +27,7 @@ type SortKey = "fecha-desc" | "fecha-asc" | "precio-desc" | "precio-asc";
 const statusLabels: Record<OrderHistoryStatus, string> = {
   PENDIENTE_CONFIRMACION_LOCAL: "Esperando al local",
   ACEPTADO_LOCAL: "Aceptado",
-  EN_CURSO_LOCAL: "En preparacion",
+  EN_CURSO_LOCAL: "En preparación",
   EN_CAMINO_LOCAL: "En camino",
   FINALIZADO: "Finalizado",
   RECHAZADO_LOCAL: "Rechazado",
@@ -108,9 +108,12 @@ function itemCount(order: Order) {
 function RowSkeleton() {
   return (
     <div className="grid animate-pulse grid-cols-1 gap-3 px-5 py-4 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_auto] sm:items-center sm:gap-8">
-      <div className="space-y-2">
-        <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-800" />
-        <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-slate-800/70" />
+      <div className="grid grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+        <div className="space-y-2">
+          <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-800" />
+          <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-slate-800/70" />
+        </div>
+        <div className="h-7 w-24 rounded-full bg-gray-100 dark:bg-slate-800/70" />
       </div>
       <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-800" />
       <div className="space-y-2">
@@ -365,7 +368,7 @@ export default function OrderHistoryPage() {
   async function handleOpenRating(order: Order) {
     setRatingLoadError(null);
 
-    if (isOrderRated(order)) {
+    if (!isOrderRated(order)) {
       setSelectedRatingOrder(order);
       return;
     }
@@ -375,24 +378,29 @@ export default function OrderHistoryPage() {
     try {
       const rating = await getOrderLocalRating(order.id);
 
-      if (rating) {
-        const ratedOrder = mergeOrderRating(order, rating);
+      if (!rating) {
+        if (order.calificacionLocal) {
+          setSelectedRatingOrder(order);
+          return;
+        }
 
-        setOrders((currentOrders) =>
-          currentOrders.map((currentOrder) =>
-            currentOrder.id === order.id ? ratedOrder : currentOrder,
-          ),
-        );
-        setSelectedRatingOrder(ratedOrder);
-        return;
+        throw new Error("No se encontró la calificación guardada.");
       }
 
-      setSelectedRatingOrder(order);
+      const ratedOrder = mergeOrderRating(order, rating);
+
+      setOrders((currentOrders) =>
+        currentOrders.map((currentOrder) =>
+          currentOrder.id === order.id ? ratedOrder : currentOrder,
+        ),
+      );
+      setSelectedRatingOrder(ratedOrder);
+      return;
     } catch (err) {
       setRatingLoadError(
         err instanceof Error
           ? err.message
-          : "No se pudo cargar la calificacion guardada.",
+          : "No se pudo cargar la calificación guardada.",
       );
     } finally {
       setLoadingRatingOrderId(null);
@@ -446,7 +454,7 @@ export default function OrderHistoryPage() {
           Historial de pedidos
         </h1>
         <p className="mt-1 text-sm text-gray-500 dark:text-slate-400">
-          Consulta tus pedidos anteriores.
+          Consultá tus pedidos anteriores.
         </p>
       </section>
 
@@ -465,8 +473,8 @@ export default function OrderHistoryPage() {
               }}
               value={sort}
             >
-              <option value="fecha-desc">Fecha: mas recientes</option>
-              <option value="fecha-asc">Fecha: mas antiguos</option>
+              <option value="fecha-desc">Fecha: más recientes</option>
+              <option value="fecha-asc">Fecha: más antiguas</option>
               <option value="precio-desc">Precio total: mayor a menor</option>
               <option value="precio-asc">Precio total: menor a mayor</option>
             </select>
@@ -554,7 +562,7 @@ export default function OrderHistoryPage() {
 
         {restaurantsLoading ? (
           <p className="text-xs text-gray-400 dark:text-slate-500">
-            Cargando locales... los filtros se habilitaran en un momento.
+            Cargando locales... los filtros se habilitarán en un momento.
           </p>
         ) : null}
       </div>
@@ -596,16 +604,18 @@ export default function OrderHistoryPage() {
                 className="grid grid-cols-1 gap-3 px-5 py-4 transition-colors hover:bg-orange-50/40 sm:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)_minmax(0,1.3fr)_auto] sm:items-center sm:gap-8 dark:hover:bg-orange-500/5"
                 key={order.id}
               >
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
-                    <span className="font-bold text-gray-900 dark:text-white">
+                <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto] items-start gap-3">
+                  <div className="min-w-0">
+                    <span className="block truncate font-bold text-gray-900 dark:text-white">
                       {formatDate(order.creacion)}
                     </span>
+                    <p className="mt-0.5 text-sm font-semibold text-orange-700 dark:text-orange-300">
+                      {formatPrice(order.total)}
+                    </p>
+                  </div>
+                  <div className="flex min-w-[112px] justify-end">
                     <StatusBadge status={order.estado} />
                   </div>
-                  <p className="mt-0.5 text-sm font-semibold text-orange-700 dark:text-orange-300">
-                    {formatPrice(order.total)}
-                  </p>
                 </div>
 
                 <div className="min-w-0">
@@ -616,12 +626,12 @@ export default function OrderHistoryPage() {
 
                 <div className="min-w-0">
                   <p className="text-xs font-semibold text-gray-500 dark:text-slate-500">
-                    Envio a:
+                    Recibido en:
                   </p>
                   <p className="mt-0.5 line-clamp-2 text-sm text-gray-500 dark:text-slate-400">
                     {order.direccion?.trim()
                       ? order.direccion
-                      : "Sin direccion registrada"}
+                      : "Sin dirección registrada"}
                   </p>
                 </div>
 
@@ -644,7 +654,7 @@ export default function OrderHistoryPage() {
                       {loadingRatingOrderId === order.id
                         ? "Cargando..."
                         : isOrderRated(order)
-                          ? "Ver calificacion"
+                          ? "Ver calificación"
                           : "Calificar"}
                     </button>
                   ) : null}
@@ -665,7 +675,7 @@ export default function OrderHistoryPage() {
                       #{order.id}
                     </span>
                     {" - "}
-                    {itemCount(order)} {itemCount(order) === 1 ? "item" : "items"}
+                    {itemCount(order)} {itemCount(order) === 1 ? "ítem" : "ítems"}
                   </p>
                 </div>
               </div>
@@ -675,7 +685,7 @@ export default function OrderHistoryPage() {
           {totalPages > 1 ? (
             <nav className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
               <button
-                aria-label="Pagina anterior"
+                aria-label="Página anterior"
                 className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 disabled={page === 0}
                 onClick={() => goToPage(page - 1)}
@@ -708,7 +718,7 @@ export default function OrderHistoryPage() {
               )}
 
               <button
-                aria-label="Pagina siguiente"
+                aria-label="Página siguiente"
                 className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 disabled={page >= totalPages - 1}
                 onClick={() => goToPage(page + 1)}

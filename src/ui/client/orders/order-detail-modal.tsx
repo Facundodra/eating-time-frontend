@@ -114,7 +114,7 @@ export default function OrderDetailModal({
 
             <div className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-slate-800 dark:bg-slate-950/40">
               <span className="block text-xs font-bold uppercase text-slate-400">
-                Items
+                Ítems
               </span>
               <span className="mt-2 block text-sm font-extrabold text-slate-900 dark:text-white">
                 {items.reduce((sum, item) => sum + item.cantidad, 0)}
@@ -140,7 +140,7 @@ export default function OrderDetailModal({
 
             {items.length === 0 ? (
               <p className="px-4 py-6 text-sm font-medium text-slate-400 dark:text-slate-500">
-                No hay items para mostrar.
+                No hay ítems para mostrar.
               </p>
             ) : (
               <div className="divide-y divide-gray-100 dark:divide-slate-800">
@@ -175,7 +175,7 @@ export default function OrderDetailModal({
           </section>
 
           <section className="mt-5 grid gap-4 md:grid-cols-2">
-            <InfoBlock label="Direccion" value={order.direccion} />
+            <InfoBlock label="Dirección" value={order.direccion} />
             <InfoBlock label="Indicaciones" value={order.indicaciones} />
             <InfoBlock label="Comentario" value={order.comentario} />
             <InfoBlock label="Motivo de rechazo" value={order.motivoRechazo} />

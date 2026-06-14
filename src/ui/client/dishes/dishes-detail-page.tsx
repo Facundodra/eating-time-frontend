@@ -3,11 +3,11 @@
 import { useEffect, useRef, useState } from "react";
 
 import {
-  ChevronLeftIcon,
   MinusIcon,
   PlusIcon,
   ShoppingCartIcon,
   TagIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -27,6 +27,10 @@ export default function DishesDetailPage({ id }: { id: string }) {
   const [discountLoading, setDiscountLoading] = useState(true);
   // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
   const cartUpdateInFlight = useRef(false);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
   useEffect(() => {
     getDish(id)
@@ -81,10 +85,20 @@ export default function DishesDetailPage({ id }: { id: string }) {
 
   if (error) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
-          {error}
-        </p>
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-[1px]">
+        <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
+          <button
+            type="button"
+            onClick={() => router.back()}
+            className="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-slate-500 transition hover:border-orange-300 hover:text-orange-700 dark:border-slate-700 dark:text-slate-300"
+            aria-label="Cerrar detalle del plato"
+          >
+            <XMarkIcon className="h-5 w-5" />
+          </button>
+          <p className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-300">
+            {error}
+          </p>
+        </div>
       </div>
     );
   }
@@ -92,19 +106,23 @@ export default function DishesDetailPage({ id }: { id: string }) {
   if (loading || !dish) return null;
 
   return (
-    <>
-      <div className="max-w-2xl mx-auto px-4 py-6">
-        {/* Volver */}
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-[1px]">
+      <section
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="dish-detail-title"
+        className="relative flex max-h-[calc(100vh-3rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-2xl dark:border-slate-800 dark:bg-slate-900"
+      >
         <button
           type="button"
           onClick={() => router.back()}
-          className="cursor-pointer inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
+          className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-sm ring-1 ring-gray-200 transition hover:text-orange-700 dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-800"
+          aria-label="Cerrar detalle del plato"
         >
-          <ChevronLeftIcon className="h-4 w-4" />
-          Volver al listado
+          <XMarkIcon className="h-5 w-5" />
         </button>
 
-        <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+        <div className="overflow-y-auto">
           {/* Imagen */}
           <div className="relative flex items-center justify-center bg-orange-50 h-64">
             {!discountLoading && discount && (
@@ -127,9 +145,12 @@ export default function DishesDetailPage({ id }: { id: string }) {
           </div>
 
           {/* Info */}
-          <div className="p-6">
+          <div className="p-6 dark:bg-slate-900">
             <div className="flex items-start justify-between gap-4">
-              <h1 className="text-2xl font-extrabold text-gray-900">
+              <h1
+                id="dish-detail-title"
+                className="text-2xl font-extrabold text-gray-900 dark:text-white"
+              >
                 {dish.name}
               </h1>
               <span
@@ -204,35 +225,32 @@ export default function DishesDetailPage({ id }: { id: string }) {
                 </button>
               </div>
             )}
-          </div>
-        </div>
-      </div>
 
-      {/* Barra fija de carrito */}
-      {cartItemCount > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 pb-4 pointer-events-none">
-          <div className="pointer-events-auto w-full max-w-lg bg-orange-700 text-white rounded-2xl shadow-xl px-6 py-4 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="relative">
-                <ShoppingCartIcon className="w-6 h-6" />
-                <span className="absolute -top-2 -right-2 bg-white text-orange-700 text-xs font-bold rounded-full w-4 h-4 flex items-center justify-center">
-                  {cartItemCount}
-                </span>
+            {cartItemCount > 0 && (
+              <div className="mt-6 flex items-center justify-between rounded-2xl bg-orange-700 px-5 py-4 text-white shadow-lg">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <ShoppingCartIcon className="h-6 w-6" />
+                    <span className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full bg-white text-xs font-bold text-orange-700">
+                      {cartItemCount}
+                    </span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">Tu pedido</p>
+                    <p className="text-xs opacity-80">${cart?.total.toFixed(2)}</p>
+                  </div>
+                </div>
+                <Link
+                  href={`/client/restaurant/${dish.localId}/cart`}
+                  className="rounded-xl bg-white px-5 py-2 text-sm font-bold text-orange-700 transition-colors hover:bg-orange-50"
+                >
+                  Ver carrito
+                </Link>
               </div>
-              <div>
-                <p className="text-sm font-semibold">Tu pedido</p>
-                <p className="text-xs opacity-80">${cart?.total.toFixed(2)}</p>
-              </div>
-            </div>
-            <Link
-              href={`/client/restaurant/${dish.localId}/cart`}
-              className="bg-white text-orange-700 font-bold text-sm px-5 py-2 rounded-xl hover:bg-orange-50 transition-colors"
-            >
-              Ver carrito
-            </Link>
+            )}
           </div>
         </div>
-      )}
-    </>
+      </section>
+    </div>
   );
 }

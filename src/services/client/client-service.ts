@@ -9,6 +9,7 @@ import type {
     DeliveryPointCredentials,
     DeliveryPoint,
     ClientDish,
+    ClientDishCategory,
     Discount,
     Cart,
     CartItem,
@@ -21,7 +22,7 @@ import type {
     LocalRating,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = await requireCurrentSession();
@@ -86,6 +87,11 @@ interface PlatoDtoFromApi {
     categoriaIds: number[] | null;
 }
 
+interface CategoriaDtoFromApi {
+    id: number;
+    nombre: string;
+}
+
 function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
     return {
         id: plato.id,
@@ -97,6 +103,13 @@ function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
         createdAt: plato.creacion,
         localId: plato.localId,
         categories: plato.categoriaIds ?? [],
+    };
+}
+
+function mapCategoriaToClientDishCategory(categoria: CategoriaDtoFromApi): ClientDishCategory {
+    return {
+        id: categoria.id,
+        name: categoria.nombre,
     };
 }
 
@@ -136,6 +149,20 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
             throw new Error(message);
         }
         throw new Error("No se pudieron cargar los platos.");
+    }
+}
+
+export async function getClientDishCategories(): Promise<ClientDishCategory[]> {
+    try {
+        const response = await api.get<CategoriaDtoFromApi[]>("/api/categorias");
+        return response.data.map(mapCategoriaToClientDishCategory);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message = data?.error ?? data?.message ?? `Error al obtener categorias (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudieron cargar las categorias.");
     }
 }
 
@@ -614,29 +641,36 @@ async function fetchOrderLocalRating(
     clientId: number,
     orderId: number,
 ): Promise<OrderRating | null> {
-    try {
-        const response = await api.get<unknown>(
-            `/api/pedidos/${orderId}/calificacion-local`,
-        );
-        return mapOrderRatingFromApi(response.data, orderId);
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const status = error.response?.status;
+    const urls = [
+        `/api/pedidos/${orderId}/calificacion-local`,
+        `/api/clientes/${clientId}/pedidos/${orderId}/calificacion-local`,
+    ];
 
-            if (status === 404 || status === 405) {
-                return null;
+    for (const url of urls) {
+        try {
+            const response = await api.get<unknown>(url);
+            return mapOrderRatingFromApi(response.data, orderId);
+        } catch (error) {
+            if (axios.isAxiosError(error)) {
+                const status = error.response?.status;
+
+                if (status === 404 || status === 405) {
+                    continue;
+                }
+
+                const data = error.response?.data as { error?: string; message?: string } | string | undefined;
+                const message =
+                    typeof data === "string"
+                        ? data
+                        : data?.error ?? data?.message ?? `Error al obtener calificacion (${status})`;
+                throw new Error(message);
             }
 
-            const data = error.response?.data as { error?: string; message?: string } | string | undefined;
-            const message =
-                typeof data === "string"
-                    ? data
-                    : data?.error ?? data?.message ?? `Error al obtener calificacion (${status})`;
-            throw new Error(message);
+            throw new Error("No se pudo cargar la calificacion del pedido.");
         }
-
-        throw new Error("No se pudo cargar la calificacion del pedido.");
     }
+
+    return null;
 }
 
 async function hydrateOrdersWithLocalRatings(

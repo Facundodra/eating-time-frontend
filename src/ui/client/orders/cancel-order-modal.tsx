@@ -87,7 +87,7 @@ export default function CancelOrderModal({
               Una vez cancelado, el restaurante ya no podrá ver tu pedido.
             </p>
             <p>
-              Para tu <ReembolsoBrand />, ponete en contacto con el
+              Para gestionar el <ReembolsoBrand />, ponete en contacto con el
               equipo de soporte de <EatingTimeBrand />:{ " "}
               <a
                 href={`mailto:${SUPPORT_EMAIL}`}

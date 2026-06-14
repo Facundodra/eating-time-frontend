@@ -119,7 +119,7 @@ export default function RegisterForm() {
     }
 
     if (!file.type.startsWith("image/")) {
-      setFileError("Solo se permiten imÃ¡genes");
+      setFileError("Solo se permiten imágenes");
       return;
     }
 
@@ -218,7 +218,7 @@ export default function RegisterForm() {
             href="/login"
             className="btn-secondary mt-8 flex items-center !justify-center text-center"
           >
-            Iniciar sesión
+            Iniciá sesión
           </Link>
         </div>
       </div>
@@ -235,7 +235,7 @@ export default function RegisterForm() {
           Crear cuenta cliente
         </h1>
         <p className="mt-3 text-sm font-medium leading-4 text-slate-400 dark:text-slate-400">
-          Completa tus datos para registrarte y comenzar a hacer pedidos en Eating Time.
+          Completá tus datos para registrarte y comenzar a hacer pedidos en Eating Time.
         </p>
       </div>
 
@@ -419,7 +419,7 @@ export default function RegisterForm() {
                     {profilePic.name}
                   </p>
                   <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
-                    Click para cambiar la imagen
+                    Hacé clic para cambiar la imagen
                   </p>
                 </div>
                 <button
@@ -437,7 +437,7 @@ export default function RegisterForm() {
             ) : (
               <span className="flex items-center gap-2 text-sm font-black text-orange-600 dark:text-orange-300">
                 <CloudArrowUpIcon className="h-5 w-5" />
-                Arrastrar imagen o seleccionar archivo
+                Arrastrá una imagen o seleccioná un archivo
               </span>
             )}
           </div>
@@ -478,9 +478,9 @@ export default function RegisterForm() {
 
       <div className="my-8 h-px bg-gray-200 dark:bg-slate-800" />
       <p className="text-center text-sm text-gray-500 dark:text-slate-400">
-        ¿Ya tienes una cuenta?{" "}
+        ¿Ya tenés una cuenta?{" "}
         <Link href="/login" className="text-orange-600 hover:underline">
-          Inicia sesión
+          Iniciá sesión
         </Link>
       </p>
     </div>
