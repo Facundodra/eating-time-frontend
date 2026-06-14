@@ -162,11 +162,19 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           </li>
           <li>
             <Link
-              href="/client/order-history"
+              href="/client/order-ratings"
               className="text-sm text-gray-800 hover:text-orange-700 transition"
             >
               Calificación de pedidos
               {pendingRatingCount > 0 ? ` (${pendingRatingCount})` : ""}
+            </Link>
+          </li>
+          <li>
+            <Link
+              href="/client/claims"
+              className="text-sm text-gray-800 hover:text-orange-700 transition"
+            >
+              Seguimiento de reclamos
             </Link>
           </li>
           <li><Link href="/client/order-history" className="text-sm text-gray-800 hover:text-orange-700 transition">Historial de Pedidos</Link></li>
