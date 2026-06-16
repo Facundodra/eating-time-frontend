@@ -2,6 +2,7 @@
 
 import {
   ArrowsUpDownIcon,
+  CheckIcon,
   FunnelIcon,
   PencilIcon,
   PlusIcon,
@@ -197,7 +198,7 @@ function sameCategoryIds(left: string[], right: string[]) {
   return sortedLeft.every((categoryId, index) => categoryId === sortedRight[index]);
 }
 
-function CategorySelector({
+export function CategorySelector({
   categories,
   selectedIds,
   onToggle,
@@ -258,6 +259,114 @@ function CategorySelector({
   );
 }
 
+function CategoryRows({
+  categories,
+  disabled,
+  isAddingCategoryRow,
+  onAdd,
+  onCancel,
+  onConfirm,
+  onPendingChange,
+  onRemove,
+  pendingCategoryId,
+  selectedIds,
+}: {
+  categories: DishCategory[];
+  disabled: boolean;
+  isAddingCategoryRow: boolean;
+  onAdd: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  onPendingChange: (categoryId: string) => void;
+  onRemove: (categoryId: string) => void;
+  pendingCategoryId: string;
+  selectedIds: string[];
+}) {
+  const selectedCategories = selectedIds
+    .map((categoryId) => categories.find((category) => category.id === categoryId))
+    .filter((category): category is DishCategory => Boolean(category));
+  const categoriesToAdd = categories.filter(
+    (category) => !selectedIds.includes(category.id),
+  );
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
+        {selectedCategories.length === 0 && !isAddingCategoryRow ? (
+          <p className="px-4 py-4 text-sm font-medium text-slate-400 dark:text-slate-500">
+            No hay categorÃ­as asociadas.
+          </p>
+        ) : null}
+
+        {selectedCategories.map((category) => (
+          <div
+            key={category.id}
+            className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-4 text-sm font-extrabold text-slate-800 last:border-b-0 dark:border-slate-800 dark:text-slate-100"
+          >
+            <span className="min-w-0 truncate">{category.name}</span>
+            <button
+              type="button"
+              onClick={() => onRemove(category.id)}
+              disabled={disabled}
+              aria-label={`Quitar ${category.name}`}
+              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+
+        {isAddingCategoryRow ? (
+          <div className="grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 dark:border-slate-800">
+            <select
+              value={pendingCategoryId}
+              onChange={(event) => onPendingChange(event.target.value)}
+              disabled={disabled || categoriesToAdd.length === 0}
+              className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              {categoriesToAdd.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={disabled || categoriesToAdd.length === 0}
+                aria-label="Confirmar categoría"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+              >
+                <CheckIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={disabled}
+                aria-label="Cancelar categorÃ­a"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={disabled || isAddingCategoryRow || categoriesToAdd.length === 0}
+        className="mt-3 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
+      >
+        <PlusIcon className="h-5 w-5" />
+        Agregar categorÃ­a
+      </button>
+    </>
+  );
+}
+
 type RestaurantDishesPageData = RestaurantDishesResponse & {
   categories: DishCategory[];
 };
@@ -297,6 +406,10 @@ export default function RestaurantDishesPage() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [mobileEditingDishId, setMobileEditingDishId] = useState("");
+  const [createCategoryIds, setCreateCategoryIds] = useState<string[]>([]);
+  const [pendingCreateCategoryId, setPendingCreateCategoryId] = useState("");
+  const [isAddingCreateCategoryRow, setIsAddingCreateCategoryRow] =
+    useState(false);
   const [isPending, startTransition] = useTransition();
   const [createError, setCreateError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -313,6 +426,8 @@ export default function RestaurantDishesPage() {
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [hasEditImageChange, setHasEditImageChange] = useState(false);
+  const [pendingEditCategoryId, setPendingEditCategoryId] = useState("");
+  const [isAddingEditCategoryRow, setIsAddingEditCategoryRow] = useState(false);
   const {
     data: loadedData,
     error: loadError,
@@ -357,17 +472,98 @@ export default function RestaurantDishesPage() {
     setEditCategoryIds(dish?.categoryIds ?? []);
     setEditImageFile(null);
     setHasEditImageChange(false);
+    setPendingEditCategoryId("");
+    setIsAddingEditCategoryRow(false);
     if (editImageInputRef.current) {
       editImageInputRef.current.value = "";
     }
   }
 
-  function toggleEditCategory(categoryId: string) {
-    setEditCategoryIds((current) =>
-      current.includes(categoryId)
-        ? current.filter((id) => id !== categoryId)
-        : [...current, categoryId],
+  function startAddingEditCategory() {
+    const nextCategory = categories.find(
+      (category) => !editCategoryIds.includes(category.id),
     );
+
+    if (!nextCategory) {
+      return;
+    }
+
+    setPendingEditCategoryId(nextCategory.id);
+    setIsAddingEditCategoryRow(true);
+    setDetailError(null);
+  }
+
+  function confirmEditCategory() {
+    const categoryId =
+      pendingEditCategoryId ||
+      categories.find((category) => !editCategoryIds.includes(category.id))?.id;
+
+    if (!categoryId) {
+      setDetailError("No hay categorÃ­as disponibles para agregar.");
+      return;
+    }
+
+    if (editCategoryIds.includes(categoryId)) {
+      setDetailError("Esa categorÃ­a ya esta asociada al plato.");
+      return;
+    }
+
+    setEditCategoryIds((current) => [...current, categoryId]);
+    setPendingEditCategoryId("");
+    setIsAddingEditCategoryRow(false);
+    setDetailError(null);
+  }
+
+  function removeEditCategory(categoryId: string) {
+    setEditCategoryIds((current) => current.filter((id) => id !== categoryId));
+    setDetailError(null);
+  }
+
+  function resetCreateForm() {
+    createFormRef.current?.reset();
+    setCreateCategoryIds([]);
+    setPendingCreateCategoryId("");
+    setIsAddingCreateCategoryRow(false);
+  }
+
+  function startAddingCreateCategory() {
+    const nextCategory = categories.find(
+      (category) => !createCategoryIds.includes(category.id),
+    );
+
+    if (!nextCategory) {
+      return;
+    }
+
+    setPendingCreateCategoryId(nextCategory.id);
+    setIsAddingCreateCategoryRow(true);
+    setCreateError(null);
+  }
+
+  function confirmCreateCategory() {
+    const categoryId =
+      pendingCreateCategoryId ||
+      categories.find((category) => !createCategoryIds.includes(category.id))?.id;
+
+    if (!categoryId) {
+      setCreateError("No hay categorÃ­as disponibles para agregar.");
+      return;
+    }
+
+    if (createCategoryIds.includes(categoryId)) {
+      setCreateError("Esa categorÃ­a ya esta asociada al plato.");
+      return;
+    }
+
+    setCreateCategoryIds((current) => [...current, categoryId]);
+    setPendingCreateCategoryId("");
+    setIsAddingCreateCategoryRow(false);
+    setCreateError(null);
+  }
+
+  function removeCreateCategory(categoryId: string) {
+    setCreateCategoryIds((current) => current.filter((id) => id !== categoryId));
+    setCreateError(null);
   }
 
   function applyDishesData(
@@ -392,10 +588,12 @@ export default function RestaurantDishesPage() {
     setCategories(nextData.categories);
     resetEditForm(initialSelectedDish);
     setShowCreateForm(!initialSelectedDish);
+    resetCreateForm();
   }
 
   function selectDish(dish: RestaurantDish) {
     resetEditForm(dish);
+    resetCreateForm();
     setShowCreateForm(false);
     setMobileEditingDishId("");
     setCreateError(null);
@@ -545,7 +743,6 @@ export default function RestaurantDishesPage() {
     const name = String(formData.get("name") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
     const price = Number(formData.get("price") ?? 0);
-    const categoryIds = formData.getAll("categoryIds");
 
     if (!name || price <= 0) {
       setCreateError("Nombre y precio son obligatorios");
@@ -557,7 +754,7 @@ export default function RestaurantDishesPage() {
       return;
     }
 
-    if (categoryIds.length === 0) {
+    if (createCategoryIds.length === 0) {
       setCreateError("Debe seleccionar al menos una categoría");
       return;
     }
@@ -569,10 +766,10 @@ export default function RestaurantDishesPage() {
           name,
           description,
           price,
-          categoryIds: categoryIds.map(String),
+          categoryIds: createCategoryIds,
           image: (formData.get("image") as File | null) ?? null,
         });
-        createFormRef.current?.reset();
+        resetCreateForm();
         setShowCreateForm(false);
         // Refresh dish list without full page reload
         const [freshData, freshCategories] = await Promise.all([
@@ -1124,6 +1321,7 @@ export default function RestaurantDishesPage() {
               type="button"
               disabled={!isDataReady}
               onClick={() => {
+                resetCreateForm();
                 setShowCreateForm(true);
                 setSelectedDishId("");
                 setMobileEditingDishId("");
@@ -1285,10 +1483,20 @@ export default function RestaurantDishesPage() {
                         <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                           Categorías
                         </span>
-                        <CategorySelector
+                        <CategoryRows
                           categories={categories}
+                          disabled={isPending}
+                          isAddingCategoryRow={isAddingEditCategoryRow}
+                          onAdd={startAddingEditCategory}
+                          onCancel={() => {
+                            setIsAddingEditCategoryRow(false);
+                            setPendingEditCategoryId("");
+                          }}
+                          onConfirm={confirmEditCategory}
+                          onPendingChange={setPendingEditCategoryId}
+                          onRemove={removeEditCategory}
+                          pendingCategoryId={pendingEditCategoryId}
                           selectedIds={editCategoryIds}
-                          onToggle={toggleEditCategory}
                         />
                       </div>
 
@@ -1443,9 +1651,20 @@ export default function RestaurantDishesPage() {
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Categorías
                 </span>
-                <CategorySelector
+                <CategoryRows
                   categories={categories}
-                  inputName="categoryIds"
+                  disabled={isPending}
+                  isAddingCategoryRow={isAddingCreateCategoryRow}
+                  onAdd={startAddingCreateCategory}
+                  onCancel={() => {
+                    setIsAddingCreateCategoryRow(false);
+                    setPendingCreateCategoryId("");
+                  }}
+                  onConfirm={confirmCreateCategory}
+                  onPendingChange={setPendingCreateCategoryId}
+                  onRemove={removeCreateCategory}
+                  pendingCategoryId={pendingCreateCategoryId}
+                  selectedIds={createCategoryIds}
                 />
               </div>
 
@@ -1487,7 +1706,7 @@ export default function RestaurantDishesPage() {
                   onClick={() => {
                     setShowCreateForm(false);
                     setCreateError(null);
-                    createFormRef.current?.reset();
+                    resetCreateForm();
                   }}
                   className="h-11 cursor-pointer rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
@@ -1563,10 +1782,20 @@ export default function RestaurantDishesPage() {
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Categorías
                 </span>
-                <CategorySelector
+                <CategoryRows
                   categories={categories}
+                  disabled={isPending}
+                  isAddingCategoryRow={isAddingEditCategoryRow}
+                  onAdd={startAddingEditCategory}
+                  onCancel={() => {
+                    setIsAddingEditCategoryRow(false);
+                    setPendingEditCategoryId("");
+                  }}
+                  onConfirm={confirmEditCategory}
+                  onPendingChange={setPendingEditCategoryId}
+                  onRemove={removeEditCategory}
+                  pendingCategoryId={pendingEditCategoryId}
                   selectedIds={editCategoryIds}
-                  onToggle={toggleEditCategory}
                 />
               </div>
 
