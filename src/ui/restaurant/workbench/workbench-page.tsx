@@ -317,6 +317,9 @@ export default function RestaurantWorkbenchPage() {
   const [draftStartTimeFilter, setDraftStartTimeFilter] = useState("");
   const [draftEndTimeFilter, setDraftEndTimeFilter] = useState("");
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [mobileBoardStatus, setMobileBoardStatus] = useState<BoardStatus>(
+    "PENDIENTE_CONFIRMACION_LOCAL",
+  );
   const [selectedOrder, setSelectedOrder] = useState<WorkbenchOrder | null>(
     null,
   );
@@ -587,6 +590,11 @@ export default function RestaurantWorkbenchPage() {
     Boolean(draftOrderIdFilter) ||
     Boolean(draftStartTimeFilter) ||
     Boolean(draftEndTimeFilter);
+  const mobileBoardColumn =
+    boardColumns.find((column) => column.status === mobileBoardStatus) ??
+    boardColumns[0];
+  const mobileColumnOrders =
+    ordersByStatus.get(mobileBoardColumn.status) ?? [];
 
   function openMobileFilters() {
     setDraftOrderIdFilter(orderIdFilter);
@@ -863,57 +871,106 @@ export default function RestaurantWorkbenchPage() {
         </div>
       ) : null}
 
-      <div className="min-h-[420px] overflow-x-auto pb-4">
+      <div className="min-h-[420px] pb-4">
         {!isLoading && !error && orders.length === 0 ? (
           <p className="mb-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
             No hay pedidos en las ultimas 24 horas.
           </p>
         ) : null}
 
-        <div className="grid min-w-[1320px] grid-cols-6 gap-4">
-          {boardColumns.map((column) => {
-            const columnOrders = ordersByStatus.get(column.status) ?? [];
+        <section className="min-h-[360px] rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50 xl:hidden">
+          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+            <label htmlFor="workbench-mobile-board" className="sr-only">
+              Bandeja
+            </label>
+            <select
+              id="workbench-mobile-board"
+              value={mobileBoardStatus}
+              onChange={(event) =>
+                setMobileBoardStatus(event.target.value as BoardStatus)
+              }
+              className="h-10 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-black text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              {boardColumns.map((column) => (
+                <option key={column.status} value={column.status}>
+                  {column.title}
+                </option>
+              ))}
+            </select>
+            <span className="grid h-7 min-w-7 place-items-center rounded-full bg-white px-2 text-xs font-black text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+              {mobileColumnOrders.length}
+            </span>
+          </div>
 
-            return (
-              <section
-                key={column.status}
-                className="min-h-[360px] rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50"
-              >
-                <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                  <h2 className="text-sm font-black text-slate-700 dark:text-slate-200">
-                    {column.title}
-                  </h2>
-                  <span className="grid h-7 min-w-7 place-items-center rounded-full bg-white px-2 text-xs font-black text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-                    {columnOrders.length}
-                  </span>
-                </div>
+          <div className="space-y-3">
+            {isLoading ? (
+              <ColumnSkeleton />
+            ) : mobileColumnOrders.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
+                Sin pedidos
+              </p>
+            ) : (
+              mobileColumnOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  status={mobileBoardColumn.status}
+                  isProcessing={processingOrderId === order.id}
+                  onAdvance={() => void handleAdvanceOrder(order)}
+                  onReject={() => setPendingAction({ type: "reject", order })}
+                  onOpenInfo={() => setSelectedOrder(order)}
+                />
+              ))
+            )}
+          </div>
+        </section>
 
-                <div className="space-y-3">
-                  {isLoading ? (
-                    <ColumnSkeleton />
-                  ) : columnOrders.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
-                      Sin pedidos
-                    </p>
-                  ) : (
-                    columnOrders.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        status={column.status}
-                        isProcessing={processingOrderId === order.id}
-                        onAdvance={() => void handleAdvanceOrder(order)}
-                        onReject={() =>
-                          setPendingAction({ type: "reject", order })
-                        }
-                        onOpenInfo={() => setSelectedOrder(order)}
-                      />
-                    ))
-                  )}
-                </div>
-              </section>
-            );
-          })}
+        <div className="hidden overflow-x-auto xl:block">
+          <div className="grid min-w-[1320px] grid-cols-6 gap-4">
+            {boardColumns.map((column) => {
+              const columnOrders = ordersByStatus.get(column.status) ?? [];
+
+              return (
+                <section
+                  key={column.status}
+                  className="min-h-[360px] rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                    <h2 className="text-sm font-black text-slate-700 dark:text-slate-200">
+                      {column.title}
+                    </h2>
+                    <span className="grid h-7 min-w-7 place-items-center rounded-full bg-white px-2 text-xs font-black text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                      {columnOrders.length}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {isLoading ? (
+                      <ColumnSkeleton />
+                    ) : columnOrders.length === 0 ? (
+                      <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
+                        Sin pedidos
+                      </p>
+                    ) : (
+                      columnOrders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          status={column.status}
+                          isProcessing={processingOrderId === order.id}
+                          onAdvance={() => void handleAdvanceOrder(order)}
+                          onReject={() =>
+                            setPendingAction({ type: "reject", order })
+                          }
+                          onOpenInfo={() => setSelectedOrder(order)}
+                        />
+                      ))
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       </div>
 
