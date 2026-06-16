@@ -5,6 +5,10 @@ import { useEffect } from "react";
 
 import { THEME_STORAGE_KEY, type Theme } from "@/lib/shared/theme";
 
+type ThemeToggleProps = {
+  variant?: "icon" | "menu";
+};
+
 function applyTheme(theme: Theme) {
   document.documentElement.classList.toggle("dark", theme === "dark");
   document.documentElement.style.colorScheme = theme;
@@ -22,7 +26,7 @@ function getStoredTheme(): Theme | null {
   return theme === "dark" || theme === "light" ? theme : null;
 }
 
-export default function ThemeToggle() {
+export default function ThemeToggle({ variant = "icon" }: ThemeToggleProps) {
   useEffect(() => {
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
 
@@ -61,6 +65,23 @@ export default function ThemeToggle() {
 
     localStorage.setItem(THEME_STORAGE_KEY, nextTheme);
     applyTheme(nextTheme);
+  }
+
+  if (variant === "menu") {
+    return (
+      <button
+        type="button"
+        title="Cambiar tema"
+        aria-label="Cambiar tema"
+        onClick={toggleTheme}
+        className="flex w-full cursor-pointer items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-800 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800"
+      >
+        <MoonIcon className="h-5 w-5 shrink-0 text-slate-500 dark:hidden" />
+        <SunIcon className="hidden h-5 w-5 shrink-0 text-slate-500 dark:block dark:text-slate-400" />
+        <span className="dark:hidden">Modo nocturno</span>
+        <span className="hidden dark:inline">Modo claro</span>
+      </button>
+    );
   }
 
   return (
