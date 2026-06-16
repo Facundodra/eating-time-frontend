@@ -10,6 +10,7 @@ import type {
     DeliveryPoint,
     ClientDish,
     ClientDishCategory,
+    ClientDishCategorySummary,
     Discount,
     Cart,
     CartItem,
@@ -22,7 +23,9 @@ import type {
     LocalRating,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, ClientDishCategorySummary, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
+
+const CATEGORY_RELATION_PAGE_SIZE = 100;
 
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = await requireCurrentSession();
@@ -90,6 +93,10 @@ interface PlatoDtoFromApi {
 interface CategoriaDtoFromApi {
     id: number;
     nombre: string;
+    fotoUrl?: string | null;
+    urlFoto?: string | null;
+    imagenUrl?: string | null;
+    imageUrl?: string | null;
 }
 
 function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
@@ -110,6 +117,12 @@ function mapCategoriaToClientDishCategory(categoria: CategoriaDtoFromApi): Clien
     return {
         id: categoria.id,
         name: categoria.nombre,
+        imageUrl:
+            categoria.fotoUrl ??
+            categoria.urlFoto ??
+            categoria.imagenUrl ??
+            categoria.imageUrl ??
+            null,
     };
 }
 
@@ -164,6 +177,80 @@ export async function getClientDishCategories(): Promise<ClientDishCategory[]> {
         }
         throw new Error("No se pudieron cargar las categorias.");
     }
+}
+
+async function getDishesForCategoryRelations(): Promise<ClientDish[]> {
+    const dishes: ClientDish[] = [];
+    const seenDishIds = new Set<number>();
+
+    function addPage(pageDishes: ClientDish[]) {
+        const newDishes = pageDishes.filter((dish) => !seenDishIds.has(dish.id));
+
+        newDishes.forEach((dish) => {
+            seenDishIds.add(dish.id);
+            dishes.push(dish);
+        });
+
+        return newDishes.length;
+    }
+
+    const firstPage = await getDishes({ tamano: CATEGORY_RELATION_PAGE_SIZE });
+    const firstNewDishes = addPage(firstPage);
+
+    if (
+        firstPage.length < CATEGORY_RELATION_PAGE_SIZE ||
+        firstNewDishes === 0
+    ) {
+        return dishes;
+    }
+
+    let page = 2;
+
+    while (true) {
+        const pageDishes = await getDishes({
+            pagina: page,
+            tamano: CATEGORY_RELATION_PAGE_SIZE,
+        });
+        const newDishes = addPage(pageDishes);
+
+        if (
+            pageDishes.length < CATEGORY_RELATION_PAGE_SIZE ||
+            newDishes === 0
+        ) {
+            break;
+        }
+
+        page += 1;
+    }
+
+    return dishes;
+}
+
+export async function getClientDishCategorySummaries(): Promise<ClientDishCategorySummary[]> {
+    const [categories, dishes] = await Promise.all([
+        getClientDishCategories(),
+        getDishesForCategoryRelations(),
+    ]);
+    const dishCountByCategoryId = new Map<number, number>();
+    const dishImageByCategoryId = new Map<number, string>();
+
+    dishes.forEach((dish) => {
+        new Set(dish.categories).forEach((categoryId) => {
+            dishCountByCategoryId.set(
+                categoryId,
+                (dishCountByCategoryId.get(categoryId) ?? 0) + 1,
+            );
+            if (dish.imageUrl && !dishImageByCategoryId.has(categoryId)) {
+                dishImageByCategoryId.set(categoryId, dish.imageUrl);
+            }
+        });
+    });
+
+    return categories.map((category) => ({
+        ...category,
+        imageUrl: category.imageUrl ?? dishImageByCategoryId.get(category.id) ?? null,
+        dishCount: dishCountByCategoryId.get(category.id) ?? 0,
+    }));
 }
 
 export async function getDish(id: string): Promise<ClientDish> {

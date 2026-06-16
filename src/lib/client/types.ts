@@ -34,6 +34,11 @@ export type ClientDish = {
 export type ClientDishCategory = {
   id: number;
   name: string;
+  imageUrl: string | null;
+}
+
+export type ClientDishCategorySummary = ClientDishCategory & {
+  dishCount: number;
 }
 
 export type Discount = {

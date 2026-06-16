@@ -8,11 +8,13 @@ import {
   CheckCircleIcon,
   MoonIcon,
   ShoppingBagIcon,
+  Squares2X2Icon,
   StarIcon,
   TagIcon,
 } from "@heroicons/react/24/outline";
 
 import {
+  getClientDishCategorySummaries,
   getDishDiscount,
   getDishes,
   getDiscountedDishIds,
@@ -20,6 +22,7 @@ import {
 } from "@/services/client/client-service";
 import type {
   ClientDish,
+  ClientDishCategorySummary,
   Discount,
   RestaurantList,
 } from "@/lib/client/types";
@@ -54,11 +57,29 @@ function DishCardSkeleton() {
   );
 }
 
+function CategoryCardSkeleton() {
+  return (
+    <div className="animate-pulse rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
+      <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-slate-800" />
+      <div className="mt-4 h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
+      <div className="mt-3 h-3 w-1/3 rounded bg-gray-100 dark:bg-slate-800" />
+    </div>
+  );
+}
+
+function formatDishCount(count: number) {
+  if (count === 0) return "Sin platos";
+  if (count === 1) return "1 plato";
+  return `${count} platos`;
+}
+
 export default function ClientHomePage() {
   const [restaurants, setRestaurants] = useState<RestaurantList[]>([]);
+  const [categories, setCategories] = useState<ClientDishCategorySummary[]>([]);
   const [dishes, setDishes] = useState<ClientDish[]>([]);
   const [discounts, setDiscounts] = useState<Map<number, Discount>>(new Map());
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingDishes, setLoadingDishes] = useState(true);
 
   useEffect(() => {
@@ -66,6 +87,13 @@ export default function ClientHomePage() {
       .then(({ restaurants }) => setRestaurants(restaurants))
       .catch(() => setRestaurants([]))
       .finally(() => setLoadingRestaurants(false));
+  }, []);
+
+  useEffect(() => {
+    getClientDishCategorySummaries()
+      .then(setCategories)
+      .catch(() => setCategories([]))
+      .finally(() => setLoadingCategories(false));
   }, []);
 
   useEffect(() => {
@@ -182,6 +210,55 @@ export default function ClientHomePage() {
                         {restaurant.stars}
                       </span>
                     </div>
+                  </div>
+                </Link>
+              ))}
+        </div>
+      </section>
+
+      <section>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+            Categorías
+          </h2>
+          <Link
+            href="/client/search"
+            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
+          >
+            Ver todas
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {loadingCategories
+            ? Array.from({ length: 8 }).map((_, index) => (
+                <CategoryCardSkeleton key={index} />
+              ))
+            : categories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/client/search?q=${encodeURIComponent(category.name)}`}
+                  className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+                >
+                  <div className="relative flex h-24 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+                    {category.imageUrl ? (
+                      <Image
+                        alt={category.name}
+                        src={category.imageUrl}
+                        fill
+                        sizes="(min-width: 768px) 25vw, 50vw"
+                        className="object-cover transition duration-200 group-hover:scale-105"
+                      />
+                    ) : (
+                      <Squares2X2Icon className="h-9 w-9 text-orange-300 dark:text-orange-500/60" />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
+                      {category.name}
+                    </span>
+                    <span className="mt-1 block text-xs font-medium text-gray-400 dark:text-slate-500">
+                      {formatDishCount(category.dishCount)}
+                    </span>
                   </div>
                 </Link>
               ))}

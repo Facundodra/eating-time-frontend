@@ -311,7 +311,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
                 className={menuLinkClass}
               >
                 <StarIcon className={menuIconClass} />
-                Calificacion de pedidos
+                Calificación de pedidos
               </Link>
             </li>
             <li>
