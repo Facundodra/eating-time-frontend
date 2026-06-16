@@ -85,12 +85,12 @@ export default function ClientNotificationStream({
       try {
         addBanner(JSON.parse(messageEvent.data) as ClientSsePayload);
       } catch {
-        console.warn("[SSE] No se pudo leer la notificacion del cliente.");
+        console.warn("[SSE] No se pudo leer la notificación del cliente.");
       }
     });
 
     source.onerror = () => {
-      console.warn("[SSE] Conexion del cliente interrumpida, reintentando.");
+      console.warn("[SSE] Conexión del cliente interrumpida, reintentando.");
     };
 
     return () => source.close();
@@ -124,7 +124,7 @@ export default function ClientNotificationStream({
               type="button"
               onClick={() => dismissBanner(banner.id)}
               className="rounded-full px-2 text-lg leading-6 opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
-              aria-label="Cerrar notificacion"
+              aria-label="Cerrar notificación"
             >
               x
             </button>

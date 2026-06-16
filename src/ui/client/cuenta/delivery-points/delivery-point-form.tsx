@@ -36,7 +36,7 @@ export default function DeliveryPointForm() {
 
         refreshPage();
       } catch (err) {
-        setError(err instanceof Error ? err.message : "Error al crear punto");
+        setError(err instanceof Error ? err.message : "Error al crear el punto.");
       }
     });
   }
@@ -105,7 +105,7 @@ export default function DeliveryPointForm() {
           </div>
           <div className="w-full md:w-1/3 md:pl-2">
             <label htmlFor="apto" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
-              Nro. de apartamento
+              Apartamento
             </label>
             <input
               id="apto"

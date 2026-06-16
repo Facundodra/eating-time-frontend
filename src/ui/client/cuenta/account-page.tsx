@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  ChatBubbleLeftRightIcon,
   ClockIcon,
   HandThumbUpIcon,
   LockClosedIcon,
@@ -19,8 +20,14 @@ const accountLinks = [
   {
     href: "/client/order-ratings",
     title: "Calificación de pedidos",
-    description: "Califica tus pedidos finalizados.",
+    description: "Calificá tus pedidos finalizados.",
     icon: HandThumbUpIcon,
+  },
+  {
+    href: "/client/claims",
+    title: "Seguimiento de reclamos",
+    description: "Consultá el estado de tus reclamos y las respuestas del local.",
+    icon: ChatBubbleLeftRightIcon,
   },
   {
     href: "/client/order-history",

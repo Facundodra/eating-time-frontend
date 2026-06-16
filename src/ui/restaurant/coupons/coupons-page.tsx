@@ -1,7 +1,9 @@
 "use client";
 
 import {
+  ArrowsUpDownIcon,
   CheckIcon,
+  FunnelIcon,
   PencilIcon,
   PlusIcon,
   TrashIcon,
@@ -29,6 +31,13 @@ import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
 
 type CouponFilter = "all" | CouponStatus;
+type CouponSort =
+  | "code-asc"
+  | "code-desc"
+  | "created-desc"
+  | "created-asc"
+  | "percentage-desc"
+  | "percentage-asc";
 
 const NEW_COUPON_ID = "new-coupon";
 
@@ -90,12 +99,110 @@ function areDishesEqual(
   return currentIds.every((id, index) => id === initialIds[index]);
 }
 
-function filterCoupons(coupons: RestaurantCoupon[], filter: CouponFilter) {
-  if (filter === "all") {
-    return coupons;
-  }
+function getCouponSearchText(coupon: RestaurantCoupon) {
+  return `${coupon.code} ${coupon.description} ${coupon.dishes
+    .map((dish) => dish.name)
+    .join(" ")}`;
+}
 
-  return coupons.filter((coupon) => coupon.status === filter);
+function getDateTimeValue(value: string) {
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("es")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function filterCoupons(
+  coupons: RestaurantCoupon[],
+  filter: CouponFilter,
+  searchFilter: string,
+  createdAfterFilter: string,
+  createdBeforeFilter: string,
+) {
+  const normalizedSearchFilter = normalizeSearchText(searchFilter);
+  const createdAfterValue = createdAfterFilter
+    ? new Date(createdAfterFilter).getTime()
+    : null;
+  const createdBeforeValue = createdBeforeFilter
+    ? new Date(createdBeforeFilter).getTime()
+    : null;
+
+  return coupons.filter((coupon) => {
+    const couponCreatedAt = getDateTimeValue(coupon.createdAt);
+    const matchesStatus = filter === "all" || coupon.status === filter;
+    const matchesSearch =
+      !normalizedSearchFilter ||
+      normalizeSearchText(getCouponSearchText(coupon)).includes(
+        normalizedSearchFilter,
+      );
+    const matchesCreatedAfter =
+      createdAfterValue === null ||
+      (couponCreatedAt !== null && couponCreatedAt >= createdAfterValue);
+    const matchesCreatedBefore =
+      createdBeforeValue === null ||
+      (couponCreatedAt !== null && couponCreatedAt <= createdBeforeValue);
+
+    return matchesStatus && matchesSearch && matchesCreatedAfter && matchesCreatedBefore;
+  });
+}
+
+function sortCoupons(coupons: RestaurantCoupon[], sort: CouponSort) {
+  return [...coupons].sort((left, right) => {
+    if (sort === "code-asc") {
+      return left.code.localeCompare(right.code, "es");
+    }
+
+    if (sort === "code-desc") {
+      return right.code.localeCompare(left.code, "es");
+    }
+
+    if (sort === "created-desc") {
+      return (
+        (getDateTimeValue(right.createdAt) ?? 0) -
+        (getDateTimeValue(left.createdAt) ?? 0)
+      );
+    }
+
+    if (sort === "created-asc") {
+      return (
+        (getDateTimeValue(left.createdAt) ?? 0) -
+        (getDateTimeValue(right.createdAt) ?? 0)
+      );
+    }
+
+    if (sort === "percentage-desc") {
+      return right.percentage - left.percentage;
+    }
+
+    return left.percentage - right.percentage;
+  });
+}
+
+function getVisibleCoupons(
+  coupons: RestaurantCoupon[],
+  filter: CouponFilter,
+  searchFilter: string,
+  createdAfterFilter: string,
+  createdBeforeFilter: string,
+  sort: CouponSort,
+) {
+  return sortCoupons(
+    filterCoupons(
+      coupons,
+      filter,
+      searchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+    ),
+    sort,
+  );
 }
 
 function StatusBadge({ status }: { status: CouponStatus }) {
@@ -229,6 +336,10 @@ async function loadRestaurantCoupons(): Promise<RestaurantCouponsResponse> {
 export default function RestaurantCouponsPage() {
   const [restaurantId, setRestaurantId] = useState("");
   const [filter, setFilter] = useState<CouponFilter>("all");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [createdAfterFilter, setCreatedAfterFilter] = useState("");
+  const [createdBeforeFilter, setCreatedBeforeFilter] = useState("");
+  const [sort, setSort] = useState<CouponSort>("created-desc");
   const [coupons, setCoupons] = useState<RestaurantCoupon[]>([]);
   const [savedCoupons, setSavedCoupons] = useState<RestaurantCoupon[]>([]);
   const [availableDishes, setAvailableDishes] = useState<CouponDish[]>([]);
@@ -247,6 +358,7 @@ export default function RestaurantCouponsPage() {
   const [isAddingDish, setIsAddingDish] = useState(false);
   const [isSavingChanges, setIsSavingChanges] = useState(false);
   const [isDeletingCoupon, setIsDeletingCoupon] = useState(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [mobileEditingCouponId, setMobileEditingCouponId] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -269,8 +381,15 @@ export default function RestaurantCouponsPage() {
   }, [formError]);
 
   const filteredCoupons = useMemo(() => {
-    return filterCoupons(coupons, filter);
-  }, [coupons, filter]);
+    return getVisibleCoupons(
+      coupons,
+      filter,
+      searchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
+  }, [coupons, filter, searchFilter, createdAfterFilter, createdBeforeFilter, sort]);
 
   const selectedCoupon =
     filteredCoupons.find((coupon) => coupon.id === selectedCouponId) ??
@@ -311,9 +430,20 @@ export default function RestaurantCouponsPage() {
   function applyCouponsData(
     nextData: RestaurantCouponsResponse,
     currentFilter: CouponFilter,
+    preferredSelectedCouponId = "",
   ) {
+    const nextFilteredCoupons = getVisibleCoupons(
+      nextData.coupons,
+      currentFilter,
+      searchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
     const nextSelectedCoupon =
-      filterCoupons(nextData.coupons, currentFilter)[0] ?? null;
+      nextFilteredCoupons.find((coupon) => coupon.id === preferredSelectedCouponId) ??
+      nextFilteredCoupons[0] ??
+      null;
 
     setRestaurantId(nextData.restaurantId);
     setAvailableDishes(nextData.availableDishes);
@@ -332,13 +462,16 @@ export default function RestaurantCouponsPage() {
     setFormError(null);
   }
 
-  async function refreshCouponsData(currentFilter: CouponFilter) {
+  async function refreshCouponsData(
+    currentFilter: CouponFilter,
+    preferredSelectedCouponId = "",
+  ) {
     if (!restaurantId) {
       throw new Error("No se encontro el local para recargar cupones.");
     }
 
     const freshData = await getRestaurantCoupons(restaurantId);
-    applyCouponsData(freshData, currentFilter);
+    applyCouponsData(freshData, currentFilter, preferredSelectedCouponId);
   }
 
   function updateCreateCoupon(updates: Partial<RestaurantCoupon>) {
@@ -416,7 +549,14 @@ export default function RestaurantCouponsPage() {
   }
 
   function handleFilterChange(nextFilter: CouponFilter) {
-    const nextFilteredCoupons = filterCoupons(savedCoupons, nextFilter);
+    const nextFilteredCoupons = getVisibleCoupons(
+      savedCoupons,
+      nextFilter,
+      searchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
     const selectedCouponIsVisible = nextFilteredCoupons.some(
       (coupon) => coupon.id === selectedCouponId,
     );
@@ -438,6 +578,175 @@ export default function RestaurantCouponsPage() {
       setIsDeletingCoupon(false);
       setMobileEditingCouponId("");
       setFormError(null);
+      return;
+    }
+
+    const nextCoupon = nextFilteredCoupons[0] ?? null;
+    setSelectedCouponId(nextCoupon?.id ?? "");
+    resetEditForm(nextCoupon);
+    setPendingDishId("");
+    setIsAddingDishRow(false);
+    setShowCreateForm(!nextCoupon);
+    setCreateCoupon(createEmptyCoupon());
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
+    setFormError(null);
+  }
+
+  function handleSearchFilterChange(nextSearchFilter: string) {
+    const nextFilteredCoupons = getVisibleCoupons(
+      savedCoupons,
+      filter,
+      nextSearchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
+    const selectedCouponIsVisible = nextFilteredCoupons.some(
+      (coupon) => coupon.id === selectedCouponId,
+    );
+
+    setSearchFilter(nextSearchFilter);
+    setCoupons(savedCoupons);
+
+    if (selectedCouponIsVisible) {
+      const nextSelectedCoupon =
+        savedCoupons.find((coupon) => coupon.id === selectedCouponId) ?? null;
+
+      resetEditForm(nextSelectedCoupon);
+      setPendingDishId("");
+      setIsAddingDishRow(false);
+      setShowCreateForm(false);
+      setCreateCoupon(createEmptyCoupon());
+      setIsAddingDish(false);
+      setIsSavingChanges(false);
+      setIsDeletingCoupon(false);
+      setMobileEditingCouponId("");
+      setFormError(null);
+      return;
+    }
+
+    const nextCoupon = nextFilteredCoupons[0] ?? null;
+    setSelectedCouponId(nextCoupon?.id ?? "");
+    resetEditForm(nextCoupon);
+    setPendingDishId("");
+    setIsAddingDishRow(false);
+    setShowCreateForm(!nextCoupon);
+    setCreateCoupon(createEmptyCoupon());
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
+    setFormError(null);
+  }
+
+  function handleCreatedRangeFilterChange(
+    nextCreatedAfterFilter: string,
+    nextCreatedBeforeFilter: string,
+  ) {
+    const nextFilteredCoupons = getVisibleCoupons(
+      savedCoupons,
+      filter,
+      searchFilter,
+      nextCreatedAfterFilter,
+      nextCreatedBeforeFilter,
+      sort,
+    );
+    const selectedCouponIsVisible = nextFilteredCoupons.some(
+      (coupon) => coupon.id === selectedCouponId,
+    );
+
+    setCreatedAfterFilter(nextCreatedAfterFilter);
+    setCreatedBeforeFilter(nextCreatedBeforeFilter);
+    setCoupons(savedCoupons);
+
+    if (selectedCouponIsVisible) {
+      const nextSelectedCoupon =
+        savedCoupons.find((coupon) => coupon.id === selectedCouponId) ?? null;
+
+      resetEditForm(nextSelectedCoupon);
+      setPendingDishId("");
+      setIsAddingDishRow(false);
+      setShowCreateForm(false);
+      setCreateCoupon(createEmptyCoupon());
+      setIsAddingDish(false);
+      setIsSavingChanges(false);
+      setIsDeletingCoupon(false);
+      setMobileEditingCouponId("");
+      setFormError(null);
+      return;
+    }
+
+    const nextCoupon = nextFilteredCoupons[0] ?? null;
+    setSelectedCouponId(nextCoupon?.id ?? "");
+    resetEditForm(nextCoupon);
+    setPendingDishId("");
+    setIsAddingDishRow(false);
+    setShowCreateForm(!nextCoupon);
+    setCreateCoupon(createEmptyCoupon());
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
+    setFormError(null);
+  }
+
+  function handleSortChange(nextSort: CouponSort) {
+    const nextVisibleCoupons = getVisibleCoupons(
+      savedCoupons,
+      filter,
+      searchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      nextSort,
+    );
+    const selectedCouponIsVisible = nextVisibleCoupons.some(
+      (coupon) => coupon.id === selectedCouponId,
+    );
+
+    setSort(nextSort);
+    setCoupons(savedCoupons);
+
+    if (selectedCouponIsVisible) {
+      return;
+    }
+
+    const nextCoupon = nextVisibleCoupons[0] ?? null;
+    setSelectedCouponId(nextCoupon?.id ?? "");
+    resetEditForm(nextCoupon);
+    setPendingDishId("");
+    setIsAddingDishRow(false);
+    setShowCreateForm(!nextCoupon);
+    setCreateCoupon(createEmptyCoupon());
+    setIsAddingDish(false);
+    setIsSavingChanges(false);
+    setIsDeletingCoupon(false);
+    setMobileEditingCouponId("");
+    setFormError(null);
+  }
+
+  function clearFilters() {
+    const nextFilteredCoupons = getVisibleCoupons(
+      savedCoupons,
+      "all",
+      "",
+      "",
+      "",
+      sort,
+    );
+    const selectedCouponIsVisible = nextFilteredCoupons.some(
+      (coupon) => coupon.id === selectedCouponId,
+    );
+
+    setFilter("all");
+    setSearchFilter("");
+    setCreatedAfterFilter("");
+    setCreatedBeforeFilter("");
+    setCoupons(savedCoupons);
+
+    if (selectedCouponIsVisible) {
       return;
     }
 
@@ -541,7 +850,16 @@ export default function RestaurantCouponsPage() {
   function handleCancelCreate() {
     setShowCreateForm(false);
     setCreateCoupon(createEmptyCoupon());
-    setSelectedCouponId(filterCoupons(coupons, filter)[0]?.id ?? "");
+    setSelectedCouponId(
+      getVisibleCoupons(
+        coupons,
+        filter,
+        searchFilter,
+        createdAfterFilter,
+        createdBeforeFilter,
+        sort,
+      )[0]?.id ?? "",
+    );
     setPendingDishId("");
     setIsAddingDishRow(false);
     setIsAddingDish(false);
@@ -563,8 +881,7 @@ export default function RestaurantCouponsPage() {
       setIsSavingChanges(true);
       setFormError(null);
       await updateRestaurantCouponStatus(editableSelectedCoupon, nextStatus);
-      setFilter("all");
-      await refreshCouponsData("all");
+      await refreshCouponsData(filter, editableSelectedCoupon.id);
       setMobileEditingCouponId("");
     } catch (error) {
       setFormError(
@@ -690,28 +1007,300 @@ export default function RestaurantCouponsPage() {
   const isDataReady = Boolean(loadedData) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los cupones.";
+  const hasActiveFilters =
+    Boolean(searchFilter) ||
+    Boolean(createdAfterFilter) ||
+    Boolean(createdBeforeFilter) ||
+    filter !== "all";
 
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <label htmlFor="coupon-status-filter" className="block max-w-[180px]">
-          <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-            Estado
-          </span>
-          <select
-            id="coupon-status-filter"
-            value={filter}
-            disabled={!isDataReady}
-            onChange={(event) =>
-              handleFilterChange(event.target.value as CouponFilter)
-            }
-            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-          >
-            <option value="all">Todos</option>
-            <option value="active">Activos</option>
-            <option value="inactive">Inactivos</option>
-          </select>
-        </label>
+        <div className="grid gap-4 xl:hidden">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              disabled={!isDataReady}
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="flex h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            >
+              <FunnelIcon className="h-4 w-4" />
+              Filtros
+              {hasActiveFilters && (
+                <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+              )}
+            </button>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                disabled={!isDataReady}
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <label htmlFor="coupon-sort-mobile" className="sr-only">
+                Orden
+              </label>
+              <select
+                id="coupon-sort-mobile"
+                value={sort}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleSortChange(event.target.value as CouponSort)
+                }
+                className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="code-asc">Codigo A-Z</option>
+                <option value="code-desc">Codigo Z-A</option>
+                <option value="created-desc">Mas nuevos</option>
+                <option value="created-asc">Mas antiguos</option>
+                <option value="percentage-desc">Mas descuento</option>
+                <option value="percentage-asc">Menos descuento</option>
+              </select>
+            </div>
+          </div>
+
+          {isMobileFiltersOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pb-4 pt-20 backdrop-blur-sm sm:items-center sm:pt-16">
+              <div className="w-full rounded-2xl border border-gray-200 bg-white shadow-xl sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                      Filtros
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Ajusta el listado de cupones visible.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    aria-label="Cerrar filtros"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-orange-400"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="grid gap-4 px-5 py-5">
+                  <label htmlFor="coupon-search-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Codigo o plato
+                    </span>
+                    <input
+                      id="coupon-search-filter-mobile"
+                      type="search"
+                      value={searchFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleSearchFilterChange(event.target.value)
+                      }
+                      placeholder="Buscar cupon"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="coupon-created-after-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado despues de
+                    </span>
+                    <input
+                      id="coupon-created-after-filter-mobile"
+                      type="datetime-local"
+                      value={createdAfterFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleCreatedRangeFilterChange(
+                          event.target.value,
+                          createdBeforeFilter,
+                        )
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="coupon-created-before-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado antes de
+                    </span>
+                    <input
+                      id="coupon-created-before-filter-mobile"
+                      type="datetime-local"
+                      value={createdBeforeFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleCreatedRangeFilterChange(
+                          createdAfterFilter,
+                          event.target.value,
+                        )
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="coupon-status-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Estado
+                    </span>
+                    <select
+                      id="coupon-status-filter-mobile"
+                      value={filter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleFilterChange(event.target.value as CouponFilter)
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="active">Activos</option>
+                      <option value="inactive">Inactivos</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      disabled={!isDataReady}
+                      onClick={clearFilters}
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden gap-4 xl:flex xl:items-end xl:justify-between">
+          <div className="grid gap-4 xl:grid-cols-[240px_190px_190px_150px_auto] xl:items-end">
+            <label htmlFor="coupon-search-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Codigo o plato
+              </span>
+              <input
+                id="coupon-search-filter"
+                type="search"
+                value={searchFilter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleSearchFilterChange(event.target.value)
+                }
+                placeholder="Buscar cupon"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="coupon-created-after-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado despues de
+              </span>
+              <input
+                id="coupon-created-after-filter"
+                type="datetime-local"
+                value={createdAfterFilter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleCreatedRangeFilterChange(
+                    event.target.value,
+                    createdBeforeFilter,
+                  )
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="coupon-created-before-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado antes de
+              </span>
+              <input
+                id="coupon-created-before-filter"
+                type="datetime-local"
+                value={createdBeforeFilter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleCreatedRangeFilterChange(
+                    createdAfterFilter,
+                    event.target.value,
+                  )
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="coupon-status-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Estado
+              </span>
+              <select
+                id="coupon-status-filter"
+                value={filter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleFilterChange(event.target.value as CouponFilter)
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="all">Todos</option>
+                <option value="active">Activos</option>
+                <option value="inactive">Inactivos</option>
+              </select>
+            </label>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                disabled={!isDataReady}
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+          </div>
+
+          <label htmlFor="coupon-sort" className="block w-full xl:w-[180px]">
+            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+              Orden
+            </span>
+            <select
+              id="coupon-sort"
+              value={sort}
+              disabled={!isDataReady}
+              onChange={(event) =>
+                handleSortChange(event.target.value as CouponSort)
+              }
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              <option value="code-asc">Codigo A-Z</option>
+              <option value="code-desc">Codigo Z-A</option>
+              <option value="created-desc">Mas nuevos</option>
+              <option value="created-asc">Mas antiguos</option>
+              <option value="percentage-desc">Mas descuento</option>
+              <option value="percentage-asc">Menos descuento</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(420px,1fr)]">

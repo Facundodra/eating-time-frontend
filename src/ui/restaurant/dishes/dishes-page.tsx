@@ -1,6 +1,14 @@
 "use client";
 
-import { PencilIcon, PlusIcon, TrashIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowsUpDownIcon,
+  CheckIcon,
+  FunnelIcon,
+  PencilIcon,
+  PlusIcon,
+  TrashIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Image from "next/image";
 import {
@@ -32,6 +40,13 @@ import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
 
 type DishFilter = "all" | DishStatus;
+type DishSort =
+  | "name-asc"
+  | "name-desc"
+  | "created-desc"
+  | "created-asc"
+  | "price-desc"
+  | "price-asc";
 
 function StatusBadge({ status }: { status: DishStatus }) {
   return (
@@ -68,9 +83,102 @@ function formatDateTimeLabel(dateStr: string) {
   return `${year}/${month}/${day} ${hour}:${minute}`;
 }
 
-function filterDishes(dishes: RestaurantDish[], filter: DishFilter) {
-  if (filter === "all") return dishes;
-  return dishes.filter((dish) => dish.status === filter);
+function getDateTimeValue(dateStr: string) {
+  const date = new Date(dateStr);
+
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("es")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function filterDishes(
+  dishes: RestaurantDish[],
+  filter: DishFilter,
+  nameFilter: string,
+  createdAfterFilter: string,
+  createdBeforeFilter: string,
+) {
+  const normalizedNameFilter = normalizeSearchText(nameFilter);
+  const createdAfterValue = createdAfterFilter
+    ? new Date(createdAfterFilter).getTime()
+    : null;
+  const createdBeforeValue = createdBeforeFilter
+    ? new Date(createdBeforeFilter).getTime()
+    : null;
+
+  return dishes.filter((dish) => {
+    const dishCreatedAt = getDateTimeValue(dish.createdAt);
+    const matchesStatus = filter === "all" || dish.status === filter;
+    const matchesName =
+      !normalizedNameFilter ||
+      normalizeSearchText(dish.name).includes(normalizedNameFilter);
+    const matchesCreatedAfter =
+      createdAfterValue === null ||
+      (dishCreatedAt !== null && dishCreatedAt >= createdAfterValue);
+    const matchesCreatedBefore =
+      createdBeforeValue === null ||
+      (dishCreatedAt !== null && dishCreatedAt <= createdBeforeValue);
+
+    return matchesStatus && matchesName && matchesCreatedAfter && matchesCreatedBefore;
+  });
+}
+
+function sortDishes(dishes: RestaurantDish[], sort: DishSort) {
+  return [...dishes].sort((left, right) => {
+    if (sort === "name-asc") {
+      return left.name.localeCompare(right.name, "es");
+    }
+
+    if (sort === "name-desc") {
+      return right.name.localeCompare(left.name, "es");
+    }
+
+    if (sort === "created-desc") {
+      return (
+        new Date(right.createdAt).getTime() -
+        new Date(left.createdAt).getTime()
+      );
+    }
+
+    if (sort === "created-asc") {
+      return (
+        new Date(left.createdAt).getTime() -
+        new Date(right.createdAt).getTime()
+      );
+    }
+
+    if (sort === "price-desc") {
+      return right.price - left.price;
+    }
+
+    return left.price - right.price;
+  });
+}
+
+function getVisibleDishes(
+  dishes: RestaurantDish[],
+  filter: DishFilter,
+  nameFilter: string,
+  createdAfterFilter: string,
+  createdBeforeFilter: string,
+  sort: DishSort,
+) {
+  return sortDishes(
+    filterDishes(
+      dishes,
+      filter,
+      nameFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+    ),
+    sort,
+  );
 }
 
 function getCategoryLabels(categoryIds: string[], categories: DishCategory[]) {
@@ -90,7 +198,7 @@ function sameCategoryIds(left: string[], right: string[]) {
   return sortedLeft.every((categoryId, index) => categoryId === sortedRight[index]);
 }
 
-function CategorySelector({
+export function CategorySelector({
   categories,
   selectedIds,
   onToggle,
@@ -151,6 +259,114 @@ function CategorySelector({
   );
 }
 
+function CategoryRows({
+  categories,
+  disabled,
+  isAddingCategoryRow,
+  onAdd,
+  onCancel,
+  onConfirm,
+  onPendingChange,
+  onRemove,
+  pendingCategoryId,
+  selectedIds,
+}: {
+  categories: DishCategory[];
+  disabled: boolean;
+  isAddingCategoryRow: boolean;
+  onAdd: () => void;
+  onCancel: () => void;
+  onConfirm: () => void;
+  onPendingChange: (categoryId: string) => void;
+  onRemove: (categoryId: string) => void;
+  pendingCategoryId: string;
+  selectedIds: string[];
+}) {
+  const selectedCategories = selectedIds
+    .map((categoryId) => categories.find((category) => category.id === categoryId))
+    .filter((category): category is DishCategory => Boolean(category));
+  const categoriesToAdd = categories.filter(
+    (category) => !selectedIds.includes(category.id),
+  );
+
+  return (
+    <>
+      <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
+        {selectedCategories.length === 0 && !isAddingCategoryRow ? (
+          <p className="px-4 py-4 text-sm font-medium text-slate-400 dark:text-slate-500">
+            No hay categorÃ­as asociadas.
+          </p>
+        ) : null}
+
+        {selectedCategories.map((category) => (
+          <div
+            key={category.id}
+            className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-4 text-sm font-extrabold text-slate-800 last:border-b-0 dark:border-slate-800 dark:text-slate-100"
+          >
+            <span className="min-w-0 truncate">{category.name}</span>
+            <button
+              type="button"
+              onClick={() => onRemove(category.id)}
+              disabled={disabled}
+              aria-label={`Quitar ${category.name}`}
+              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+            >
+              <TrashIcon className="h-4 w-4" />
+            </button>
+          </div>
+        ))}
+
+        {isAddingCategoryRow ? (
+          <div className="grid gap-3 border-b border-gray-100 px-4 py-4 last:border-b-0 dark:border-slate-800">
+            <select
+              value={pendingCategoryId}
+              onChange={(event) => onPendingChange(event.target.value)}
+              disabled={disabled || categoriesToAdd.length === 0}
+              className="h-10 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              {categoriesToAdd.map((category) => (
+                <option key={category.id} value={category.id}>
+                  {category.name}
+                </option>
+              ))}
+            </select>
+            <div className="flex gap-3">
+              <button
+                type="button"
+                onClick={onConfirm}
+                disabled={disabled || categoriesToAdd.length === 0}
+                aria-label="Confirmar categoría"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 transition hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-emerald-500/10 dark:text-emerald-400 dark:hover:bg-emerald-500/20"
+              >
+                <CheckIcon className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={onCancel}
+                disabled={disabled}
+                aria-label="Cancelar categorÃ­a"
+                className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
+              >
+                <XMarkIcon className="h-4 w-4" />
+              </button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+
+      <button
+        type="button"
+        onClick={onAdd}
+        disabled={disabled || isAddingCategoryRow || categoriesToAdd.length === 0}
+        className="mt-3 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
+      >
+        <PlusIcon className="h-5 w-5" />
+        Agregar categorÃ­a
+      </button>
+    </>
+  );
+}
+
 type RestaurantDishesPageData = RestaurantDishesResponse & {
   categories: DishCategory[];
 };
@@ -179,12 +395,21 @@ export default function RestaurantDishesPage() {
   // que llega el listado inicial desde backend.
   const [restaurantId, setRestaurantId] = useState("");
   const [filter, setFilter] = useState<DishFilter>("all");
+  const [nameFilter, setNameFilter] = useState("");
+  const [createdAfterFilter, setCreatedAfterFilter] = useState("");
+  const [createdBeforeFilter, setCreatedBeforeFilter] = useState("");
+  const [sort, setSort] = useState<DishSort>("created-desc");
   const [dishes, setDishes] = useState<RestaurantDish[]>([]);
   const [savedDishes, setSavedDishes] = useState<RestaurantDish[]>([]);
   const [categories, setCategories] = useState<DishCategory[]>([]);
   const [selectedDishId, setSelectedDishId] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [mobileEditingDishId, setMobileEditingDishId] = useState("");
+  const [createCategoryIds, setCreateCategoryIds] = useState<string[]>([]);
+  const [pendingCreateCategoryId, setPendingCreateCategoryId] = useState("");
+  const [isAddingCreateCategoryRow, setIsAddingCreateCategoryRow] =
+    useState(false);
   const [isPending, startTransition] = useTransition();
   const [createError, setCreateError] = useState<string | null>(null);
   const [detailError, setDetailError] = useState<string | null>(null);
@@ -201,6 +426,8 @@ export default function RestaurantDishesPage() {
   const [editCategoryIds, setEditCategoryIds] = useState<string[]>([]);
   const [editImageFile, setEditImageFile] = useState<File | null>(null);
   const [hasEditImageChange, setHasEditImageChange] = useState(false);
+  const [pendingEditCategoryId, setPendingEditCategoryId] = useState("");
+  const [isAddingEditCategoryRow, setIsAddingEditCategoryRow] = useState(false);
   const {
     data: loadedData,
     error: loadError,
@@ -211,8 +438,15 @@ export default function RestaurantDishesPage() {
   });
 
   const filteredDishes = useMemo(() => {
-    return filterDishes(dishes, filter);
-  }, [dishes, filter]);
+    return getVisibleDishes(
+      dishes,
+      filter,
+      nameFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
+  }, [dishes, filter, nameFilter, createdAfterFilter, createdBeforeFilter, sort]);
 
   const selectedDish =
     filteredDishes.find((dish) => dish.id === selectedDishId) ??
@@ -238,17 +472,98 @@ export default function RestaurantDishesPage() {
     setEditCategoryIds(dish?.categoryIds ?? []);
     setEditImageFile(null);
     setHasEditImageChange(false);
+    setPendingEditCategoryId("");
+    setIsAddingEditCategoryRow(false);
     if (editImageInputRef.current) {
       editImageInputRef.current.value = "";
     }
   }
 
-  function toggleEditCategory(categoryId: string) {
-    setEditCategoryIds((current) =>
-      current.includes(categoryId)
-        ? current.filter((id) => id !== categoryId)
-        : [...current, categoryId],
+  function startAddingEditCategory() {
+    const nextCategory = categories.find(
+      (category) => !editCategoryIds.includes(category.id),
     );
+
+    if (!nextCategory) {
+      return;
+    }
+
+    setPendingEditCategoryId(nextCategory.id);
+    setIsAddingEditCategoryRow(true);
+    setDetailError(null);
+  }
+
+  function confirmEditCategory() {
+    const categoryId =
+      pendingEditCategoryId ||
+      categories.find((category) => !editCategoryIds.includes(category.id))?.id;
+
+    if (!categoryId) {
+      setDetailError("No hay categorÃ­as disponibles para agregar.");
+      return;
+    }
+
+    if (editCategoryIds.includes(categoryId)) {
+      setDetailError("Esa categorÃ­a ya esta asociada al plato.");
+      return;
+    }
+
+    setEditCategoryIds((current) => [...current, categoryId]);
+    setPendingEditCategoryId("");
+    setIsAddingEditCategoryRow(false);
+    setDetailError(null);
+  }
+
+  function removeEditCategory(categoryId: string) {
+    setEditCategoryIds((current) => current.filter((id) => id !== categoryId));
+    setDetailError(null);
+  }
+
+  function resetCreateForm() {
+    createFormRef.current?.reset();
+    setCreateCategoryIds([]);
+    setPendingCreateCategoryId("");
+    setIsAddingCreateCategoryRow(false);
+  }
+
+  function startAddingCreateCategory() {
+    const nextCategory = categories.find(
+      (category) => !createCategoryIds.includes(category.id),
+    );
+
+    if (!nextCategory) {
+      return;
+    }
+
+    setPendingCreateCategoryId(nextCategory.id);
+    setIsAddingCreateCategoryRow(true);
+    setCreateError(null);
+  }
+
+  function confirmCreateCategory() {
+    const categoryId =
+      pendingCreateCategoryId ||
+      categories.find((category) => !createCategoryIds.includes(category.id))?.id;
+
+    if (!categoryId) {
+      setCreateError("No hay categorÃ­as disponibles para agregar.");
+      return;
+    }
+
+    if (createCategoryIds.includes(categoryId)) {
+      setCreateError("Esa categorÃ­a ya esta asociada al plato.");
+      return;
+    }
+
+    setCreateCategoryIds((current) => [...current, categoryId]);
+    setPendingCreateCategoryId("");
+    setIsAddingCreateCategoryRow(false);
+    setCreateError(null);
+  }
+
+  function removeCreateCategory(categoryId: string) {
+    setCreateCategoryIds((current) => current.filter((id) => id !== categoryId));
+    setCreateError(null);
   }
 
   function applyDishesData(
@@ -258,7 +573,14 @@ export default function RestaurantDishesPage() {
     // Sincroniza listado, copia guardada y formulario de edicion con una misma
     // respuesta del backend para que cancelar vuelva siempre al ultimo dato real.
     const initialSelectedDish =
-      filterDishes(nextData.dishes, currentFilter)[0] ?? null;
+      getVisibleDishes(
+        nextData.dishes,
+        currentFilter,
+        nameFilter,
+        createdAfterFilter,
+        createdBeforeFilter,
+        sort,
+      )[0] ?? null;
 
     setRestaurantId(nextData.restaurantId);
     setDishes(nextData.dishes);
@@ -266,10 +588,12 @@ export default function RestaurantDishesPage() {
     setCategories(nextData.categories);
     resetEditForm(initialSelectedDish);
     setShowCreateForm(!initialSelectedDish);
+    resetCreateForm();
   }
 
   function selectDish(dish: RestaurantDish) {
     resetEditForm(dish);
+    resetCreateForm();
     setShowCreateForm(false);
     setMobileEditingDishId("");
     setCreateError(null);
@@ -277,7 +601,14 @@ export default function RestaurantDishesPage() {
   }
 
   function handleFilterChange(nextFilter: DishFilter) {
-    const nextFilteredDishes = filterDishes(dishes, nextFilter);
+    const nextFilteredDishes = getVisibleDishes(
+      dishes,
+      nextFilter,
+      nameFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
     const selectedDishIsVisible = nextFilteredDishes.some(
       (dish) => dish.id === selectedDishId,
     );
@@ -296,6 +627,114 @@ export default function RestaurantDishesPage() {
     setDetailError(null);
   }
 
+  function handleNameFilterChange(nextNameFilter: string) {
+    const nextFilteredDishes = getVisibleDishes(
+      dishes,
+      filter,
+      nextNameFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
+    const selectedDishIsVisible = nextFilteredDishes.some(
+      (dish) => dish.id === selectedDishId,
+    );
+
+    setNameFilter(nextNameFilter);
+
+    if (selectedDishIsVisible) {
+      return;
+    }
+
+    const nextDish = nextFilteredDishes[0] ?? null;
+    resetEditForm(nextDish);
+    setShowCreateForm(!nextDish);
+    setMobileEditingDishId("");
+    setCreateError(null);
+    setDetailError(null);
+  }
+
+  function handleCreatedRangeFilterChange(
+    nextCreatedAfterFilter: string,
+    nextCreatedBeforeFilter: string,
+  ) {
+    const nextFilteredDishes = getVisibleDishes(
+      dishes,
+      filter,
+      nameFilter,
+      nextCreatedAfterFilter,
+      nextCreatedBeforeFilter,
+      sort,
+    );
+    const selectedDishIsVisible = nextFilteredDishes.some(
+      (dish) => dish.id === selectedDishId,
+    );
+
+    setCreatedAfterFilter(nextCreatedAfterFilter);
+    setCreatedBeforeFilter(nextCreatedBeforeFilter);
+
+    if (selectedDishIsVisible) {
+      return;
+    }
+
+    const nextDish = nextFilteredDishes[0] ?? null;
+    resetEditForm(nextDish);
+    setShowCreateForm(!nextDish);
+    setMobileEditingDishId("");
+    setCreateError(null);
+    setDetailError(null);
+  }
+
+  function clearFilters() {
+    const nextFilteredDishes = getVisibleDishes(dishes, "all", "", "", "", sort);
+    const selectedDishIsVisible = nextFilteredDishes.some(
+      (dish) => dish.id === selectedDishId,
+    );
+
+    setFilter("all");
+    setNameFilter("");
+    setCreatedAfterFilter("");
+    setCreatedBeforeFilter("");
+
+    if (selectedDishIsVisible) {
+      return;
+    }
+
+    const nextDish = nextFilteredDishes[0] ?? null;
+    resetEditForm(nextDish);
+    setShowCreateForm(!nextDish);
+    setMobileEditingDishId("");
+    setCreateError(null);
+    setDetailError(null);
+  }
+
+  function handleSortChange(nextSort: DishSort) {
+    const nextVisibleDishes = getVisibleDishes(
+      dishes,
+      filter,
+      nameFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      nextSort,
+    );
+    const selectedDishIsVisible = nextVisibleDishes.some(
+      (dish) => dish.id === selectedDishId,
+    );
+
+    setSort(nextSort);
+
+    if (selectedDishIsVisible) {
+      return;
+    }
+
+    const nextDish = nextVisibleDishes[0] ?? null;
+    resetEditForm(nextDish);
+    setShowCreateForm(!nextDish);
+    setMobileEditingDishId("");
+    setCreateError(null);
+    setDetailError(null);
+  }
+
   function handleCreate(formData: FormData) {
     if (!restaurantId) {
       return;
@@ -304,7 +743,6 @@ export default function RestaurantDishesPage() {
     const name = String(formData.get("name") ?? "").trim();
     const description = String(formData.get("description") ?? "").trim();
     const price = Number(formData.get("price") ?? 0);
-    const categoryIds = formData.getAll("categoryIds");
 
     if (!name || price <= 0) {
       setCreateError("Nombre y precio son obligatorios");
@@ -316,7 +754,7 @@ export default function RestaurantDishesPage() {
       return;
     }
 
-    if (categoryIds.length === 0) {
+    if (createCategoryIds.length === 0) {
       setCreateError("Debe seleccionar al menos una categoría");
       return;
     }
@@ -328,17 +766,25 @@ export default function RestaurantDishesPage() {
           name,
           description,
           price,
-          categoryIds: categoryIds.map(String),
+          categoryIds: createCategoryIds,
           image: (formData.get("image") as File | null) ?? null,
         });
-        createFormRef.current?.reset();
+        resetCreateForm();
         setShowCreateForm(false);
         // Refresh dish list without full page reload
         const [freshData, freshCategories] = await Promise.all([
           getRestaurantDishes(restaurantId),
           getDishCategories(),
         ]);
-        const nextDish = filterDishes(freshData.dishes, filter)[0] ?? null;
+        const nextDish =
+          getVisibleDishes(
+            freshData.dishes,
+            filter,
+            nameFilter,
+            createdAfterFilter,
+            createdBeforeFilter,
+            sort,
+          )[0] ?? null;
         setDishes(freshData.dishes);
         setSavedDishes(freshData.dishes);
         setCategories(freshCategories);
@@ -430,7 +876,15 @@ export default function RestaurantDishesPage() {
       try {
         await deleteDish(dishId);
         const nextDishes = dishes.filter((d) => d.id !== dishId);
-        const nextDish = filterDishes(nextDishes, filter)[0] ?? null;
+        const nextDish =
+          getVisibleDishes(
+            nextDishes,
+            filter,
+            nameFilter,
+            createdAfterFilter,
+            createdBeforeFilter,
+            sort,
+          )[0] ?? null;
 
         setDishes(nextDishes);
         setSavedDishes(nextDishes);
@@ -492,7 +946,14 @@ export default function RestaurantDishesPage() {
             };
           });
         const nextDishes = updateCurrentDishes(dishes);
-        const nextFilteredDishes = filterDishes(nextDishes, filter);
+        const nextFilteredDishes = getVisibleDishes(
+          nextDishes,
+          filter,
+          nameFilter,
+          createdAfterFilter,
+          createdBeforeFilter,
+          sort,
+        );
         const nextDish =
           nextFilteredDishes.find((dish) => dish.id === selectedDish.id) ??
           nextFilteredDishes[0] ??
@@ -544,28 +1005,304 @@ export default function RestaurantDishesPage() {
   const isDataReady = Boolean(loadedData) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los platos.";
+  const hasActiveFilters =
+    Boolean(nameFilter) ||
+    Boolean(createdAfterFilter) ||
+    Boolean(createdBeforeFilter) ||
+    filter !== "all";
 
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <label htmlFor="dish-status-filter" className="block max-w-[180px]">
-          <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-            Estado
-          </span>
-          <select
-            id="dish-status-filter"
-            value={filter}
-            disabled={!isDataReady}
-            onChange={(event) =>
-              handleFilterChange(event.target.value as DishFilter)
-            }
-            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-          >
-            <option value="all">Todos</option>
-            <option value="available">Disponibles</option>
-            <option value="unavailable">No disponibles</option>
-          </select>
-        </label>
+        <div className="grid gap-4 xl:hidden">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              disabled={!isDataReady}
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="flex h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            >
+              <FunnelIcon className="h-4 w-4" />
+              Filtros
+              {hasActiveFilters && (
+                <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+              )}
+            </button>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                disabled={!isDataReady}
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <label htmlFor="dish-sort-mobile" className="sr-only">
+                Orden
+              </label>
+              <select
+                id="dish-sort-mobile"
+                value={sort}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleSortChange(event.target.value as DishSort)
+                }
+                className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="name-asc">Nombre A-Z</option>
+                <option value="name-desc">Nombre Z-A</option>
+                <option value="created-desc">Mas nuevos</option>
+                <option value="created-asc">Mas antiguos</option>
+                <option value="price-desc">Mas caros</option>
+                <option value="price-asc">Mas baratos</option>
+              </select>
+            </div>
+          </div>
+
+          {isMobileFiltersOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pb-4 pt-20 backdrop-blur-sm sm:items-center sm:pt-16">
+              <div className="w-full rounded-2xl border border-gray-200 bg-white shadow-xl sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                      Filtros
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Ajusta el listado de platos visible.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    aria-label="Cerrar filtros"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-orange-400"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="grid gap-4 px-5 py-5">
+                  <label htmlFor="dish-name-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Nombre
+                    </span>
+                    <input
+                      id="dish-name-filter-mobile"
+                      type="search"
+                      value={nameFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleNameFilterChange(event.target.value)
+                      }
+                      placeholder="Buscar plato"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label
+                    htmlFor="dish-created-after-filter-mobile"
+                    className="block"
+                  >
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado despues de
+                    </span>
+                    <input
+                      id="dish-created-after-filter-mobile"
+                      type="datetime-local"
+                      value={createdAfterFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleCreatedRangeFilterChange(
+                          event.target.value,
+                          createdBeforeFilter,
+                        )
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label
+                    htmlFor="dish-created-before-filter-mobile"
+                    className="block"
+                  >
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado antes de
+                    </span>
+                    <input
+                      id="dish-created-before-filter-mobile"
+                      type="datetime-local"
+                      value={createdBeforeFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleCreatedRangeFilterChange(
+                          createdAfterFilter,
+                          event.target.value,
+                        )
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="dish-status-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Estado
+                    </span>
+                    <select
+                      id="dish-status-filter-mobile"
+                      value={filter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        handleFilterChange(event.target.value as DishFilter)
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="available">Disponibles</option>
+                      <option value="unavailable">No disponibles</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      disabled={!isDataReady}
+                      onClick={clearFilters}
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden gap-4 xl:flex xl:items-end xl:justify-between">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-[240px_190px_190px_150px_auto] xl:items-end">
+            <label htmlFor="dish-name-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Nombre
+              </span>
+              <input
+                id="dish-name-filter"
+                type="search"
+                value={nameFilter}
+                disabled={!isDataReady}
+                onChange={(event) => handleNameFilterChange(event.target.value)}
+                placeholder="Buscar plato"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="dish-created-after-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado despues de
+              </span>
+              <input
+                id="dish-created-after-filter"
+                type="datetime-local"
+                value={createdAfterFilter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleCreatedRangeFilterChange(
+                    event.target.value,
+                    createdBeforeFilter,
+                  )
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="dish-created-before-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado antes de
+              </span>
+              <input
+                id="dish-created-before-filter"
+                type="datetime-local"
+                value={createdBeforeFilter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleCreatedRangeFilterChange(
+                    createdAfterFilter,
+                    event.target.value,
+                  )
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="dish-status-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Estado
+              </span>
+              <select
+                id="dish-status-filter"
+                value={filter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  handleFilterChange(event.target.value as DishFilter)
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="all">Todos</option>
+                <option value="available">Disponibles</option>
+                <option value="unavailable">No disponibles</option>
+              </select>
+            </label>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                disabled={!isDataReady}
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+          </div>
+
+          <label htmlFor="dish-sort" className="block w-full xl:w-[180px]">
+            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+              Orden
+            </span>
+            <select
+              id="dish-sort"
+              value={sort}
+              disabled={!isDataReady}
+              onChange={(event) =>
+                handleSortChange(event.target.value as DishSort)
+              }
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              <option value="name-asc">Nombre A-Z</option>
+              <option value="name-desc">Nombre Z-A</option>
+              <option value="created-desc">Mas nuevos</option>
+              <option value="created-asc">Mas antiguos</option>
+              <option value="price-desc">Mas caros</option>
+              <option value="price-asc">Mas baratos</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1.6fr)_minmax(420px,1fr)]">
@@ -584,6 +1321,7 @@ export default function RestaurantDishesPage() {
               type="button"
               disabled={!isDataReady}
               onClick={() => {
+                resetCreateForm();
                 setShowCreateForm(true);
                 setSelectedDishId("");
                 setMobileEditingDishId("");
@@ -745,10 +1483,20 @@ export default function RestaurantDishesPage() {
                         <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                           Categorías
                         </span>
-                        <CategorySelector
+                        <CategoryRows
                           categories={categories}
+                          disabled={isPending}
+                          isAddingCategoryRow={isAddingEditCategoryRow}
+                          onAdd={startAddingEditCategory}
+                          onCancel={() => {
+                            setIsAddingEditCategoryRow(false);
+                            setPendingEditCategoryId("");
+                          }}
+                          onConfirm={confirmEditCategory}
+                          onPendingChange={setPendingEditCategoryId}
+                          onRemove={removeEditCategory}
+                          pendingCategoryId={pendingEditCategoryId}
                           selectedIds={editCategoryIds}
-                          onToggle={toggleEditCategory}
                         />
                       </div>
 
@@ -774,7 +1522,7 @@ export default function RestaurantDishesPage() {
                           type="file"
                           accept="image/*"
                           onChange={(e) => handleEditImageChange(e.target.files)}
-                          className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                          className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-orange-500/10 dark:file:text-orange-300 dark:focus:ring-orange-500/20"
                         />
                       </label>
 
@@ -903,9 +1651,20 @@ export default function RestaurantDishesPage() {
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Categorías
                 </span>
-                <CategorySelector
+                <CategoryRows
                   categories={categories}
-                  inputName="categoryIds"
+                  disabled={isPending}
+                  isAddingCategoryRow={isAddingCreateCategoryRow}
+                  onAdd={startAddingCreateCategory}
+                  onCancel={() => {
+                    setIsAddingCreateCategoryRow(false);
+                    setPendingCreateCategoryId("");
+                  }}
+                  onConfirm={confirmCreateCategory}
+                  onPendingChange={setPendingCreateCategoryId}
+                  onRemove={removeCreateCategory}
+                  pendingCategoryId={pendingCreateCategoryId}
+                  selectedIds={createCategoryIds}
                 />
               </div>
 
@@ -937,7 +1696,7 @@ export default function RestaurantDishesPage() {
                   type="file"
                   name="image"
                   accept="image/*"
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-orange-500/10 dark:file:text-orange-300 dark:focus:ring-orange-500/20"
                 />
               </label>
 
@@ -947,7 +1706,7 @@ export default function RestaurantDishesPage() {
                   onClick={() => {
                     setShowCreateForm(false);
                     setCreateError(null);
-                    createFormRef.current?.reset();
+                    resetCreateForm();
                   }}
                   className="h-11 cursor-pointer rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
@@ -1023,10 +1782,20 @@ export default function RestaurantDishesPage() {
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
                   Categorías
                 </span>
-                <CategorySelector
+                <CategoryRows
                   categories={categories}
+                  disabled={isPending}
+                  isAddingCategoryRow={isAddingEditCategoryRow}
+                  onAdd={startAddingEditCategory}
+                  onCancel={() => {
+                    setIsAddingEditCategoryRow(false);
+                    setPendingEditCategoryId("");
+                  }}
+                  onConfirm={confirmEditCategory}
+                  onPendingChange={setPendingEditCategoryId}
+                  onRemove={removeEditCategory}
+                  pendingCategoryId={pendingEditCategoryId}
                   selectedIds={editCategoryIds}
-                  onToggle={toggleEditCategory}
                 />
               </div>
 
@@ -1054,7 +1823,7 @@ export default function RestaurantDishesPage() {
                   type="file"
                   accept="image/*"
                   onChange={(e) => handleEditImageChange(e.target.files)}
-                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pt-2 text-sm font-medium text-slate-700 outline-none transition file:mr-3 file:rounded-lg file:border-0 file:bg-orange-50 file:px-3 file:py-1 file:text-xs file:font-extrabold file:text-orange-600 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:file:bg-orange-500/10 dark:file:text-orange-300 dark:focus:ring-orange-500/20"
                 />
               </label>
 

@@ -79,7 +79,7 @@ export default function OrderRatingModal({
     }
 
     if (!selectedLevel) {
-      setSubmitError("Selecciona una calificacion para continuar.");
+      setSubmitError("Seleccioná una calificación para continuar.");
       return;
     }
 
@@ -97,7 +97,7 @@ export default function OrderRatingModal({
       setSubmitError(
         error instanceof Error
           ? error.message
-          : "No se pudo registrar la calificacion.",
+          : "No se pudo registrar la calificación.",
       );
     } finally {
       setIsSubmitting(false);
@@ -116,7 +116,7 @@ export default function OrderRatingModal({
           <div>
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
               <p className="text-xs font-extrabold uppercase text-slate-400 dark:text-slate-500">
-                {isReadOnly ? "Calificacion del pedido" : "Calificar pedido"}
+                {isReadOnly ? "Calificación del pedido" : "Calificar pedido"}
               </p>
               <span className="text-xs font-semibold text-slate-400 dark:text-slate-500">
                 {ratingDateLabel}
@@ -144,7 +144,7 @@ export default function OrderRatingModal({
         <form className="space-y-5 px-6 py-5" onSubmit={handleSubmit}>
           <fieldset disabled={isSubmitting || isReadOnly}>
             <legend className="mb-3 text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Calificacion
+              Calificación
             </legend>
             <div className="flex flex-wrap gap-2">
               {ratingOptions.map((option) => {
@@ -181,7 +181,7 @@ export default function OrderRatingModal({
               disabled={isSubmitting || isReadOnly}
               maxLength={280}
               onChange={(event) => setComment(event.target.value)}
-              placeholder="Escribe un comentario sobre el pedido."
+              placeholder="Escribí un comentario sobre el pedido."
               value={comment}
             />
           </label>
@@ -208,7 +208,7 @@ export default function OrderRatingModal({
                 disabled={!selectedLevel || isSubmitting}
                 type="submit"
               >
-                {isSubmitting ? "Guardando..." : "Guardar calificacion"}
+                {isSubmitting ? "Guardando..." : "Guardar calificación"}
               </button>
             ) : null}
           </div>

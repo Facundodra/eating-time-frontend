@@ -1,3 +1,5 @@
+"use client";
+
 import {
   ArrowTrendingUpIcon,
   InboxIcon,
@@ -9,7 +11,9 @@ import {
   BuildingStorefrontIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 import Link from "next/link";
+import { useEffect, useRef, useState } from "react";
 
 const actions = [
   {
@@ -87,6 +91,45 @@ const actions = [
 ];
 
 export default function RestaurantQuickActions() {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [hasHiddenLeftActions, setHasHiddenLeftActions] = useState(false);
+  const [hasHiddenRightActions, setHasHiddenRightActions] = useState(false);
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+
+    if (!scrollContainer) {
+      return;
+    }
+
+    function updateScrollMask() {
+      const maxScrollLeft =
+        scrollContainer.scrollWidth - scrollContainer.clientWidth;
+
+      setHasHiddenLeftActions(scrollContainer.scrollLeft > 1);
+      setHasHiddenRightActions(scrollContainer.scrollLeft < maxScrollLeft - 1);
+    }
+
+    updateScrollMask();
+    scrollContainer.addEventListener("scroll", updateScrollMask, {
+      passive: true,
+    });
+    window.addEventListener("resize", updateScrollMask);
+
+    return () => {
+      scrollContainer.removeEventListener("scroll", updateScrollMask);
+      window.removeEventListener("resize", updateScrollMask);
+    };
+  }, []);
+
+  const scrollMaskClass = hasHiddenLeftActions
+    ? hasHiddenRightActions
+      ? "[mask-image:linear-gradient(to_right,transparent,black_18px,black_calc(100%-18px),transparent)]"
+      : "[mask-image:linear-gradient(to_right,transparent,black_18px)]"
+    : hasHiddenRightActions
+      ? "[mask-image:linear-gradient(to_right,black_calc(100%-18px),transparent)]"
+      : "[mask-image:none]";
+
   return (
     <section>
       <div className="mb-4">
@@ -98,13 +141,19 @@ export default function RestaurantQuickActions() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-3">
+      <div
+        ref={scrollContainerRef}
+        className={clsx(
+          "hide-scrollbar grid auto-cols-[minmax(230px,76vw)] grid-flow-col grid-rows-2 gap-3 overflow-x-auto pb-1 sm:auto-cols-[minmax(260px,42vw)] sm:gap-4 lg:grid-flow-row lg:grid-cols-3 lg:grid-rows-none lg:auto-cols-auto lg:overflow-visible lg:pb-0 lg:[mask-image:none]",
+          scrollMaskClass,
+        )}
+      >
         {actions.map((action) => {
           const Icon = action.icon;
 
           return (
             <article
-              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5 dark:border-slate-800 dark:bg-slate-900"
+              className="min-w-0 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md sm:p-5 dark:border-slate-800 dark:bg-slate-900"
               key={action.title}
             >
               <Icon className="h-5 w-5 text-orange-600" />

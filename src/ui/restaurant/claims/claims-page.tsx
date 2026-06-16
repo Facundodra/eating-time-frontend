@@ -1,6 +1,11 @@
 "use client";
 
-import { ArrowRightIcon } from "@heroicons/react/24/outline";
+import {
+  ArrowRightIcon,
+  ArrowsUpDownIcon,
+  FunnelIcon,
+  XMarkIcon,
+} from "@heroicons/react/24/outline";
 import clsx from "clsx";
 import Link from "next/link";
 import { useMemo, useState } from "react";
@@ -17,6 +22,13 @@ import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
 
 type ClaimFilter = "all" | ClaimStatus;
+type ClaimSort =
+  | "created-desc"
+  | "created-asc"
+  | "amount-desc"
+  | "amount-asc"
+  | "customer-asc"
+  | "customer-desc";
 
 const statusLabels: Record<ClaimStatus, string> = {
   pending: "Pendiente",
@@ -45,12 +57,108 @@ function StatusBadge({ status }: { status: ClaimStatus }) {
   );
 }
 
-function filterClaims(claims: RestaurantClaim[], filter: ClaimFilter) {
-  if (filter === "all") {
-    return claims;
-  }
+function getClaimSearchText(claim: RestaurantClaim) {
+  return `${claim.orderId} ${claim.customerName} ${claim.customerEmail} ${claim.reason} ${claim.detail}`;
+}
 
-  return claims.filter((claim) => claim.status === filter);
+function getDateTimeValue(value: string) {
+  const date = new Date(value);
+
+  return Number.isNaN(date.getTime()) ? null : date.getTime();
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .trim()
+    .toLocaleLowerCase("es")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "");
+}
+
+function filterClaims(
+  claims: RestaurantClaim[],
+  filter: ClaimFilter,
+  searchFilter: string,
+  createdAfterFilter: string,
+  createdBeforeFilter: string,
+) {
+  const normalizedSearchFilter = normalizeSearchText(searchFilter);
+  const createdAfterValue = createdAfterFilter
+    ? new Date(createdAfterFilter).getTime()
+    : null;
+  const createdBeforeValue = createdBeforeFilter
+    ? new Date(createdBeforeFilter).getTime()
+    : null;
+
+  return claims.filter((claim) => {
+    const claimCreatedAt = getDateTimeValue(claim.createdAt);
+    const matchesStatus = filter === "all" || claim.status === filter;
+    const matchesSearch =
+      !normalizedSearchFilter ||
+      normalizeSearchText(getClaimSearchText(claim)).includes(
+        normalizedSearchFilter,
+      );
+    const matchesCreatedAfter =
+      createdAfterValue === null ||
+      (claimCreatedAt !== null && claimCreatedAt >= createdAfterValue);
+    const matchesCreatedBefore =
+      createdBeforeValue === null ||
+      (claimCreatedAt !== null && claimCreatedAt <= createdBeforeValue);
+
+    return matchesStatus && matchesSearch && matchesCreatedAfter && matchesCreatedBefore;
+  });
+}
+
+function sortClaims(claims: RestaurantClaim[], sort: ClaimSort) {
+  return [...claims].sort((left, right) => {
+    if (sort === "created-desc") {
+      return (
+        (getDateTimeValue(right.createdAt) ?? 0) -
+        (getDateTimeValue(left.createdAt) ?? 0)
+      );
+    }
+
+    if (sort === "created-asc") {
+      return (
+        (getDateTimeValue(left.createdAt) ?? 0) -
+        (getDateTimeValue(right.createdAt) ?? 0)
+      );
+    }
+
+    if (sort === "amount-desc") {
+      return right.amount - left.amount;
+    }
+
+    if (sort === "amount-asc") {
+      return left.amount - right.amount;
+    }
+
+    if (sort === "customer-asc") {
+      return left.customerName.localeCompare(right.customerName, "es");
+    }
+
+    return right.customerName.localeCompare(left.customerName, "es");
+  });
+}
+
+function getVisibleClaims(
+  claims: RestaurantClaim[],
+  filter: ClaimFilter,
+  searchFilter: string,
+  createdAfterFilter: string,
+  createdBeforeFilter: string,
+  sort: ClaimSort,
+) {
+  return sortClaims(
+    filterClaims(
+      claims,
+      filter,
+      searchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+    ),
+    sort,
+  );
 }
 
 function formatDateTimeLabel(value: string) {
@@ -143,6 +251,11 @@ async function loadRestaurantClaims(): Promise<RestaurantClaimsResponse> {
 export default function RestaurantClaimsPage() {
   const [claims, setClaims] = useState<RestaurantClaim[]>([]);
   const [filter, setFilter] = useState<ClaimFilter>("all");
+  const [searchFilter, setSearchFilter] = useState("");
+  const [createdAfterFilter, setCreatedAfterFilter] = useState("");
+  const [createdBeforeFilter, setCreatedBeforeFilter] = useState("");
+  const [sort, setSort] = useState<ClaimSort>("created-desc");
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const {
     data: loadedData,
     error: loadError,
@@ -153,35 +266,296 @@ export default function RestaurantClaimsPage() {
   });
 
   const filteredClaims = useMemo(() => {
-    return filterClaims(claims, filter);
-  }, [claims, filter]);
+    return getVisibleClaims(
+      claims,
+      filter,
+      searchFilter,
+      createdAfterFilter,
+      createdBeforeFilter,
+      sort,
+    );
+  }, [claims, filter, searchFilter, createdAfterFilter, createdBeforeFilter, sort]);
 
   const isDataReady = Boolean(loadedData) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los reclamos.";
+  const hasActiveFilters =
+    Boolean(searchFilter) ||
+    Boolean(createdAfterFilter) ||
+    Boolean(createdBeforeFilter) ||
+    filter !== "all";
+
+  function clearFilters() {
+    setSearchFilter("");
+    setCreatedAfterFilter("");
+    setCreatedBeforeFilter("");
+    setFilter("all");
+  }
 
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <label htmlFor="claim-status-filter" className="block max-w-[200px]">
-          <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-            Estado
-          </span>
-          <select
-            id="claim-status-filter"
-            value={filter}
-            disabled={!isDataReady}
-            onChange={(event) =>
-              setFilter(event.target.value as ClaimFilter)
-            }
-            className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-          >
-            <option value="all">Todos</option>
-            <option value="pending">Pendientes</option>
-            <option value="resolved">Aprobados</option>
-            <option value="rejected">Rechazados</option>
-          </select>
-        </label>
+        <div className="grid gap-4 xl:hidden">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              disabled={!isDataReady}
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="flex h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            >
+              <FunnelIcon className="h-4 w-4" />
+              Filtros
+              {hasActiveFilters && (
+                <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+              )}
+            </button>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                disabled={!isDataReady}
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <label htmlFor="claim-sort-mobile" className="sr-only">
+                Orden
+              </label>
+              <select
+                id="claim-sort-mobile"
+                value={sort}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  setSort(event.target.value as ClaimSort)
+                }
+                className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="created-desc">Mas nuevos</option>
+                <option value="created-asc">Mas antiguos</option>
+                <option value="amount-desc">Mayor monto</option>
+                <option value="amount-asc">Menor monto</option>
+                <option value="customer-asc">Cliente A-Z</option>
+                <option value="customer-desc">Cliente Z-A</option>
+              </select>
+            </div>
+          </div>
+
+          {isMobileFiltersOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pb-4 pt-20 backdrop-blur-sm sm:items-center sm:pt-16">
+              <div className="w-full rounded-2xl border border-gray-200 bg-white shadow-xl sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                      Filtros
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Ajusta el listado de reclamos visible.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    aria-label="Cerrar filtros"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-orange-400"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="grid gap-4 px-5 py-5">
+                  <label htmlFor="claim-search-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Reclamo
+                    </span>
+                    <input
+                      id="claim-search-filter-mobile"
+                      type="search"
+                      value={searchFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) => setSearchFilter(event.target.value)}
+                      placeholder="Buscar reclamo"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="claim-created-after-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado despues de
+                    </span>
+                    <input
+                      id="claim-created-after-filter-mobile"
+                      type="datetime-local"
+                      value={createdAfterFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) => setCreatedAfterFilter(event.target.value)}
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="claim-created-before-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado antes de
+                    </span>
+                    <input
+                      id="claim-created-before-filter-mobile"
+                      type="datetime-local"
+                      value={createdBeforeFilter}
+                      disabled={!isDataReady}
+                      onChange={(event) => setCreatedBeforeFilter(event.target.value)}
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="claim-status-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Estado
+                    </span>
+                    <select
+                      id="claim-status-filter-mobile"
+                      value={filter}
+                      disabled={!isDataReady}
+                      onChange={(event) =>
+                        setFilter(event.target.value as ClaimFilter)
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="pending">Pendientes</option>
+                      <option value="resolved">Aprobados</option>
+                      <option value="rejected">Rechazados</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      disabled={!isDataReady}
+                      onClick={clearFilters}
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden gap-4 xl:flex xl:items-end xl:justify-between">
+          <div className="grid gap-4 xl:grid-cols-[240px_190px_190px_150px_auto] xl:items-end">
+            <label htmlFor="claim-search-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Reclamo
+              </span>
+              <input
+                id="claim-search-filter"
+                type="search"
+                value={searchFilter}
+                disabled={!isDataReady}
+                onChange={(event) => setSearchFilter(event.target.value)}
+                placeholder="Buscar reclamo"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="claim-created-after-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado despues de
+              </span>
+              <input
+                id="claim-created-after-filter"
+                type="datetime-local"
+                value={createdAfterFilter}
+                disabled={!isDataReady}
+                onChange={(event) => setCreatedAfterFilter(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="claim-created-before-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado antes de
+              </span>
+              <input
+                id="claim-created-before-filter"
+                type="datetime-local"
+                value={createdBeforeFilter}
+                disabled={!isDataReady}
+                onChange={(event) => setCreatedBeforeFilter(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="claim-status-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Estado
+              </span>
+              <select
+                id="claim-status-filter"
+                value={filter}
+                disabled={!isDataReady}
+                onChange={(event) =>
+                  setFilter(event.target.value as ClaimFilter)
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="all">Todos</option>
+                <option value="pending">Pendientes</option>
+                <option value="resolved">Aprobados</option>
+                <option value="rejected">Rechazados</option>
+              </select>
+            </label>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                disabled={!isDataReady}
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+          </div>
+
+          <label htmlFor="claim-sort" className="block w-full xl:w-[180px]">
+            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+              Orden
+            </span>
+            <select
+              id="claim-sort"
+              value={sort}
+              disabled={!isDataReady}
+              onChange={(event) => setSort(event.target.value as ClaimSort)}
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              <option value="created-desc">Mas nuevos</option>
+              <option value="created-asc">Mas antiguos</option>
+              <option value="amount-desc">Mayor monto</option>
+              <option value="amount-asc">Menor monto</option>
+              <option value="customer-asc">Cliente A-Z</option>
+              <option value="customer-desc">Cliente Z-A</option>
+            </select>
+          </label>
+        </div>
       </div>
 
       <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">

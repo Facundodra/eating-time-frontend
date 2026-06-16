@@ -163,7 +163,7 @@ export default function PendingOrdersPage() {
       {!loading && !error && orders.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-gray-200 bg-white px-6 py-12 text-center dark:border-slate-800 dark:bg-slate-900">
           <p className="text-sm font-bold text-slate-600 dark:text-slate-300">
-            No tienes pedidos en curso
+            No tenés pedidos en curso
           </p>
         </div>
       ) : null}

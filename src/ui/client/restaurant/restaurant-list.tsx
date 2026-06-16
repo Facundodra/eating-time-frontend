@@ -107,7 +107,7 @@ export default function RestaurantList() {
   if (restaurant.length === 0) {
     return (
       <p className="text-sm text-slate-400">
-        No hay locales que coincidan con su busqueda.
+        No hay locales que coincidan con tu búsqueda.
       </p>
     );
   }
@@ -124,7 +124,7 @@ export default function RestaurantList() {
     setPage(1);
   }
 
-  // Filtro calificacion
+  // Filtro calificación
   function toggleStars() {
     setFilterStars((v) => !v);
     setPage(1);

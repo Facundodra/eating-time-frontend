@@ -21,10 +21,12 @@ export default async function ClientLayout({
   }
 
   return (
-    <>
+    <div className="client-brand-font min-h-screen bg-slate-100 text-slate-950 dark:bg-slate-950 dark:text-slate-50">
       <Header session={session} />
-      <main className="px-5 md:px-10 py-10  bg-gray-100 min-h-[100vh]">{children}</main>
+      <main className="min-h-[100vh] bg-slate-100 px-5 py-10 dark:bg-slate-950 md:px-10">
+        {children}
+      </main>
       <ClientNotificationStream clientId={session.idTipoUsuario} />
-    </>
+    </div>
   );
 }

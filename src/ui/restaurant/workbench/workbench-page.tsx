@@ -2,8 +2,10 @@
 
 import {
   ArrowPathIcon,
+  ArrowsUpDownIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  FunnelIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   XMarkIcon,
@@ -26,6 +28,7 @@ import type {
   WorkbenchOrderRating,
   WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
+import { RESTAURANT_WORKBENCH_REFRESH_EVENT } from "@/lib/restaurant/notifications";
 import { getCurrentSession } from "@/services/shared/auth-service";
 import {
   changeWorkbenchOrderStatus,
@@ -96,6 +99,8 @@ type PendingOrderAction = {
   order: WorkbenchOrder;
 };
 
+const ONE_DAY_IN_MS = 24 * 60 * 60 * 1000;
+
 const ratingOptions: Array<{
   activeClassName: string;
   icon: typeof HandThumbUpIcon;
@@ -165,6 +170,55 @@ function formatPrice(price: number) {
   return `$ ${price.toLocaleString("es-UY")}`;
 }
 
+function formatBackendDateTime(date: Date) {
+  const pad = (value: number) => value.toString().padStart(2, "0");
+
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(
+    date.getDate(),
+  )}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(
+    date.getSeconds(),
+  )}`;
+}
+
+function getDateInLastDayForTime(time: string, now: Date) {
+  const [hours, minutes] = time.split(":").map(Number);
+  const date = new Date(now);
+
+  date.setHours(hours, minutes, 0, 0);
+
+  if (date.getTime() > now.getTime()) {
+    date.setDate(date.getDate() - 1);
+  }
+
+  return date;
+}
+
+function getWorkbenchDateTimeRange(startTime: string, endTime: string) {
+  if (!startTime && !endTime) return null;
+
+  const now = new Date();
+  const lowerLimit = new Date(now.getTime() - ONE_DAY_IN_MS);
+  let startDate = startTime
+    ? getDateInLastDayForTime(startTime, now)
+    : lowerLimit;
+  let endDate = endTime ? getDateInLastDayForTime(endTime, now) : now;
+
+  // Si el rango horario cruza medianoche, la hora de inicio pertenece al dia anterior.
+  if (startTime && endTime && startDate.getTime() > endDate.getTime()) {
+    startDate = new Date(startDate.getTime() - ONE_DAY_IN_MS);
+  }
+
+  if (startDate.getTime() < lowerLimit.getTime()) startDate = lowerLimit;
+  if (endDate.getTime() > now.getTime()) endDate = now;
+
+  if (startDate.getTime() > endDate.getTime()) return null;
+
+  return {
+    startDateTime: formatBackendDateTime(startDate),
+    endDateTime: formatBackendDateTime(endDate),
+  };
+}
+
 function getCustomerLabel(order: WorkbenchOrder) {
   return order.customerName ?? "Cliente sin identificar";
 }
@@ -205,7 +259,7 @@ function mergeOrderCustomerName(
 function getRatingLabel(value: WorkbenchRatingValue | null | undefined) {
   if (value === "P") return "Me gusta";
   if (value === "N") return "No me gusta";
-  return "Calificacion registrada";
+  return "Calificación registrada";
 }
 
 function getOrderDescription(order: WorkbenchOrder) {
@@ -256,7 +310,16 @@ export default function RestaurantWorkbenchPage() {
   );
   const [sortBy, setSortBy] = useState<"antiguedad" | "items">("antiguedad");
   const [direction, setDirection] = useState<"asc" | "desc">("desc");
-  const [orderId, setOrderId] = useState("");
+  const [orderIdFilter, setOrderIdFilter] = useState("");
+  const [startTimeFilter, setStartTimeFilter] = useState("");
+  const [endTimeFilter, setEndTimeFilter] = useState("");
+  const [draftOrderIdFilter, setDraftOrderIdFilter] = useState("");
+  const [draftStartTimeFilter, setDraftStartTimeFilter] = useState("");
+  const [draftEndTimeFilter, setDraftEndTimeFilter] = useState("");
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [mobileBoardStatus, setMobileBoardStatus] = useState<BoardStatus>(
+    "PENDIENTE_CONFIRMACION_LOCAL",
+  );
   const [selectedOrder, setSelectedOrder] = useState<WorkbenchOrder | null>(
     null,
   );
@@ -287,10 +350,15 @@ export default function RestaurantWorkbenchPage() {
         return;
       }
 
+      const dateTimeRange = getWorkbenchDateTimeRange(
+        startTimeFilter,
+        endTimeFilter,
+      );
       const workbenchFilters: WorkbenchFilters = {
         sortBy,
         direction,
-        orderId: orderId || undefined,
+        orderId: orderIdFilter || undefined,
+        ...(dateTimeRange ?? {}),
       };
 
       try {
@@ -319,7 +387,35 @@ export default function RestaurantWorkbenchPage() {
     return () => {
       ignore = true;
     };
-  }, [sortBy, direction, orderId, refreshKey]);
+  }, [
+    sortBy,
+    direction,
+    orderIdFilter,
+    startTimeFilter,
+    endTimeFilter,
+    refreshKey,
+  ]);
+
+  useEffect(() => {
+    function refreshWorkbenchFromNotification() {
+      if (document.visibilityState !== "visible") return;
+      if (processingOrderId !== null || pendingAction) return;
+
+      setRefreshKey((currentKey) => currentKey + 1);
+    }
+
+    window.addEventListener(
+      RESTAURANT_WORKBENCH_REFRESH_EVENT,
+      refreshWorkbenchFromNotification,
+    );
+
+    return () => {
+      window.removeEventListener(
+        RESTAURANT_WORKBENCH_REFRESH_EVENT,
+        refreshWorkbenchFromNotification,
+      );
+    };
+  }, [pendingAction, processingOrderId]);
 
   const ordersByStatus = useMemo(() => {
     const grouped = new Map<BoardStatus, WorkbenchOrder[]>(
@@ -488,13 +584,171 @@ export default function RestaurantWorkbenchPage() {
     setRefreshKey((currentKey) => currentKey + 1);
   }
 
+  const hasActiveFilters =
+    Boolean(orderIdFilter) || Boolean(startTimeFilter) || Boolean(endTimeFilter);
+  const hasDraftFilters =
+    Boolean(draftOrderIdFilter) ||
+    Boolean(draftStartTimeFilter) ||
+    Boolean(draftEndTimeFilter);
+  const mobileBoardColumn =
+    boardColumns.find((column) => column.status === mobileBoardStatus) ??
+    boardColumns[0];
+  const mobileColumnOrders =
+    ordersByStatus.get(mobileBoardColumn.status) ?? [];
+
+  function openMobileFilters() {
+    setDraftOrderIdFilter(orderIdFilter);
+    setDraftStartTimeFilter(startTimeFilter);
+    setDraftEndTimeFilter(endTimeFilter);
+    setIsMobileFiltersOpen(true);
+  }
+
+  function applyFilters() {
+    setActionError(null);
+    setPendingAction(null);
+    setOrderIdFilter(draftOrderIdFilter.trim());
+    setStartTimeFilter(draftStartTimeFilter);
+    setEndTimeFilter(draftEndTimeFilter);
+    setIsMobileFiltersOpen(false);
+  }
+
+  function clearFilters() {
+    setActionError(null);
+    setPendingAction(null);
+    setOrderIdFilter("");
+    setStartTimeFilter("");
+    setEndTimeFilter("");
+    setDraftOrderIdFilter("");
+    setDraftStartTimeFilter("");
+    setDraftEndTimeFilter("");
+  }
+
   return (
     <section className="min-w-0 space-y-5">
       <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[240px_160px_auto]">
-          <label className="block">
-            <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
-              Ordenar pedidos
+        <div className="flex items-center gap-4 xl:hidden">
+          <button
+            type="button"
+            onClick={openMobileFilters}
+            className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            aria-label="Abrir filtros"
+          >
+            <FunnelIcon className="h-4 w-4" />
+            {hasActiveFilters && (
+              <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+            )}
+          </button>
+
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="relative inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10"
+              aria-label="Limpiar filtros"
+            >
+              <FunnelIcon className="h-5 w-5" />
+              <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+            </button>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={handleRefresh}
+            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            aria-label="Actualizar pedidos"
+          >
+            <ArrowPathIcon className="h-4 w-4" />
+          </button>
+
+          <div className="ml-auto flex min-w-0 items-center gap-2">
+            <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+            <label htmlFor="workbench-sort-mobile" className="sr-only">
+              Orden
+            </label>
+            <select
+              id="workbench-sort-mobile"
+              value={`${sortBy}-${direction}`}
+              onChange={(event) => {
+                const [nextSortBy, nextDirection] = event.target.value.split(
+                  "-",
+                ) as ["antiguedad" | "items", "asc" | "desc"];
+                setSortBy(nextSortBy);
+                setDirection(nextDirection);
+              }}
+              className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              <option value="antiguedad-desc">Mas recientes</option>
+              <option value="antiguedad-asc">Mas antiguos</option>
+              <option value="items-desc">Mas items</option>
+              <option value="items-asc">Menos items</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="hidden gap-4 xl:flex xl:items-end xl:justify-between">
+          <div className="grid gap-4 xl:grid-cols-[160px_160px_160px_auto_auto] xl:items-end">
+            <label className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Nro. pedido
+              </span>
+              <input
+                type="number"
+                value={orderIdFilter}
+                onChange={(event) => setOrderIdFilter(event.target.value)}
+                placeholder="Ej: 5"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado despues de
+              </span>
+              <input
+                type="time"
+                value={startTimeFilter}
+                onChange={(event) => setStartTimeFilter(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado antes de
+              </span>
+              <input
+                type="time"
+                value={endTimeFilter}
+                onChange={(event) => setEndTimeFilter(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                aria-label="Limpiar filtros"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={handleRefresh}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              aria-label="Actualizar pedidos"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+            </button>
+          </div>
+
+          <label className="block w-full xl:w-[180px]">
+            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+              Orden
             </span>
             <select
               value={`${sortBy}-${direction}`}
@@ -505,7 +759,7 @@ export default function RestaurantWorkbenchPage() {
                 setSortBy(nextSortBy);
                 setDirection(nextDirection);
               }}
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
               <option value="antiguedad-desc">Mas recientes</option>
               <option value="antiguedad-asc">Mas antiguos</option>
@@ -513,29 +767,96 @@ export default function RestaurantWorkbenchPage() {
               <option value="items-asc">Menos items</option>
             </select>
           </label>
-
-          <label className="block">
-            <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
-              Nro. pedido
-            </span>
-            <input
-              type="number"
-              value={orderId}
-              onChange={(event) => setOrderId(event.target.value)}
-              placeholder="Ej: 5"
-              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-            />
-          </label>
-
-          <button
-            type="button"
-            onClick={handleRefresh}
-            className="inline-flex h-11 w-fit items-center gap-2 self-end rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10"
-          >
-            <ArrowPathIcon className="h-4 w-4" />
-            Actualizar
-          </button>
         </div>
+
+        {isMobileFiltersOpen ? (
+          <div className="fixed inset-0 z-50 bg-slate-950/40 px-4 pt-20 backdrop-blur-sm xl:hidden">
+            <div className="mx-auto max-w-sm rounded-2xl border border-gray-200 bg-white p-4 shadow-xl dark:border-slate-800 dark:bg-slate-900">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-black text-slate-950 dark:text-white">
+                    Filtros
+                  </h2>
+                  <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                    Se aplican contra los pedidos del backend.
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsMobileFiltersOpen(false)}
+                  className="grid h-9 w-9 place-items-center rounded-xl border border-gray-200 text-slate-500 transition hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
+                  aria-label="Cerrar filtros"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <label className="block">
+                  <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
+                    Nro. pedido
+                  </span>
+                  <input
+                    type="number"
+                    value={draftOrderIdFilter}
+                    onChange={(event) =>
+                      setDraftOrderIdFilter(event.target.value)
+                    }
+                    placeholder="Ej: 5"
+                    className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
+                    Creado despues de
+                  </span>
+                  <input
+                    type="time"
+                    value={draftStartTimeFilter}
+                    onChange={(event) =>
+                      setDraftStartTimeFilter(event.target.value)
+                    }
+                    className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
+                    Creado antes de
+                  </span>
+                  <input
+                    type="time"
+                    value={draftEndTimeFilter}
+                    onChange={(event) =>
+                      setDraftEndTimeFilter(event.target.value)
+                    }
+                    className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                  />
+                </label>
+              </div>
+
+              <div className="mt-5 flex gap-3 border-t border-gray-100 pt-4 dark:border-slate-800">
+                {hasDraftFilters ? (
+                  <button
+                    type="button"
+                    onClick={clearFilters}
+                    className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                  >
+                    Limpiar filtros
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={applyFilters}
+                  className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                >
+                  Ver resultados
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : null}
       </section>
 
       {error ? (
@@ -550,57 +871,106 @@ export default function RestaurantWorkbenchPage() {
         </div>
       ) : null}
 
-      <div className="min-h-[420px] overflow-x-auto pb-4">
+      <div className="min-h-[420px] pb-4">
         {!isLoading && !error && orders.length === 0 ? (
           <p className="mb-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
             No hay pedidos en las ultimas 24 horas.
           </p>
         ) : null}
 
-        <div className="grid min-w-[1320px] grid-cols-6 gap-4">
-          {boardColumns.map((column) => {
-            const columnOrders = ordersByStatus.get(column.status) ?? [];
+        <section className="min-h-[360px] rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50 xl:hidden">
+          <div className="mb-3 flex items-center justify-between gap-3 px-1">
+            <label htmlFor="workbench-mobile-board" className="sr-only">
+              Bandeja
+            </label>
+            <select
+              id="workbench-mobile-board"
+              value={mobileBoardStatus}
+              onChange={(event) =>
+                setMobileBoardStatus(event.target.value as BoardStatus)
+              }
+              className="h-10 min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 text-sm font-black text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              {boardColumns.map((column) => (
+                <option key={column.status} value={column.status}>
+                  {column.title}
+                </option>
+              ))}
+            </select>
+            <span className="grid h-7 min-w-7 place-items-center rounded-full bg-white px-2 text-xs font-black text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+              {mobileColumnOrders.length}
+            </span>
+          </div>
 
-            return (
-              <section
-                key={column.status}
-                className="min-h-[360px] rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50"
-              >
-                <div className="mb-3 flex items-center justify-between gap-3 px-1">
-                  <h2 className="text-sm font-black text-slate-700 dark:text-slate-200">
-                    {column.title}
-                  </h2>
-                  <span className="grid h-7 min-w-7 place-items-center rounded-full bg-white px-2 text-xs font-black text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
-                    {columnOrders.length}
-                  </span>
-                </div>
+          <div className="space-y-3">
+            {isLoading ? (
+              <ColumnSkeleton />
+            ) : mobileColumnOrders.length === 0 ? (
+              <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
+                Sin pedidos
+              </p>
+            ) : (
+              mobileColumnOrders.map((order) => (
+                <OrderCard
+                  key={order.id}
+                  order={order}
+                  status={mobileBoardColumn.status}
+                  isProcessing={processingOrderId === order.id}
+                  onAdvance={() => void handleAdvanceOrder(order)}
+                  onReject={() => setPendingAction({ type: "reject", order })}
+                  onOpenInfo={() => setSelectedOrder(order)}
+                />
+              ))
+            )}
+          </div>
+        </section>
 
-                <div className="space-y-3">
-                  {isLoading ? (
-                    <ColumnSkeleton />
-                  ) : columnOrders.length === 0 ? (
-                    <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
-                      Sin pedidos
-                    </p>
-                  ) : (
-                    columnOrders.map((order) => (
-                      <OrderCard
-                        key={order.id}
-                        order={order}
-                        status={column.status}
-                        isProcessing={processingOrderId === order.id}
-                        onAdvance={() => void handleAdvanceOrder(order)}
-                        onReject={() =>
-                          setPendingAction({ type: "reject", order })
-                        }
-                        onOpenInfo={() => setSelectedOrder(order)}
-                      />
-                    ))
-                  )}
-                </div>
-              </section>
-            );
-          })}
+        <div className="hidden overflow-x-auto xl:block">
+          <div className="grid min-w-[1320px] grid-cols-6 gap-4">
+            {boardColumns.map((column) => {
+              const columnOrders = ordersByStatus.get(column.status) ?? [];
+
+              return (
+                <section
+                  key={column.status}
+                  className="min-h-[360px] rounded-2xl bg-slate-100/70 p-3 dark:bg-slate-950/50"
+                >
+                  <div className="mb-3 flex items-center justify-between gap-3 px-1">
+                    <h2 className="text-sm font-black text-slate-700 dark:text-slate-200">
+                      {column.title}
+                    </h2>
+                    <span className="grid h-7 min-w-7 place-items-center rounded-full bg-white px-2 text-xs font-black text-slate-500 shadow-sm dark:bg-slate-900 dark:text-slate-300">
+                      {columnOrders.length}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3">
+                    {isLoading ? (
+                      <ColumnSkeleton />
+                    ) : columnOrders.length === 0 ? (
+                      <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
+                        Sin pedidos
+                      </p>
+                    ) : (
+                      columnOrders.map((order) => (
+                        <OrderCard
+                          key={order.id}
+                          order={order}
+                          status={column.status}
+                          isProcessing={processingOrderId === order.id}
+                          onAdvance={() => void handleAdvanceOrder(order)}
+                          onReject={() =>
+                            setPendingAction({ type: "reject", order })
+                          }
+                          onOpenInfo={() => setSelectedOrder(order)}
+                        />
+                      ))
+                    )}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
         </div>
       </div>
 
@@ -931,7 +1301,7 @@ function OrderInfoModal({
             <div className="mb-3 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-sm font-black text-slate-700 dark:text-slate-200">
-                  Calificacion del cliente
+                  Calificación del cliente
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
                   {isRatingLoading

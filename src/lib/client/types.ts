@@ -31,6 +31,16 @@ export type ClientDish = {
   categories: number[];
 }
 
+export type ClientDishCategory = {
+  id: number;
+  name: string;
+  imageUrl: string | null;
+}
+
+export type ClientDishCategorySummary = ClientDishCategory & {
+  dishCount: number;
+}
+
 export type Discount = {
   id: number;
   porcentaje: number;
@@ -159,7 +169,19 @@ export type Order = {
   hasLocalRating: boolean;
 };
 
+export type OrderClaimStatus = "PENDIENTE" | "APROBADO" | "RECHAZADO";
 
+export type OrderClaim = {
+  id: number;
+  pedidoId: number;
+  descripcion: string;
+  nota: string | null;
+  estado: OrderClaimStatus;
+  creacion: string;
+  localId?: number;
+  localNombre?: string | null;
+  pedidoTotal?: number | null;
+};
 
 // Calificacion de local 
 export type LocalRating = {

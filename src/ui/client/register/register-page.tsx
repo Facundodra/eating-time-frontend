@@ -40,7 +40,7 @@ export default function RegisterPage() {
 
           <p className="mt-5 max-w-[520px] text-sm leading-7 font-medium text-slate-400 dark:text-slate-300 sm:mt-7 sm:text-base sm:leading-8">
             Registrate como cliente para descubrir locales, realizar pedidos y
-            consultar tu historial desde la web o la app mobile.
+            consultar tu historial desde la web o la app móvil.
           </p>
 
           <div className="mt-8 w-full max-w-[520px] overflow-hidden rounded-[20px] shadow-[0_18px_45px_rgba(15,23,42,0.14)] sm:mt-10 lg:rounded-[24px] lg:shadow-[0_26px_70px_rgba(15,23,42,0.16)]">
