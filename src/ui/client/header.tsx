@@ -1,13 +1,21 @@
 "use client";
 
 import {
+  AdjustmentsHorizontalIcon,
+  ArrowRightOnRectangleIcon,
+  Bars3Icon,
+  ChatBubbleLeftRightIcon,
+  ClipboardDocumentListIcon,
+  ClockIcon,
   MagnifyingGlassIcon,
   ShoppingCartIcon,
+  StarIcon,
+  UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import Form from "next/form";
 import Image from "next/image";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
 
 import { getSessionDisplayData } from "@/lib/shared/auth/session-display";
@@ -20,17 +28,54 @@ import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 
+const menuLinkClass =
+  "flex items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-800 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800";
+const menuIconClass = "h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400";
+
 export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { imageUrl, profileAlt } = getSessionDisplayData(session);
+  const isClientSearchPage = pathname === "/client/search";
+  const currentSearchQuery =
+    isClientSearchPage ? searchParams.get("q") ?? "" : "";
+  const [searchQuery, setSearchQuery] = useState(currentSearchQuery);
+  const [navigationMenuOpen, setNavigationMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pendingRatingCount, setPendingRatingCount] = useState(0);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
 
-  // Si estamos en un restaurante, el ícono del carrito apunta a su carrito
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
   const cartHref = restaurantMatch
     ? `/client/restaurant/${restaurantMatch[1]}/cart`
     : "/client/cart";
+
+  useEffect(() => {
+    setSearchQuery(currentSearchQuery);
+  }, [currentSearchQuery]);
+
+  function closeHeaderMenus() {
+    setNavigationMenuOpen(false);
+    setAccountMenuOpen(false);
+  }
+
+  function toggleNavigationMenu() {
+    setNavigationMenuOpen((open) => !open);
+    setAccountMenuOpen(false);
+  }
+
+  function toggleAccountMenu() {
+    setAccountMenuOpen((open) => !open);
+    setNavigationMenuOpen(false);
+  }
+
+  useEffect(() => {
+    closeHeaderMenus();
+  }, [pathname]);
+
+  function toggleSearchFilters() {
+    window.dispatchEvent(new CustomEvent("client-search-filters-toggle"));
+  }
 
   useEffect(() => {
     let ignore = false;
@@ -77,110 +122,234 @@ export default function Header({ session }: { session: LoginWebResponse }) {
   }, []);
 
   return (
-    <div className="client-header flex items-center justify-between px-10 py-5">
-      <Link href="/" className="logo flex items-center gap-4">
+    <div className="client-header sticky top-0 z-40 flex items-center gap-2 border-b border-gray-200 bg-white/95 px-3 py-3 text-slate-950 shadow-sm backdrop-blur dark:border-slate-800 dark:bg-slate-950/95 dark:text-slate-50 sm:gap-3 md:px-10 md:py-4">
+      <Link href="/" className="logo flex shrink-0 items-center gap-3 md:gap-4">
         <Image
           src={EatingTimeLogo}
           alt="Eating Time Logo"
           width={50}
           height={50}
-          className="w-[50px]"
+          className="h-auto w-11 md:w-[50px]"
         />
-        <div className="logo_content">
-          <span className="logo_content_name block text-xl font-bold text-slate-950 dark:text-slate-50">
+        <div className="logo_content hidden md:block">
+          <span className="logo_content_name client-brand-font block text-xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50">
             Eating<span className="text-red-600 dark:text-red-500">Time</span>
           </span>
         </div>
       </Link>
 
-      <div className="search ml-auto hidden md:block">
+      <Form
+        action="/client/search"
+        className="flex min-w-0 flex-1 items-center rounded-full border border-transparent bg-slate-100 px-3 py-2 shadow-sm transition focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:focus-within:border-slate-700 md:hidden"
+      >
+        <input
+          name="q"
+          type="text"
+          value={searchQuery}
+          onChange={(event) => setSearchQuery(event.target.value)}
+          placeholder="Buscar..."
+          className="min-w-0 flex-1 bg-transparent pr-2 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white dark:placeholder:text-slate-500"
+        />
+        <button
+          type="submit"
+          aria-label="Buscar"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm transition hover:bg-orange-700"
+        >
+          <MagnifyingGlassIcon className="h-4 w-4 text-white" />
+        </button>
+      </Form>
+
+      <div className="search hidden min-w-0 flex-1 items-center justify-center px-8 md:flex">
         <Form
-          action="/search"
-          className="flex w-fit items-center rounded-full border border-gray-100 bg-gray-100 px-[15px] py-[8px] transition hover:bg-white"
+          action="/client/search"
+          className="flex w-[min(42vw,520px)] items-center rounded-full border border-transparent bg-slate-100 px-4 py-2 shadow-sm transition hover:bg-white focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:hover:bg-slate-900 dark:focus-within:border-slate-700"
         >
           <input
+            name="q"
             type="text"
+            value={searchQuery}
+            onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Buscar..."
-            className="min-w-[400px] pr-2 text-sm focus:outline-none"
+            className="min-w-0 flex-1 bg-transparent pr-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
-            className="cursor-pointer rounded-full bg-orange-700 p-2 transition hover:bg-orange-800"
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-orange-600 text-white shadow-sm transition hover:bg-orange-700"
           >
             <MagnifyingGlassIcon className="h-4 w-4 text-white" />
           </button>
         </Form>
+        {isClientSearchPage ? (
+          <button
+            type="button"
+            aria-label="Mostrar u ocultar filtros de busqueda"
+            onClick={toggleSearchFilters}
+            className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+          >
+            <AdjustmentsHorizontalIcon className="h-5 w-5" />
+          </button>
+        ) : null}
       </div>
 
-      <div className="theme ml-auto mr-3">
-        <ThemeToggle />
-      </div>
+      <div className="flex shrink-0 items-center gap-2">
+        <div className="cart relative shrink-0">
+          <Link
+            href={cartHref}
+            className="group grid h-[37px] w-[37px] place-items-center rounded-full border border-gray-200 bg-white p-2 shadow-sm transition hover:border-gray-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800"
+          >
+            <ShoppingCartIcon className="h-5 w-5 text-gray-800 transition dark:text-slate-200" />
+          </Link>
+        </div>
 
-      <div className="cart mr-3 relative top-[3px]">
-        <Link
-          href={cartHref}
-          className="group h-[37px] w-[37px]   inline-block rounded-full border border-gray-200 p-2 transition hover:bg-orange-800"
-        >
-          <ShoppingCartIcon className="text-gray-800 transition group-hover:text-white" />
-        </Link>
-      </div>
+        <div className="account relative shrink-0">
+          <button
+            type="button"
+            aria-expanded={accountMenuOpen}
+            aria-label="Abrir opciones de cuenta"
+            onClick={toggleAccountMenu}
+            className="relative block rounded-full focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
+          >
+            <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+            {pendingOrdersCount > 0 ? (
+              <span
+                aria-label={`${pendingOrdersCount} pedidos en curso cancelables`}
+                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
+              >
+                {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
+              </span>
+            ) : null}
+            {pendingRatingCount > 0 ? (
+              <span
+                aria-label={`${pendingRatingCount} pedidos pendientes de calificacion`}
+                className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950 ${
+                  pendingOrdersCount > 0 ? "-left-1 -top-1" : "-right-1 -top-1"
+                }`}
+              >
+                {pendingRatingCount > 9 ? "9+" : pendingRatingCount}
+              </span>
+            ) : null}
+          </button>
 
-      <div className="account relative cursor-pointer group">
-        {/* <Link href="/client/mi-cuenta" className="relative bottom-[3px]"> */}
-        <span className="relative inline-block">
-          <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
-          {pendingOrdersCount > 0 ? (
-            <span
-              aria-label={`${pendingOrdersCount} pedidos en curso cancelables`}
-              className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
-            >
-              {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
-            </span>
+          {accountMenuOpen ? (
+            <nav className="absolute right-0 top-[calc(100%+12px)] z-50 w-56 rounded-md border border-gray-100 bg-white px-5 py-4 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+              <ul className="space-y-1">
+                <li>
+                  <Link
+                    href="/client/mi-cuenta"
+                    onClick={closeHeaderMenus}
+                    className={menuLinkClass}
+                  >
+                    <UserCircleIcon className={menuIconClass} />
+                    Mi cuenta
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/client/order-history"
+                    onClick={closeHeaderMenus}
+                    className={menuLinkClass}
+                  >
+                    <ClipboardDocumentListIcon className={menuIconClass} />
+                    Historial de pedidos
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/logout"
+                    onClick={closeHeaderMenus}
+                    className={menuLinkClass}
+                  >
+                    <ArrowRightOnRectangleIcon className={menuIconClass} />
+                    Salir
+                  </Link>
+                </li>
+              </ul>
+            </nav>
           ) : null}
-          {pendingRatingCount > 0 ? (
-            <span
-              aria-label={`${pendingRatingCount} pedidos pendientes de calificacion`}
-              className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950 ${
-                pendingOrdersCount > 0 ? "-left-1 -top-1" : "-right-1 -top-1"
-              }`}
-            >
-              {pendingRatingCount > 9 ? "9+" : pendingRatingCount}
-            </span>
-          ) : null}
-        </span>
-        {/* </Link> */}
-        <ul className="sub-menu absolute bg-white py-5 px-6 right-0 w-max rounded-md shadow-md hidden group-hover:block">
-          <li><Link href="/client/mi-cuenta" className="text-sm text-gray-800 hover:text-orange-700 transition">Mi cuenta</Link></li>
-          <li>
-            <Link
-              href="/client/pending-orders"
-              className="text-sm text-gray-800 hover:text-orange-700 transition"
-            >
-              Pedidos en curso
-              {pendingOrdersCount > 0 ? ` (${pendingOrdersCount})` : ""}
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/client/order-ratings"
-              className="text-sm text-gray-800 hover:text-orange-700 transition"
-            >
-              Calificación de pedidos
-              {pendingRatingCount > 0 ? ` (${pendingRatingCount})` : ""}
-            </Link>
-          </li>
-          <li>
-            <Link
-              href="/client/claims"
-              className="text-sm text-gray-800 hover:text-orange-700 transition"
-            >
-              Seguimiento de reclamos
-            </Link>
-          </li>
-          <li><Link href="/client/order-history" className="text-sm text-gray-800 hover:text-orange-700 transition">Historial de Pedidos</Link></li>
-          <li><Link href="/logout" className="text-sm text-gray-800 hover:text-orange-700 transition">Salir</Link></li>
-        </ul>
+        </div>
+
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            aria-expanded={navigationMenuOpen}
+            aria-label="Abrir menu de navegacion"
+            onClick={toggleNavigationMenu}
+            className="grid h-[37px] w-[37px] place-items-center rounded-md text-gray-800 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
+          >
+            <Bars3Icon className="h-5 w-5" />
+          </button>
+        </div>
       </div>
+
+      {navigationMenuOpen ? (
+        <nav className="absolute right-0 top-full z-50 h-[calc(100vh-69px)] w-[min(72vw,280px)] border-l border-gray-100 bg-white px-5 py-5 shadow-xl dark:border-slate-800 dark:bg-slate-900 md:h-[calc(100vh-83px)] md:w-72 md:px-6">
+          <ul className="space-y-1">
+            <li>
+              <Link
+                href="/client/mi-cuenta"
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
+              >
+                <UserCircleIcon className={menuIconClass} />
+                Mi cuenta
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/client/pending-orders"
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
+              >
+                <ClockIcon className={menuIconClass} />
+                Pedidos en curso
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/client/order-ratings"
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
+              >
+                <StarIcon className={menuIconClass} />
+                Calificación de pedidos
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/client/claims"
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
+              >
+                <ChatBubbleLeftRightIcon className={menuIconClass} />
+                Seguimiento de reclamos
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/client/order-history"
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
+              >
+                <ClipboardDocumentListIcon className={menuIconClass} />
+                Historial de pedidos
+              </Link>
+            </li>
+            <li>
+              <ThemeToggle variant="menu" />
+            </li>
+            <li>
+              <Link
+                href="/logout"
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
+              >
+                <ArrowRightOnRectangleIcon className={menuIconClass} />
+                Salir
+              </Link>
+            </li>
+          </ul>
+        </nav>
+      ) : null}
     </div>
   );
 }

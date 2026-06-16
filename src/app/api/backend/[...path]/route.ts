@@ -51,9 +51,17 @@ async function proxy(request: NextRequest) {
     });
   }
 
-  return new NextResponse(await backendResponse.text(), {
+  const responseHeaders: Record<string, string> = {
+    "content-type": responseContentType || "text/plain",
+  };
+  const contentDisposition = backendResponse.headers.get("content-disposition");
+  if (contentDisposition) {
+    responseHeaders["content-disposition"] = contentDisposition;
+  }
+
+  return new NextResponse(backendResponse.body, {
     status: backendResponse.status,
-    headers: { "content-type": responseContentType || "text/plain" },
+    headers: responseHeaders,
   });
 }
 

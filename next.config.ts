@@ -26,6 +26,51 @@ const nextConfig: NextConfig = {
         hostname: "loivvbfjjtrvokahdurg.supabase.co",
         pathname: "/storage/v1/object/public/**",
       },
+      {
+        protocol: "https",
+        hostname: "mbzkrlbmwarvasifefyy.supabase.co",
+        pathname: "/storage/v1/object/public/**",
+      },
+      {
+        protocol: "https",
+        hostname: "cdn.pixabay.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "elsartencaliente.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "koala.sh",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "png.pngtree.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "tastydinnerrecipes.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "thfvnext.bing.com",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "tse3.mm.bing.net",
+        pathname: "/**",
+      },
+      {
+        protocol: "https",
+        hostname: "uploads.vibra.co",
+        pathname: "/**",
+      },
     ],
   },
 };

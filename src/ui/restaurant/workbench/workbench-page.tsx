@@ -259,7 +259,7 @@ function mergeOrderCustomerName(
 function getRatingLabel(value: WorkbenchRatingValue | null | undefined) {
   if (value === "P") return "Me gusta";
   if (value === "N") return "No me gusta";
-  return "Calificacion registrada";
+  return "Calificación registrada";
 }
 
 function getOrderDescription(order: WorkbenchOrder) {
@@ -1244,7 +1244,7 @@ function OrderInfoModal({
             <div className="mb-3 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-sm font-black text-slate-700 dark:text-slate-200">
-                  Calificacion del cliente
+                  Calificación del cliente
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
                   {isRatingLoading
