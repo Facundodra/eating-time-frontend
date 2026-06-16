@@ -31,6 +31,11 @@ export type ClientDish = {
   categories: number[];
 }
 
+export type ClientDishCategory = {
+  id: number;
+  name: string;
+}
+
 export type Discount = {
   id: number;
   porcentaje: number;
@@ -172,6 +177,8 @@ export type OrderClaim = {
   localNombre?: string | null;
   pedidoTotal?: number | null;
 };
+
+// Calificacion de local 
 export type LocalRating = {
   id: number;
   calificacion: number;

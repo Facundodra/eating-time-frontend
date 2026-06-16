@@ -106,8 +106,8 @@ export default function DeleteAccountSection() {
         ) : (
           <div className="space-y-4 rounded-xl border border-red-100 bg-red-50/50 p-4 dark:border-red-500/20 dark:bg-red-500/5">
             <p className="font-medium text-red-700 dark:text-red-300">
-              ¿Estás seguro? Perderás el acceso a tu cuenta y no podrás
-              recuperarla.
+              ¿Estás seguro? Vas a perder el acceso a tu cuenta y no vas a
+              poder recuperarla.
             </p>
 
             <label className="block">
