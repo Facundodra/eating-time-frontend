@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
 import {
@@ -19,7 +20,7 @@ import {
 } from "@heroicons/react/24/outline";
 
 import {
-  getClientDishCategories,
+  getClientDishCategorySummaries,
   getDishDiscount,
   getDishes,
   getDiscountedDishIds,
@@ -28,6 +29,7 @@ import {
 import type {
   ClientDish,
   ClientDishCategory,
+  ClientDishCategorySummary,
   Discount,
   RestaurantList,
 } from "@/lib/client/types";
@@ -40,12 +42,13 @@ type SearchTab = "all" | "restaurants" | "dishes" | "categories";
 
 type SearchPageProps = {
   initialQuery?: string;
+  initialTab?: SearchTab;
 };
 
 type SearchData = {
   restaurants: RestaurantList[];
   dishes: ClientDish[];
-  categories: ClientDishCategory[];
+  categories: ClientDishCategorySummary[];
   discounts: Map<number, Discount>;
 };
 
@@ -75,6 +78,12 @@ function formatPrice(value: number) {
 function getDiscountedPrice(price: number, discount?: Discount) {
   if (!discount) return null;
   return Math.round(price * (1 - discount.porcentaje / 100));
+}
+
+function formatDishCount(count: number) {
+  if (count === 0) return "Sin platos";
+  if (count === 1) return "1 plato";
+  return `${count} platos`;
 }
 
 function doesDishMatchQuery(
@@ -245,6 +254,37 @@ function DishCard({
   );
 }
 
+function CategoryCard({ category }: { category: ClientDishCategorySummary }) {
+  return (
+    <Link
+      href={`/client/search?q=${encodeURIComponent(category.name)}&tab=dishes`}
+      className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+    >
+      <div className="relative flex h-36 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+        {category.imageUrl ? (
+          <Image
+            alt={category.name}
+            src={category.imageUrl}
+            fill
+            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover transition duration-200 group-hover:scale-105"
+          />
+        ) : (
+          <Squares2X2Icon className="h-12 w-12 text-orange-300 dark:text-orange-500/50" />
+        )}
+      </div>
+      <div className="p-4">
+        <h3 className="line-clamp-2 text-sm font-bold text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
+          {category.name}
+        </h3>
+        <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+          {formatDishCount(category.dishCount)}
+        </p>
+      </div>
+    </Link>
+  );
+}
+
 function CategoryButton({
   category,
   selected,
@@ -271,11 +311,14 @@ function CategoryButton({
   );
 }
 
-export default function SearchPage({ initialQuery = "" }: SearchPageProps) {
+export default function SearchPage({
+  initialQuery = "",
+  initialTab = "all",
+}: SearchPageProps) {
   const router = useRouter();
   const [appliedQuery, setAppliedQuery] = useState(initialQuery);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<SearchTab>("all");
+  const [activeTab, setActiveTab] = useState<SearchTab>(initialTab);
   const [onlyOpen, setOnlyOpen] = useState(false);
   const [onlyDiscounted, setOnlyDiscounted] = useState(false);
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(true);
@@ -286,6 +329,10 @@ export default function SearchPage({ initialQuery = "" }: SearchPageProps) {
   useEffect(() => {
     setAppliedQuery(initialQuery);
   }, [initialQuery]);
+
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
 
   useEffect(() => {
     function handleFiltersToggle() {
@@ -314,7 +361,7 @@ export default function SearchPage({ initialQuery = "" }: SearchPageProps) {
       try {
         const [categories, restaurantResult, dishes, discountedIds] =
           await Promise.all([
-            getClientDishCategories(),
+            getClientDishCategorySummaries(),
             getRestaurants({
               nombre: appliedQuery.trim() || undefined,
               servicio: onlyOpen ? "ACTIVO" : undefined,
@@ -534,7 +581,7 @@ export default function SearchPage({ initialQuery = "" }: SearchPageProps) {
 
             {matchedCategories.length > 0 ? (
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {matchedCategories.slice(0, 12).map((category) => (
+                {matchedCategories.map((category) => (
                   <CategoryButton
                     key={category.id}
                     category={category}
@@ -641,13 +688,11 @@ export default function SearchPage({ initialQuery = "" }: SearchPageProps) {
                 Categorías
               </h2>
               {matchedCategories.length > 0 ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {matchedCategories.map((category) => (
-                    <CategoryButton
+                    <CategoryCard
                       key={category.id}
                       category={category}
-                      selected={selectedCategoryId === category.id}
-                      onClick={() => selectCategory(category.id)}
                     />
                   ))}
                 </div>

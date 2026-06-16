@@ -27,6 +27,98 @@ export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDis
 
 const CATEGORY_RELATION_PAGE_SIZE = 100;
 
+type ApiCollectionResponse<T> =
+    | T[]
+    | {
+        content?: T[];
+        data?: T[];
+        items?: T[];
+        results?: T[];
+        totalPages?: number;
+        totalPaginas?: number;
+        totalElements?: number;
+        totalElementos?: number;
+    };
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+    return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function getCollectionFromResponse<T>(data: ApiCollectionResponse<T> | unknown): T[] {
+    if (Array.isArray(data)) return data as T[];
+    if (!isRecord(data)) return [];
+
+    const collectionKeys = ["content", "data", "items", "results"];
+    for (const key of collectionKeys) {
+        const value = data[key];
+        if (Array.isArray(value)) return value as T[];
+    }
+
+    return [];
+}
+
+function getNumericValue(value: unknown): number | null {
+    if (typeof value === "number" && Number.isFinite(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+        const parsed = Number(value);
+        return Number.isFinite(parsed) ? parsed : null;
+    }
+
+    return null;
+}
+
+function getStringValue(value: unknown): string | null {
+    return typeof value === "string" && value.trim() ? value : null;
+}
+
+function getFirstStringValue(...values: unknown[]): string | null {
+    for (const value of values) {
+        const stringValue = getStringValue(value);
+        if (stringValue) return stringValue;
+    }
+
+    return null;
+}
+
+function getBooleanValue(value: unknown): boolean | null {
+    if (typeof value === "boolean") return value;
+    if (typeof value === "number") return value !== 0;
+    if (typeof value !== "string") return null;
+
+    const normalized = value.trim().toLowerCase();
+    if (["true", "activo", "activa", "abierto", "abierta", "available", "disponible"].includes(normalized)) {
+        return true;
+    }
+    if (["false", "inactivo", "inactiva", "cerrado", "cerrada", "unavailable", "no disponible"].includes(normalized)) {
+        return false;
+    }
+
+    return null;
+}
+
+function getNestedId(value: unknown): number | null {
+    if (!isRecord(value)) return null;
+    return getNumericValue(value.id ?? value.localId ?? value.idLocal);
+}
+
+function getTotalPagesFromResponse(
+    data: unknown,
+    itemCount: number,
+    requestedSize?: number,
+) {
+    if (isRecord(data)) {
+        const totalPages = getNumericValue(data.totalPages ?? data.totalPaginas);
+        if (totalPages != null) return totalPages;
+
+        const totalElements = getNumericValue(data.totalElements ?? data.totalElementos);
+        if (totalElements != null && requestedSize && requestedSize > 0) {
+            return Math.ceil(totalElements / requestedSize);
+        }
+    }
+
+    return itemCount > 0 ? 1 : 0;
+}
+
 export async function addDeliveryPoint(credentials: DeliveryPointCredentials): Promise<void>{
     const session = await requireCurrentSession();
 
@@ -79,50 +171,99 @@ export async function getDeliveryPoints(): Promise<DeliveryPoint[]> {
 
 // Listado de Platos
 interface PlatoDtoFromApi {
-    id: number;
-    nombre: string;
-    descripcion: string | null;
-    fotoUrl: string | null;
-    precio: number;
-    disponible: boolean;
-    creacion: string;
-    localId: number;
-    categoriaIds: number[] | null;
+    id?: number | string;
+    platoId?: number | string;
+    nombre?: string | null;
+    name?: string | null;
+    descripcion?: string | null;
+    description?: string | null;
+    fotoUrl?: string | null;
+    urlFoto?: string | null;
+    imagenUrl?: string | null;
+    imageUrl?: string | null;
+    precio?: number | string;
+    price?: number | string;
+    disponible?: boolean | string | number | null;
+    estado?: boolean | string | number | null;
+    status?: boolean | string | number | null;
+    creacion?: string | null;
+    createdAt?: string | null;
+    localId?: number | string | null;
+    idLocal?: number | string | null;
+    local?: unknown;
+    categoriaIds?: Array<number | string> | null;
+    categorias?: Array<number | string | { id?: number | string }> | null;
+    categories?: Array<number | string | { id?: number | string }> | null;
 }
 
 interface CategoriaDtoFromApi {
-    id: number;
-    nombre: string;
+    id?: number | string;
+    categoriaId?: number | string;
+    nombre?: string | null;
+    name?: string | null;
     fotoUrl?: string | null;
     urlFoto?: string | null;
     imagenUrl?: string | null;
     imageUrl?: string | null;
 }
 
+function getCategoryIdsFromDish(plato: PlatoDtoFromApi): number[] {
+    const rawCategories =
+        plato.categoriaIds ??
+        plato.categorias ??
+        plato.categories ??
+        [];
+
+    return rawCategories
+        .map((category) => {
+            if (typeof category === "number" || typeof category === "string") {
+                return getNumericValue(category);
+            }
+
+            return getNestedId(category);
+        })
+        .filter((categoryId): categoryId is number => categoryId != null);
+}
+
 function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
+    const id = getNumericValue(plato.id ?? plato.platoId) ?? 0;
+    const localId =
+        getNumericValue(plato.localId ?? plato.idLocal) ??
+        getNestedId(plato.local) ??
+        0;
+    const available =
+        getBooleanValue(plato.disponible ?? plato.estado ?? plato.status) ?? true;
+
     return {
-        id: plato.id,
-        name: plato.nombre,
-        description: plato.descripcion ?? "",
-        price: plato.precio,
-        imageUrl: plato.fotoUrl,
-        status: plato.disponible ? "available" : "unavailable",
-        createdAt: plato.creacion,
-        localId: plato.localId,
-        categories: plato.categoriaIds ?? [],
+        id,
+        name: getFirstStringValue(plato.nombre, plato.name) ?? `Plato #${id}`,
+        description: getFirstStringValue(plato.descripcion, plato.description) ?? "",
+        price: getNumericValue(plato.precio ?? plato.price) ?? 0,
+        imageUrl: getFirstStringValue(
+            plato.fotoUrl,
+            plato.urlFoto,
+            plato.imagenUrl,
+            plato.imageUrl,
+        ),
+        status: available ? "available" : "unavailable",
+        createdAt: getFirstStringValue(plato.creacion, plato.createdAt) ?? "",
+        localId,
+        categories: getCategoryIdsFromDish(plato),
     };
 }
 
 function mapCategoriaToClientDishCategory(categoria: CategoriaDtoFromApi): ClientDishCategory {
+    const id = getNumericValue(categoria.id ?? categoria.categoriaId) ?? 0;
+
     return {
-        id: categoria.id,
-        name: categoria.nombre,
-        imageUrl:
-            categoria.fotoUrl ??
-            categoria.urlFoto ??
-            categoria.imagenUrl ??
-            categoria.imageUrl ??
-            null,
+        id,
+        name: getFirstStringValue(categoria.nombre, categoria.name) ?? `Categoria #${id}`,
+        imageUrl: getFirstStringValue(
+            categoria.fotoUrl,
+            categoria.urlFoto,
+            categoria.imagenUrl,
+            categoria.imageUrl,
+        ),
     };
 }
 
@@ -138,24 +279,53 @@ export type DishFilter = {
     tamano?: number;
 };
 
-export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
+function buildDishQuery(filter?: DishFilter) {
     const params = new URLSearchParams();
-    if (filter?.idLocal != null)    params.set("idLocal",      String(filter.idLocal));
-    if (filter?.precioMin != null)  params.set("precioMin",    String(filter.precioMin));
-    if (filter?.precioMax != null)  params.set("precioMax",    String(filter.precioMax));
-    if (filter?.conDescuento)       params.set("conDescuento", "true");
-    if (filter?.orden)              params.set("orden",        filter.orden);
-    if (filter?.sentido)            params.set("sentido",      filter.sentido);
-    if (filter?.pagina != null)     params.set("pagina",       String(filter.pagina));
-    if (filter?.tamano != null)     params.set("tamano",       String(filter.tamano));
+    if (filter?.idLocal != null) params.set("idLocal", String(filter.idLocal));
+    if (filter?.precioMin != null) params.set("precioMin", String(filter.precioMin));
+    if (filter?.precioMax != null) params.set("precioMax", String(filter.precioMax));
+    if (filter?.conDescuento) params.set("conDescuento", "true");
+    if (filter?.orden) params.set("orden", filter.orden);
+    if (filter?.sentido) params.set("sentido", filter.sentido);
+    if (filter?.pagina != null) params.set("pagina", String(Math.max(filter.pagina - 1, 0)));
+    if (filter?.tamano != null) params.set("tamano", String(filter.tamano));
 
+    return params;
+}
+
+async function fetchDishesFromEndpoint(
+    endpoint: string,
+    params: URLSearchParams,
+): Promise<ClientDish[]> {
     const query = params.toString();
-    const url = `/api/locales/platos${query ? `?${query}` : ""}`;
+    const response = await api.get<ApiCollectionResponse<PlatoDtoFromApi>>(
+        `${endpoint}${query ? `?${query}` : ""}`,
+    );
+
+    return getCollectionFromResponse<PlatoDtoFromApi>(response.data).map(mapPlatoToClientDish);
+}
+
+function shouldTryRestaurantDishFallback(error: unknown, filter?: DishFilter) {
+    if (filter?.idLocal == null || !axios.isAxiosError(error)) return false;
+    const status = error.response?.status;
+
+    return status === 400 || status === 401 || status === 403 || status === 404 || status === 405;
+}
+
+export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
+    const params = buildDishQuery(filter);
 
     try{
-        const response = await api.get<PlatoDtoFromApi[]>(url);
-        return response.data.map(mapPlatoToClientDish);
+        return await fetchDishesFromEndpoint("/api/locales/platos", params);
     } catch (error) {
+        if (shouldTryRestaurantDishFallback(error, filter)) {
+            try {
+                return await fetchDishesFromEndpoint("/api/platos", params);
+            } catch {
+                // Keep the original catalog error because it is the preferred client endpoint.
+            }
+        }
+
         if (axios.isAxiosError(error)) {
             const data = error.response?.data;
             const message = data?.error ?? data?.message ?? `Error al obtener platos (${error.response?.status})`;
@@ -167,8 +337,8 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
 
 export async function getClientDishCategories(): Promise<ClientDishCategory[]> {
     try {
-        const response = await api.get<CategoriaDtoFromApi[]>("/api/categorias");
-        return response.data.map(mapCategoriaToClientDishCategory);
+        const response = await api.get<ApiCollectionResponse<CategoriaDtoFromApi>>("/api/categorias");
+        return getCollectionFromResponse<CategoriaDtoFromApi>(response.data).map(mapCategoriaToClientDishCategory);
     } catch (error) {
         if (axios.isAxiosError(error)) {
             const data = error.response?.data;
@@ -253,6 +423,21 @@ export async function getClientDishCategorySummaries(): Promise<ClientDishCatego
     }));
 }
 
+export async function getTopClientDishCategorySummaries(
+    limit: number,
+): Promise<ClientDishCategorySummary[]> {
+    const categories = await getClientDishCategorySummaries();
+
+    return [...categories]
+        .sort((left, right) => {
+            const countComparison = right.dishCount - left.dishCount;
+            return countComparison !== 0
+                ? countComparison
+                : left.name.localeCompare(right.name, "es");
+        })
+        .slice(0, limit);
+}
+
 export async function getDish(id: string): Promise<ClientDish> {
     try {
         const response = await api.get<PlatoDtoFromApi>(`/api/platos/${id}`);
@@ -286,8 +471,12 @@ export async function getDishDiscount(dishId: number): Promise<Discount | null> 
 
 // Devuelve los IDs de los platos con descuento activo, reutilizando el filtro conDescuento ya soportado por /api/locales/platos
 export async function getDiscountedDishIds(idLocal?: number): Promise<Set<number>> {
-    const dishes = await getDishes({ idLocal, conDescuento: true, tamano: 100 });
-    return new Set(dishes.map((dish) => dish.id));
+    try {
+        const dishes = await getDishes({ idLocal, conDescuento: true, tamano: 100 });
+        return new Set(dishes.map((dish) => dish.id));
+    } catch {
+        return new Set<number>();
+    }
 }
 
 
@@ -304,25 +493,38 @@ export type RestaurantFilter = {
 };
 
 interface RestaurantDtoFromApi {
-    id: number;
-    nombre: string;
-    urlFoto: string | null;
-    estadoServicio: boolean;
-    calificacion: number | null;
-}
-
-interface RestaurantPageResponse {
-    content: RestaurantDtoFromApi[];
-    totalPages: number;
+    id?: number | string;
+    localId?: number | string;
+    idLocal?: number | string;
+    nombre?: string | null;
+    name?: string | null;
+    razonSocial?: string | null;
+    urlFoto?: string | null;
+    fotoUrl?: string | null;
+    imagenUrl?: string | null;
+    imageUrl?: string | null;
+    estadoServicio?: boolean | string | number | null;
+    servicio?: boolean | string | number | null;
+    estado?: boolean | string | number | null;
+    calificacion?: number | string | null;
+    rating?: number | string | null;
+    stars?: number | string | null;
 }
 
 function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): RestaurantList {
+    const id = getNumericValue(r.id ?? r.localId ?? r.idLocal) ?? 0;
+
     return {
-        id: r.id,
-        name: r.nombre,
-        url_photo: r.urlFoto ?? "",
-        stars: r.calificacion ?? 0,
-        state: r.estadoServicio,
+        id,
+        name: getFirstStringValue(r.nombre, r.name, r.razonSocial) ?? `Local #${id}`,
+        url_photo: getFirstStringValue(
+            r.urlFoto,
+            r.fotoUrl,
+            r.imagenUrl,
+            r.imageUrl,
+        ) ?? "",
+        stars: getNumericValue(r.calificacion ?? r.rating ?? r.stars) ?? 0,
+        state: getBooleanValue(r.estadoServicio ?? r.servicio ?? r.estado) ?? false,
     };
 }
 
@@ -332,10 +534,13 @@ export async function getRestaurants(
     filter: RestaurantFilter = {}
 ): Promise<{ restaurants: RestaurantList[]; totalPages: number }> {
     try {
-        const response = await api.get<RestaurantPageResponse>(`/api/locales`, { params: filter });
+        const response = await api.get<ApiCollectionResponse<RestaurantDtoFromApi>>(`/api/locales`, { params: filter });
+        const restaurants = getCollectionFromResponse<RestaurantDtoFromApi>(response.data)
+            .map(mapRestaurantDtoApiToRestaurantType);
+
         return {
-            restaurants: response.data.content.map(mapRestaurantDtoApiToRestaurantType),
-            totalPages: response.data.totalPages,
+            restaurants,
+            totalPages: getTotalPagesFromResponse(response.data, restaurants.length, filter.size),
         };
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -350,24 +555,35 @@ export async function getRestaurants(
 
 
 interface RestaurantSingleDtoFromApi {
-    id: number;
-    nombre: string;
-    urlFoto: string | null;
-    estadoServicio: boolean;
-    calificacion: number | null;
-    direccion: string | null;
-    descripcion: string | null;
+    id?: number | string;
+    localId?: number | string;
+    idLocal?: number | string;
+    nombre?: string | null;
+    name?: string | null;
+    razonSocial?: string | null;
+    urlFoto?: string | null;
+    fotoUrl?: string | null;
+    imagenUrl?: string | null;
+    imageUrl?: string | null;
+    estadoServicio?: boolean | string | number | null;
+    servicio?: boolean | string | number | null;
+    estado?: boolean | string | number | null;
+    calificacion?: number | string | null;
+    rating?: number | string | null;
+    stars?: number | string | null;
+    direccion?: string | null;
+    address?: string | null;
+    descripcion?: string | null;
+    description?: string | null;
 }
 
 function mapRestaurantDtoApiToRestaurant(r: RestaurantSingleDtoFromApi): Restaurant {
+    const summary = mapRestaurantDtoApiToRestaurantType(r);
+
     return {
-        id: r.id,
-        name: r.nombre,
-        url_photo: r.urlFoto ?? "",
-        stars: r.calificacion ?? 0,
-        state: r.estadoServicio,
-        address : r.direccion,
-        description: r.descripcion
+        ...summary,
+        address: getFirstStringValue(r.direccion, r.address),
+        description: getFirstStringValue(r.descripcion, r.description),
     };
 }
 

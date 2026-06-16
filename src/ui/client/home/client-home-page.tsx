@@ -14,11 +14,11 @@ import {
 } from "@heroicons/react/24/outline";
 
 import {
-  getClientDishCategorySummaries,
   getDishDiscount,
   getDishes,
   getDiscountedDishIds,
   getRestaurants,
+  getTopClientDishCategorySummaries,
 } from "@/services/client/client-service";
 import type {
   ClientDish,
@@ -26,6 +26,8 @@ import type {
   Discount,
   RestaurantList,
 } from "@/lib/client/types";
+
+const HOME_CATEGORY_LIMIT = 8;
 
 function RestaurantCardSkeleton() {
   return (
@@ -90,7 +92,7 @@ export default function ClientHomePage() {
   }, []);
 
   useEffect(() => {
-    getClientDishCategorySummaries()
+    getTopClientDishCategorySummaries(HOME_CATEGORY_LIMIT)
       .then(setCategories)
       .catch(() => setCategories([]))
       .finally(() => setLoadingCategories(false));
@@ -136,6 +138,55 @@ export default function ClientHomePage() {
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-10 px-4 py-6">
+      <section>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+            Categorías destacadas
+          </h2>
+          <Link
+            href="/client/search?tab=categories"
+            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
+          >
+            Ver todas
+          </Link>
+        </div>
+        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+          {loadingCategories
+            ? Array.from({ length: HOME_CATEGORY_LIMIT }).map((_, index) => (
+                <CategoryCardSkeleton key={index} />
+              ))
+            : categories.map((category) => (
+                <Link
+                  key={category.id}
+                  href={`/client/search?q=${encodeURIComponent(category.name)}`}
+                  className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+                >
+                  <div className="relative flex h-24 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+                    {category.imageUrl ? (
+                      <Image
+                        alt={category.name}
+                        src={category.imageUrl}
+                        fill
+                        sizes="(min-width: 768px) 25vw, 50vw"
+                        className="object-cover transition duration-200 group-hover:scale-105"
+                      />
+                    ) : (
+                      <Squares2X2Icon className="h-9 w-9 text-orange-300 dark:text-orange-500/60" />
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
+                      {category.name}
+                    </span>
+                    <span className="mt-1 block text-xs font-medium text-gray-400 dark:text-slate-500">
+                      {formatDishCount(category.dishCount)}
+                    </span>
+                  </div>
+                </Link>
+              ))}
+        </div>
+      </section>
+
       <section>
         <h2 className="mb-4 text-lg font-bold text-gray-800 dark:text-white">
           Mejores locales
@@ -210,55 +261,6 @@ export default function ClientHomePage() {
                         {restaurant.stars}
                       </span>
                     </div>
-                  </div>
-                </Link>
-              ))}
-        </div>
-      </section>
-
-      <section>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-            Categorías
-          </h2>
-          <Link
-            href="/client/search"
-            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
-          >
-            Ver todas
-          </Link>
-        </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {loadingCategories
-            ? Array.from({ length: 8 }).map((_, index) => (
-                <CategoryCardSkeleton key={index} />
-              ))
-            : categories.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/client/search?q=${encodeURIComponent(category.name)}`}
-                  className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
-                >
-                  <div className="relative flex h-24 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
-                    {category.imageUrl ? (
-                      <Image
-                        alt={category.name}
-                        src={category.imageUrl}
-                        fill
-                        sizes="(min-width: 768px) 25vw, 50vw"
-                        className="object-cover transition duration-200 group-hover:scale-105"
-                      />
-                    ) : (
-                      <Squares2X2Icon className="h-9 w-9 text-orange-300 dark:text-orange-500/60" />
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
-                      {category.name}
-                    </span>
-                    <span className="mt-1 block text-xs font-medium text-gray-400 dark:text-slate-500">
-                      {formatDishCount(category.dishCount)}
-                    </span>
                   </div>
                 </Link>
               ))}
