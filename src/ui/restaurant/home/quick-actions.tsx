@@ -102,22 +102,24 @@ export default function RestaurantQuickActions() {
       return;
     }
 
+    const container = scrollContainer;
+
     function updateScrollMask() {
       const maxScrollLeft =
-        scrollContainer.scrollWidth - scrollContainer.clientWidth;
+        container.scrollWidth - container.clientWidth;
 
-      setHasHiddenLeftActions(scrollContainer.scrollLeft > 1);
-      setHasHiddenRightActions(scrollContainer.scrollLeft < maxScrollLeft - 1);
+      setHasHiddenLeftActions(container.scrollLeft > 1);
+      setHasHiddenRightActions(container.scrollLeft < maxScrollLeft - 1);
     }
 
     updateScrollMask();
-    scrollContainer.addEventListener("scroll", updateScrollMask, {
+    container.addEventListener("scroll", updateScrollMask, {
       passive: true,
     });
     window.addEventListener("resize", updateScrollMask);
 
     return () => {
-      scrollContainer.removeEventListener("scroll", updateScrollMask);
+      container.removeEventListener("scroll", updateScrollMask);
       window.removeEventListener("resize", updateScrollMask);
     };
   }, []);
