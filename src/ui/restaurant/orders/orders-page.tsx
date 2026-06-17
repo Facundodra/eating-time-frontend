@@ -3,6 +3,8 @@
 import {
   ArrowPathIcon,
   ArrowRightIcon,
+  ArrowsUpDownIcon,
+  FunnelIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   XMarkIcon,
@@ -21,13 +23,11 @@ import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
   OrderStatus,
   WorkbenchFilters,
-  WorkbenchLocalRating,
   WorkbenchOrder,
   WorkbenchOrderRating,
   WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
 import {
-  fetchRestaurantLocalRatings,
   fetchRestaurantOrders,
   getWorkbenchOrderCustomerRating,
   submitWorkbenchOrderCustomerRating,
@@ -147,41 +147,7 @@ function formatRatingTimestamp(value: string | null | undefined) {
 }
 
 function getCustomerLabel(order: WorkbenchOrder) {
-  if (order.customerName) return order.customerName;
-  return order.customerId > 0 ? `${order.customerId}` : "Cliente sin identificar";
-}
-
-function isFallbackCustomerName(value: string) {
-  return value === "Cliente sin identificar" || value.startsWith("Cliente #");
-}
-
-function getCustomerNamesByOrderId(ratings: WorkbenchLocalRating[]) {
-  const customerNames = new Map<number, string>();
-
-  ratings.forEach((rating) => {
-    if (rating.customerName) {
-      customerNames.set(rating.orderId, rating.customerName);
-    }
-  });
-
-  return customerNames;
-}
-
-function mergeOrderCustomerName(
-  order: WorkbenchOrder,
-  customerName: string | undefined,
-): WorkbenchOrder {
-  if (
-    !customerName ||
-    (order.customerName && !isFallbackCustomerName(order.customerName))
-  ) {
-    return order;
-  }
-
-  return {
-    ...order,
-    customerName,
-  };
+  return order.customerName ?? "Cliente sin identificar";
 }
 
 function getOrderDescription(order: WorkbenchOrder) {
@@ -204,29 +170,6 @@ function filterOrders(orders: WorkbenchOrder[], filter: OrderFilter) {
   return orders.filter((order) => order.status === filter);
 }
 
-async function hydrateCustomerNames(
-  restaurantId: string,
-  orders: WorkbenchOrder[],
-): Promise<WorkbenchOrder[]> {
-  try {
-    const ratings = await fetchRestaurantLocalRatings(restaurantId);
-    const customerNamesByOrderId = getCustomerNamesByOrderId(ratings);
-
-    if (customerNamesByOrderId.size === 0) return orders;
-
-    return orders.map((order) =>
-      mergeOrderCustomerName(order, customerNamesByOrderId.get(order.id)),
-    );
-  } catch (error) {
-    console.warn(
-      `No se pudieron cargar los nombres de clientes del local ${restaurantId}:`,
-      error,
-    );
-
-    return orders;
-  }
-}
-
 async function loadRestaurantOrders(
   filters: WorkbenchFilters,
 ): Promise<WorkbenchOrder[]> {
@@ -237,9 +180,7 @@ async function loadRestaurantOrders(
   }
 
   const restaurantId = String(session.idTipoUsuario);
-  const orders = await fetchRestaurantOrders(restaurantId, filters);
-
-  return hydrateCustomerNames(restaurantId, orders);
+  return fetchRestaurantOrders(restaurantId, filters);
 }
 
 function OrderMobileCard({
@@ -293,6 +234,12 @@ export default function RestaurantOrdersPage() {
   const [orderId, setOrderId] = useState("");
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
+  const [draftStatusFilter, setDraftStatusFilter] =
+    useState<OrderFilter>("all");
+  const [draftOrderId, setDraftOrderId] = useState("");
+  const [draftStartDateTime, setDraftStartDateTime] = useState("");
+  const [draftEndDateTime, setDraftEndDateTime] = useState("");
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState<WorkbenchOrder | null>(
     null,
   );
@@ -322,6 +269,43 @@ export default function RestaurantOrdersPage() {
   const isDataReady = Boolean(loadedOrders) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los pedidos.";
+  const hasActiveFilters =
+    statusFilter !== "all" ||
+    Boolean(orderId) ||
+    Boolean(startDateTime) ||
+    Boolean(endDateTime);
+  const hasDraftFilters =
+    draftStatusFilter !== "all" ||
+    Boolean(draftOrderId) ||
+    Boolean(draftStartDateTime) ||
+    Boolean(draftEndDateTime);
+
+  function openMobileFilters() {
+    setDraftStatusFilter(statusFilter);
+    setDraftOrderId(orderId);
+    setDraftStartDateTime(startDateTime);
+    setDraftEndDateTime(endDateTime);
+    setIsMobileFiltersOpen(true);
+  }
+
+  function applyFilters() {
+    setStatusFilter(draftStatusFilter);
+    setOrderId(draftOrderId.trim());
+    setStartDateTime(draftStartDateTime);
+    setEndDateTime(draftEndDateTime);
+    setIsMobileFiltersOpen(false);
+  }
+
+  function clearFilters() {
+    setStatusFilter("all");
+    setOrderId("");
+    setStartDateTime("");
+    setEndDateTime("");
+    setDraftStatusFilter("all");
+    setDraftOrderId("");
+    setDraftStartDateTime("");
+    setDraftEndDateTime("");
+  }
 
   function handleCustomerRatingSaved(
     orderId: number,
@@ -341,40 +325,270 @@ export default function RestaurantOrdersPage() {
   return (
     <section className="space-y-6">
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-[190px_220px_160px_200px_200px_auto]">
-          <label htmlFor="order-status-filter" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Estado
-            </span>
-            <select
-              id="order-status-filter"
-              value={statusFilter}
-              disabled={!isDataReady}
-              onChange={(event) =>
-                setStatusFilter(event.target.value as OrderFilter)
-              }
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+        <div className="grid gap-4 xl:hidden">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={openMobileFilters}
+              className="flex h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
             >
-              <option value="all">Todos</option>
-              <option value="PENDIENTE_CONFIRMACION_LOCAL">Pendientes</option>
-              <option value="ACEPTADO_LOCAL">Aceptados</option>
-              <option value="EN_CURSO_LOCAL">En curso</option>
-              <option value="EN_CAMINO_LOCAL">En camino</option>
-              <option value="FINALIZADO">Finalizados</option>
-              <option value="RECHAZADO_LOCAL">Rechazados</option>
-              <option value="CANCELADO_CLIENTE">Cancelados</option>
-            </select>
-          </label>
+              <FunnelIcon className="h-4 w-4" />
+              Filtros
+              {hasActiveFilters ? (
+                <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+              ) : null}
+            </button>
 
-          <label htmlFor="order-sort" className="block">
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={reload}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              aria-label="Actualizar pedidos"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+            </button>
+
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <label htmlFor="order-sort-mobile" className="sr-only">
+                Orden
+              </label>
+              <select
+                id="order-sort-mobile"
+                value={sort}
+                onChange={(event) => setSort(event.target.value as SortKey)}
+                className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="antiguedad-desc">Mas recientes</option>
+                <option value="antiguedad-asc">Mas antiguos</option>
+                <option value="items-desc">Mas items</option>
+                <option value="items-asc">Menos items</option>
+              </select>
+            </div>
+          </div>
+
+          {isMobileFiltersOpen ? (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pb-4 pt-20 backdrop-blur-sm sm:items-center sm:pt-16">
+              <div className="w-full rounded-2xl border border-gray-200 bg-white shadow-xl sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                      Filtros
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Ajusta el historial de pedidos visible.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    aria-label="Cerrar filtros"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-orange-400"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="grid gap-4 px-5 py-5">
+                  <label htmlFor="order-status-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Estado
+                    </span>
+                    <select
+                      id="order-status-filter-mobile"
+                      value={draftStatusFilter}
+                      onChange={(event) =>
+                        setDraftStatusFilter(event.target.value as OrderFilter)
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="PENDIENTE_CONFIRMACION_LOCAL">Pendientes</option>
+                      <option value="ACEPTADO_LOCAL">Aceptados</option>
+                      <option value="EN_CURSO_LOCAL">En curso</option>
+                      <option value="EN_CAMINO_LOCAL">En camino</option>
+                      <option value="FINALIZADO">Finalizados</option>
+                      <option value="RECHAZADO_LOCAL">Rechazados</option>
+                      <option value="CANCELADO_CLIENTE">Cancelados</option>
+                    </select>
+                  </label>
+
+                  <label htmlFor="order-id-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Nro. pedido
+                    </span>
+                    <input
+                      id="order-id-filter-mobile"
+                      type="number"
+                      value={draftOrderId}
+                      onChange={(event) => setDraftOrderId(event.target.value)}
+                      placeholder="Ej: 5"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="order-start-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado despues de
+                    </span>
+                    <input
+                      id="order-start-filter-mobile"
+                      type="datetime-local"
+                      value={draftStartDateTime}
+                      onChange={(event) =>
+                        setDraftStartDateTime(event.target.value)
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+
+                  <label htmlFor="order-end-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Creado antes de
+                    </span>
+                    <input
+                      id="order-end-filter-mobile"
+                      type="datetime-local"
+                      value={draftEndDateTime}
+                      onChange={(event) =>
+                        setDraftEndDateTime(event.target.value)
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+                </div>
+
+                <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
+                  {hasDraftFilters ? (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    >
+                      Limpiar filtros
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={applyFilters}
+                    className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden gap-4 xl:flex xl:items-end xl:justify-between">
+          <div className="grid gap-4 xl:grid-cols-[160px_160px_200px_200px_auto_auto] xl:items-end">
+            <label htmlFor="order-status-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Estado
+              </span>
+              <select
+                id="order-status-filter"
+                value={statusFilter}
+                onChange={(event) =>
+                  setStatusFilter(event.target.value as OrderFilter)
+                }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="all">Todos</option>
+                <option value="PENDIENTE_CONFIRMACION_LOCAL">Pendientes</option>
+                <option value="ACEPTADO_LOCAL">Aceptados</option>
+                <option value="EN_CURSO_LOCAL">En curso</option>
+                <option value="EN_CAMINO_LOCAL">En camino</option>
+                <option value="FINALIZADO">Finalizados</option>
+                <option value="RECHAZADO_LOCAL">Rechazados</option>
+                <option value="CANCELADO_CLIENTE">Cancelados</option>
+              </select>
+            </label>
+
+            <label htmlFor="order-id-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Nro. pedido
+              </span>
+              <input
+                id="order-id-filter"
+                type="number"
+                value={orderId}
+                onChange={(event) => setOrderId(event.target.value)}
+                placeholder="Ej: 5"
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="order-start-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado despues de
+              </span>
+              <input
+                id="order-start-filter"
+                type="datetime-local"
+                value={startDateTime}
+                onChange={(event) => setStartDateTime(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            <label htmlFor="order-end-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Creado antes de
+              </span>
+              <input
+                id="order-end-filter"
+                type="datetime-local"
+                value={endDateTime}
+                onChange={(event) => setEndDateTime(event.target.value)}
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:[color-scheme:dark] dark:focus:ring-orange-500/20"
+              />
+            </label>
+
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={reload}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              aria-label="Actualizar pedidos"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+            </button>
+          </div>
+
+          <label htmlFor="order-sort" className="block w-full xl:w-[180px]">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Ordenar
+              Orden
             </span>
             <select
               id="order-sort"
               value={sort}
               onChange={(event) => setSort(event.target.value as SortKey)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
               <option value="antiguedad-desc">Mas recientes</option>
               <option value="antiguedad-asc">Mas antiguos</option>
@@ -382,55 +596,6 @@ export default function RestaurantOrdersPage() {
               <option value="items-asc">Menos items</option>
             </select>
           </label>
-
-          <label htmlFor="order-id-filter" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Nro. pedido
-            </span>
-            <input
-              id="order-id-filter"
-              type="number"
-              value={orderId}
-              onChange={(event) => setOrderId(event.target.value)}
-              placeholder="Ej: 5"
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-            />
-          </label>
-
-          <label htmlFor="order-start-filter" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Desde
-            </span>
-            <input
-              id="order-start-filter"
-              type="datetime-local"
-              value={startDateTime}
-              onChange={(event) => setStartDateTime(event.target.value)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-            />
-          </label>
-
-          <label htmlFor="order-end-filter" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Hasta
-            </span>
-            <input
-              id="order-end-filter"
-              type="datetime-local"
-              value={endDateTime}
-              onChange={(event) => setEndDateTime(event.target.value)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-            />
-          </label>
-
-          <button
-            type="button"
-            onClick={reload}
-            className="flex h-12 w-fit items-center justify-center gap-2 self-end rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10"
-          >
-            <ArrowPathIcon className="h-4 w-4" />
-            Actualizar
-          </button>
         </div>
       </div>
 
@@ -552,12 +717,12 @@ function OrderDetailModal({
   onClose: () => void;
   order: WorkbenchOrder;
 }) {
-  const [showRating, setShowRating] = useState(false);
   const [loadedRating, setLoadedRating] = useState<WorkbenchOrderRating | null>(
     order.customerRating,
   );
   const savedRating = loadedRating ?? order.customerRating;
-  const hasSavedCustomerRating = order.hasCustomerRating || Boolean(savedRating);
+  const canShowCustomerRating =
+    order.status !== "RECHAZADO_LOCAL" && order.status !== "CANCELADO_CLIENTE";
   const isRatingReadOnly = Boolean(savedRating);
   const ratingTimestamp = formatRatingTimestamp(savedRating?.creacion);
   const [selectedRating, setSelectedRating] =
@@ -577,36 +742,45 @@ function OrderDetailModal({
     setRatingComment(initialRating?.comentario ?? "");
     setRatingError(null);
     setIsRatingSubmitting(false);
-    setShowRating(Boolean(initialRating));
   }, [order.customerRating, order.id]);
 
-  async function handleOpenRating() {
-    setShowRating(true);
-    setRatingError(null);
+  useEffect(() => {
+    if (order.customerRating) return;
 
-    if (savedRating || isRatingLoading) return;
+    let isActive = true;
 
-    setIsRatingLoading(true);
+    async function loadSavedRating() {
+      setIsRatingLoading(true);
 
-    try {
-      const rating = await getWorkbenchOrderCustomerRating(order.id);
+      try {
+        const rating = await getWorkbenchOrderCustomerRating(order.id);
 
-      if (rating) {
-        setLoadedRating(rating);
-        setSelectedRating(rating.calificacion);
-        setRatingComment(rating.comentario ?? "");
-        onCustomerRatingSaved(order.id, rating);
+        if (!isActive) return;
+
+        if (rating) {
+          setLoadedRating(rating);
+          setSelectedRating(rating.calificacion);
+          setRatingComment(rating.comentario ?? "");
+          onCustomerRatingSaved(order.id, rating);
+        }
+      } catch (error) {
+        if (!isActive) return;
+        setRatingError(
+          error instanceof Error
+            ? error.message
+            : "No se pudo cargar la calificacion del cliente.",
+        );
+      } finally {
+        if (isActive) setIsRatingLoading(false);
       }
-    } catch (error) {
-      setRatingError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo cargar la calificacion del cliente.",
-      );
-    } finally {
-      setIsRatingLoading(false);
     }
-  }
+
+    void loadSavedRating();
+
+    return () => {
+      isActive = false;
+    };
+  }, [onCustomerRatingSaved, order.customerRating, order.id]);
 
   async function handleSubmitCustomerRating(
     event: FormEvent<HTMLFormElement>,
@@ -733,47 +907,61 @@ function OrderDetailModal({
             </a>
           ) : null}
 
-          <div className="border-t border-gray-100 pt-4 dark:border-slate-800">
-            <div className="mb-3 flex items-center justify-between gap-4">
+          {canShowCustomerRating ? (
+            <div className="border-t border-gray-100 pt-4 dark:border-slate-800">
+            <div className="mb-3 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-sm font-black text-slate-700 dark:text-slate-200">
                   Calificación del cliente
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
-                  {canRateCustomer || isRatingReadOnly
-                    ? "Registra si la experiencia con este cliente fue positiva."
-                    : "Disponible cuando el pedido este finalizado."}
+                  {isRatingLoading
+                    ? "Cargando calificacion guardada..."
+                    : canRateCustomer || isRatingReadOnly
+                      ? "Registra si la experiencia con este cliente fue positiva."
+                      : "Disponible cuando el pedido este finalizado."}
                 </p>
               </div>
-              {canRateCustomer || isRatingReadOnly ? (
-                <button
-                  type="button"
-                  onClick={() => void handleOpenRating()}
-                  className="h-10 shrink-0 rounded-xl bg-orange-50 px-4 text-sm font-black text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:hover:bg-orange-500/20"
-                >
-                  {hasSavedCustomerRating ? "Ver calificación" : "Calificar"}
-                </button>
+              {isRatingReadOnly ? (
+                <div className="shrink-0 text-right">
+                  <p className="text-xs font-black uppercase text-slate-400 dark:text-slate-500">
+                    Calificado
+                  </p>
+                  {ratingTimestamp ? (
+                    <p className="mt-1 text-xs font-semibold text-slate-700 dark:text-slate-300">
+                      {ratingTimestamp}
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                      {getRatingLabel(savedRating?.calificacion ?? selectedRating)}
+                    </p>
+                  )}
+                </div>
               ) : null}
             </div>
 
-            {showRating ? (
-              isRatingLoading ? (
+            {isRatingLoading ? (
                 <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
                   Buscando calificacion registrada...
                 </p>
-              ) : (
-                <form onSubmit={handleSubmitCustomerRating} className="space-y-3">
-                  {isRatingReadOnly ? (
-                    <div className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-600 dark:bg-slate-950 dark:text-slate-300">
-                      <p>{getRatingLabel(savedRating?.calificacion ?? selectedRating)}</p>
-                      {ratingTimestamp ? (
-                        <p className="mt-1 text-xs text-slate-400">
-                          {ratingTimestamp}
-                        </p>
-                      ) : null}
-                    </div>
+              ) : isRatingReadOnly ? (
+                <div className="rounded-xl border border-gray-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+                  <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                    {getRatingLabel(savedRating?.calificacion ?? selectedRating)}
+                  </p>
+                  {ratingTimestamp ? (
+                    <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+                      {ratingTimestamp}
+                    </p>
                   ) : null}
-
+                  {ratingComment ? (
+                    <p className="mt-3 whitespace-pre-line text-sm font-semibold text-slate-600 dark:text-slate-300">
+                      {ratingComment}
+                    </p>
+                  ) : null}
+                </div>
+              ) : canRateCustomer ? (
+                <form onSubmit={handleSubmitCustomerRating} className="space-y-3">
                   <div className="grid gap-3 sm:grid-cols-2">
                     {ratingOptions.map((option) => {
                       const Icon = option.icon;
@@ -783,13 +971,9 @@ function OrderDetailModal({
                         <button
                           key={option.value}
                           type="button"
-                          disabled={isRatingReadOnly || isRatingSubmitting}
+                          disabled={isRatingSubmitting}
                           aria-pressed={isActive}
-                          onClick={() => {
-                            if (!isRatingReadOnly) {
-                              setSelectedRating(option.value);
-                            }
-                          }}
+                          onClick={() => setSelectedRating(option.value)}
                           className={clsx(
                             "flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black transition disabled:cursor-default",
                             isActive
@@ -807,14 +991,9 @@ function OrderDetailModal({
                   <textarea
                     value={ratingComment}
                     onChange={(event) => setRatingComment(event.target.value)}
-                    readOnly={isRatingReadOnly}
                     placeholder="Agrega un comentario interno sobre el cliente."
                     rows={3}
-                    className={clsx(
-                      "w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20",
-                      isRatingReadOnly &&
-                        "cursor-default bg-slate-50 text-slate-800 focus:border-gray-200 focus:ring-0 dark:bg-slate-950 dark:text-slate-100",
-                    )}
+                    className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                   />
 
                   {ratingError ? (
@@ -823,23 +1002,21 @@ function OrderDetailModal({
                     </p>
                   ) : null}
 
-                  {!isRatingReadOnly ? (
-                    <div className="flex justify-end">
-                      <button
-                        type="submit"
-                        disabled={selectedRating == null || isRatingSubmitting}
-                        className="h-10 rounded-xl bg-orange-600 px-4 text-sm font-black text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
-                      >
-                        {isRatingSubmitting
-                          ? "Guardando..."
-                          : "Guardar calificacion"}
-                      </button>
-                    </div>
-                  ) : null}
+                  <div className="flex justify-end">
+                    <button
+                      type="submit"
+                      disabled={selectedRating == null || isRatingSubmitting}
+                      className="h-10 rounded-xl bg-orange-600 px-4 text-sm font-black text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {isRatingSubmitting
+                        ? "Guardando..."
+                        : "Guardar calificacion"}
+                    </button>
+                  </div>
                 </form>
-              )
-            ) : null}
-          </div>
+              ) : null}
+            </div>
+          ) : null}
         </div>
       </div>
     </div>
