@@ -19,12 +19,6 @@ export type WorkbenchOrderRating = {
   creacion?: string | null;
 };
 
-export type WorkbenchLocalRating = {
-  id?: number;
-  orderId: number;
-  customerName: string | null;
-};
-
 export type WorkbenchOrderApiResponse = {
   id?: number;
   pedidoId?: number;
@@ -52,6 +46,14 @@ export type WorkbenchOrderApiResponse = {
   clienteNombreCompleto?: string | null;
   clienteNombre?: string | null;
   clienteRazonSocial?: string | null;
+  clienteEmail?: string | null;
+  clienteCorreo?: string | null;
+  correoCliente?: string | null;
+  emailCliente?: string | null;
+  customerEmail?: string | null;
+  clienteTelefono?: string | number | null;
+  telefonoCliente?: string | number | null;
+  customerPhone?: string | number | null;
   clientName?: string | null;
   customerName?: string | null;
   fullName?: string | null;
@@ -66,6 +68,10 @@ export type WorkbenchOrderApiResponse = {
   clienteInfo?: unknown;
   clienteLocal?: unknown;
   usuarioCliente?: unknown;
+  datosCliente?: unknown;
+  clienteDatos?: unknown;
+  clienteBasico?: unknown;
+  clienteResumenDto?: unknown;
   usuario?: unknown;
   customer?: unknown;
   user?: unknown;
@@ -147,6 +153,8 @@ export type WorkbenchOrder = {
   customerId: number;
   customerName: string | null;
   customerDocument: string | null;
+  customerEmail: string | null;
+  customerPhone: string | null;
   couponId: number | null;
   status: OrderStatus;
   total: number;

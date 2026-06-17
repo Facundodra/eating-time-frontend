@@ -3,6 +3,8 @@
 import {
   ArrowPathIcon,
   ArrowRightIcon,
+  ArrowsUpDownIcon,
+  FunnelIcon,
   HandThumbDownIcon,
   HandThumbUpIcon,
   MagnifyingGlassIcon,
@@ -14,13 +16,11 @@ import { useCallback, useMemo, useState } from "react";
 import { useAsyncData } from "@/hooks/shared/use-async-data";
 import type {
   OrderStatus,
-  WorkbenchLocalRating,
   WorkbenchOrder,
   WorkbenchOrderRating,
   WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
 import {
-  fetchRestaurantLocalRatings,
   fetchRestaurantOrders,
   getWorkbenchOrderCustomerRating,
 } from "@/services/restaurant/workbench-service";
@@ -151,45 +151,11 @@ function formatPrice(value: number) {
 }
 
 function getCustomerLabel(order: WorkbenchOrder) {
-  if (order.customerName) return order.customerName;
-  return order.customerId > 0 ? `Cliente #${order.customerId}` : "Cliente sin identificar";
+  return order.customerName ?? "Cliente sin identificar";
 }
 
 function formatCustomerIdLabel(customerId: number) {
   return customerId > 0 ? `#${customerId}` : "Sin ID";
-}
-
-function isFallbackCustomerName(value: string) {
-  return value === "Cliente sin identificar" || value.startsWith("Cliente #");
-}
-
-function getCustomerNamesByOrderId(ratings: WorkbenchLocalRating[]) {
-  const customerNames = new Map<number, string>();
-
-  ratings.forEach((rating) => {
-    if (rating.customerName) {
-      customerNames.set(rating.orderId, rating.customerName);
-    }
-  });
-
-  return customerNames;
-}
-
-function mergeOrderCustomerName(
-  order: WorkbenchOrder,
-  customerName: string | undefined,
-): WorkbenchOrder {
-  if (
-    !customerName ||
-    (order.customerName && !isFallbackCustomerName(order.customerName))
-  ) {
-    return order;
-  }
-
-  return {
-    ...order,
-    customerName,
-  };
 }
 
 function getCustomerDocument(order: WorkbenchOrder) {
@@ -281,29 +247,6 @@ async function hydrateCustomerRatings(
   );
 }
 
-async function hydrateCustomerNames(
-  restaurantId: string,
-  orders: WorkbenchOrder[],
-): Promise<WorkbenchOrder[]> {
-  try {
-    const ratings = await fetchRestaurantLocalRatings(restaurantId);
-    const customerNamesByOrderId = getCustomerNamesByOrderId(ratings);
-
-    if (customerNamesByOrderId.size === 0) return orders;
-
-    return orders.map((order) =>
-      mergeOrderCustomerName(order, customerNamesByOrderId.get(order.id)),
-    );
-  } catch (error) {
-    console.warn(
-      `No se pudieron cargar los nombres de clientes del local ${restaurantId}:`,
-      error,
-    );
-
-    return orders;
-  }
-}
-
 function buildCustomerSummaries(orders: WorkbenchOrder[]) {
   const customers = new Map<number, CustomerSummary>();
 
@@ -340,10 +283,7 @@ function buildCustomerSummaries(orders: WorkbenchOrder[]) {
     existing.negativeRatings += rating === "N" ? 1 : 0;
     existing.unratedOrders += hasRating(order) ? 0 : 1;
     existing.customerDocument = existing.customerDocument ?? customerDocument;
-    if (
-      order.customerName &&
-      (!existing.customerName || isFallbackCustomerName(existing.customerName))
-    ) {
+    if (order.customerName && existing.customerName === "Cliente sin identificar") {
       existing.customerName = order.customerName;
     }
 
@@ -448,12 +388,7 @@ async function loadRestaurantOrders(): Promise<WorkbenchOrder[]> {
     sortBy: "antiguedad",
   });
 
-  const ordersWithCustomerNames = await hydrateCustomerNames(
-    String(session.idTipoUsuario),
-    orders,
-  );
-
-  return hydrateCustomerRatings(ordersWithCustomerNames);
+  return hydrateCustomerRatings(orders);
 }
 
 function CustomerMobileCard({
@@ -513,6 +448,10 @@ export default function RestaurantCustomersPage() {
   const [customerSearch, setCustomerSearch] = useState("");
   const [ratingFilter, setRatingFilter] = useState<RatingFilter>("all");
   const [sort, setSort] = useState<SortKey>("last-order-desc");
+  const [draftCustomerSearch, setDraftCustomerSearch] = useState("");
+  const [draftRatingFilter, setDraftRatingFilter] =
+    useState<RatingFilter>("all");
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [selectedCustomer, setSelectedCustomer] =
     useState<CustomerSummary | null>(null);
 
@@ -548,158 +487,260 @@ export default function RestaurantCustomersPage() {
   const isDataReady = Boolean(loadedOrders) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los clientes.";
-  const nameSortValue =
-    sort === "name-asc" || sort === "name-desc" ? sort : "";
-  const createdSortValue =
-    sort === "last-order-asc" || sort === "last-order-desc" ? sort : "";
-  const spentSortValue =
-    sort === "spent-asc" || sort === "spent-desc" ? sort : "";
-  const ratingSelectValue =
-    ratingFilter !== "all"
-      ? ratingFilter
-      : sort === "positive-desc" || sort === "negative-desc"
-        ? sort
-        : "";
-  const ordersSortValue =
-    sort === "orders-asc" || sort === "orders-desc" ? sort : "";
+  const hasActiveFilters =
+    Boolean(customerSearch.trim()) || ratingFilter !== "all";
+  const hasDraftFilters =
+    Boolean(draftCustomerSearch.trim()) || draftRatingFilter !== "all";
+
+  function openMobileFilters() {
+    setDraftCustomerSearch(customerSearch);
+    setDraftRatingFilter(ratingFilter);
+    setIsMobileFiltersOpen(true);
+  }
+
+  function applyFilters() {
+    setCustomerSearch(draftCustomerSearch.trim());
+    setRatingFilter(draftRatingFilter);
+    setIsMobileFiltersOpen(false);
+  }
+
+  function clearFilters() {
+    setCustomerSearch("");
+    setRatingFilter("all");
+    setDraftCustomerSearch("");
+    setDraftRatingFilter("all");
+  }
 
   return (
     <section className="space-y-6">
-      <h1 className="text-3xl font-black text-slate-950 dark:text-white">
-        Clientes
-      </h1>
-
       <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-[minmax(220px,1fr)_180px_180px_180px_180px_180px_auto]">
-          <label htmlFor="customer-search-filter" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Cliente
-            </span>
-            <span className="relative block">
-              <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
-              <input
-                id="customer-search-filter"
-                type="search"
-                value={customerSearch}
-                onChange={(event) => setCustomerSearch(event.target.value)}
-                placeholder="Nombre o ID"
-                className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 pl-10 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
-              />
-            </span>
-          </label>
-
-          <label htmlFor="customer-name-sort" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Nombre
-            </span>
-            <select
-              id="customer-name-sort"
-              value={nameSortValue}
-              onChange={(event) => setSort(event.target.value as SortKey)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+        <div className="grid gap-4 xl:hidden">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={openMobileFilters}
+              className="flex h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
             >
-              <option value="" disabled>
-                Ordenar
-              </option>
-              <option value="name-asc">A-Z</option>
-              <option value="name-desc">Z-A</option>
-            </select>
-          </label>
+              <FunnelIcon className="h-4 w-4" />
+              Filtros
+              {hasActiveFilters ? (
+                <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+              ) : null}
+            </button>
 
-          <label htmlFor="customer-created-sort" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Fecha de creacion
-            </span>
-            <select
-              id="customer-created-sort"
-              value={createdSortValue}
-              onChange={(event) => setSort(event.target.value as SortKey)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={reload}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              aria-label="Actualizar clientes"
             >
-              <option value="" disabled>
-                Ordenar
-              </option>
-              <option value="last-order-asc">Cliente mas antiguo</option>
-              <option value="last-order-desc">Cliente mas nuevo</option>
-            </select>
-          </label>
+              <ArrowPathIcon className="h-4 w-4" />
+            </button>
 
-          <label htmlFor="customer-spent-sort" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Total gastado
-            </span>
-            <select
-              id="customer-spent-sort"
-              value={spentSortValue}
-              onChange={(event) => setSort(event.target.value as SortKey)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
-            >
-              <option value="" disabled>
-                Ordenar
-              </option>
-              <option value="spent-desc">Mayor cifra</option>
-              <option value="spent-asc">Menor cifra</option>
-            </select>
-          </label>
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <label htmlFor="customer-sort-mobile" className="sr-only">
+                Orden
+              </label>
+              <select
+                id="customer-sort-mobile"
+                value={sort}
+                onChange={(event) => setSort(event.target.value as SortKey)}
+                className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="last-order-desc">Mas recientes</option>
+                <option value="last-order-asc">Mas antiguos</option>
+                <option value="name-asc">Nombre A-Z</option>
+                <option value="name-desc">Nombre Z-A</option>
+                <option value="orders-desc">Mas pedidos</option>
+                <option value="orders-asc">Menos pedidos</option>
+                <option value="spent-desc">Mas gasto</option>
+                <option value="spent-asc">Menos gasto</option>
+                <option value="positive-desc">Mas positivas</option>
+                <option value="negative-desc">Mas negativas</option>
+              </select>
+            </div>
+          </div>
 
-          <label htmlFor="customer-rating-filter" className="block">
-            <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Calificaciones
-            </span>
-            <select
-              id="customer-rating-filter"
-              value={ratingSelectValue}
-              disabled={!isDataReady}
-              onChange={(event) => {
-                const value = event.target.value;
+          {isMobileFiltersOpen ? (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pb-4 pt-20 backdrop-blur-sm sm:items-center sm:pt-16">
+              <div className="w-full rounded-2xl border border-gray-200 bg-white shadow-xl sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                      Filtros
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Ajusta la base de clientes visible.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    aria-label="Cerrar filtros"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-orange-400"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
 
-                if (value === "P" || value === "N" || value === "unrated") {
-                  setRatingFilter(value);
-                  return;
+                <div className="grid gap-4 px-5 py-5">
+                  <label htmlFor="customer-search-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Cliente
+                    </span>
+                    <span className="relative block">
+                      <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                      <input
+                        id="customer-search-filter-mobile"
+                        type="search"
+                        value={draftCustomerSearch}
+                        onChange={(event) =>
+                          setDraftCustomerSearch(event.target.value)
+                        }
+                        placeholder="Nombre o ID"
+                        className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pl-10 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+                      />
+                    </span>
+                  </label>
+
+                  <label htmlFor="customer-rating-filter-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Calificaciones
+                    </span>
+                    <select
+                      id="customer-rating-filter-mobile"
+                      value={draftRatingFilter}
+                      onChange={(event) =>
+                        setDraftRatingFilter(event.target.value as RatingFilter)
+                      }
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                    >
+                      <option value="all">Todas</option>
+                      <option value="P">Solo positivas</option>
+                      <option value="N">Solo negativas</option>
+                      <option value="unrated">Sin calificar</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
+                  {hasDraftFilters ? (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    >
+                      Limpiar filtros
+                    </button>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={applyFilters}
+                    className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="hidden gap-4 xl:flex xl:items-end xl:justify-between">
+          <div className="grid gap-4 xl:grid-cols-[240px_180px_auto_auto] xl:items-end">
+            <label htmlFor="customer-search-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Cliente
+              </span>
+              <span className="relative block">
+                <MagnifyingGlassIcon className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 dark:text-slate-500" />
+                <input
+                  id="customer-search-filter"
+                  type="search"
+                  value={customerSearch}
+                  onChange={(event) => setCustomerSearch(event.target.value)}
+                  placeholder="Nombre o ID"
+                  className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 pl-10 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+                />
+              </span>
+            </label>
+
+            <label htmlFor="customer-rating-filter" className="block">
+              <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                Calificaciones
+              </span>
+              <select
+                id="customer-rating-filter"
+                value={ratingFilter}
+                onChange={(event) =>
+                  setRatingFilter(event.target.value as RatingFilter)
                 }
+                className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="all">Todas</option>
+                <option value="P">Solo positivas</option>
+                <option value="N">Solo negativas</option>
+                <option value="unrated">Sin calificar</option>
+              </select>
+            </label>
 
-                setRatingFilter("all");
-                setSort(value as SortKey);
-              }}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            {hasActiveFilters ? (
+              <button
+                type="button"
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            ) : null}
+
+            <button
+              type="button"
+              onClick={reload}
+              className="inline-flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              aria-label="Actualizar clientes"
             >
-              <option value="" disabled>
-                Ordenar/filtrar
-              </option>
-              <option value="positive-desc">Mejor calificado</option>
-              <option value="negative-desc">Peor calificado</option>
-              <option value="P">Solo positivas</option>
-              <option value="N">Solo negativas</option>
-              <option value="unrated">Sin calificar</option>
-            </select>
-          </label>
+              <ArrowPathIcon className="h-4 w-4" />
+            </button>
+          </div>
 
-          <label htmlFor="customer-orders-sort" className="block">
+          <label htmlFor="customer-sort" className="block w-full xl:w-[200px]">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Total pedidos
+              Orden
             </span>
             <select
-              id="customer-orders-sort"
-              value={ordersSortValue}
+              id="customer-sort"
+              value={sort}
               onChange={(event) => setSort(event.target.value as SortKey)}
-              className="h-12 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="" disabled>
-                Ordenar
-              </option>
-              <option value="orders-desc">Mayor cantidad</option>
-              <option value="orders-asc">Menor cantidad</option>
+              <option value="last-order-desc">Mas recientes</option>
+              <option value="last-order-asc">Mas antiguos</option>
+              <option value="name-asc">Nombre A-Z</option>
+              <option value="name-desc">Nombre Z-A</option>
+              <option value="orders-desc">Mas pedidos</option>
+              <option value="orders-asc">Menos pedidos</option>
+              <option value="spent-desc">Mas gasto</option>
+              <option value="spent-asc">Menos gasto</option>
+              <option value="positive-desc">Mas positivas</option>
+              <option value="negative-desc">Mas negativas</option>
             </select>
           </label>
-
-          <button
-            type="button"
-            onClick={reload}
-            className="flex h-12 w-fit items-center justify-center gap-2 self-end rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:bg-orange-50 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/40 dark:hover:bg-orange-500/10"
-          >
-            <ArrowPathIcon className="h-4 w-4" />
-            Actualizar
-          </button>
         </div>
       </div>
 

@@ -23,7 +23,6 @@ import {
 import type {
   OrderStatus,
   WorkbenchFilters,
-  WorkbenchLocalRating,
   WorkbenchOrder,
   WorkbenchOrderRating,
   WorkbenchRatingValue,
@@ -33,12 +32,12 @@ import { getCurrentSession } from "@/services/shared/auth-service";
 import {
   changeWorkbenchOrderStatus,
   confirmWorkbenchOrder,
-  fetchRestaurantLocalRatings,
   fetchWorkbenchOrders,
   getWorkbenchOrderCustomerRating,
   rejectWorkbenchOrder,
   submitWorkbenchOrderCustomerRating,
 } from "@/services/restaurant/workbench-service";
+import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 
 type BoardStatus =
   | "PENDIENTE_CONFIRMACION_LOCAL"
@@ -223,39 +222,6 @@ function getCustomerLabel(order: WorkbenchOrder) {
   return order.customerName ?? "Cliente sin identificar";
 }
 
-function isFallbackCustomerName(value: string) {
-  return value === "Cliente sin identificar" || value.startsWith("Cliente #");
-}
-
-function getCustomerNamesByOrderId(ratings: WorkbenchLocalRating[]) {
-  const customerNames = new Map<number, string>();
-
-  ratings.forEach((rating) => {
-    if (rating.customerName) {
-      customerNames.set(rating.orderId, rating.customerName);
-    }
-  });
-
-  return customerNames;
-}
-
-function mergeOrderCustomerName(
-  order: WorkbenchOrder,
-  customerName: string | undefined,
-): WorkbenchOrder {
-  if (
-    !customerName ||
-    (order.customerName && !isFallbackCustomerName(order.customerName))
-  ) {
-    return order;
-  }
-
-  return {
-    ...order,
-    customerName,
-  };
-}
-
 function getRatingLabel(value: WorkbenchRatingValue | null | undefined) {
   if (value === "P") return "Me gusta";
   if (value === "N") return "No me gusta";
@@ -275,29 +241,6 @@ function getOrderDescription(order: WorkbenchOrder) {
 
 function isBoardStatus(status: OrderStatus): status is BoardStatus {
   return boardColumns.some((column) => column.status === status);
-}
-
-async function hydrateCustomerNames(
-  restaurantId: string,
-  orders: WorkbenchOrder[],
-): Promise<WorkbenchOrder[]> {
-  try {
-    const ratings = await fetchRestaurantLocalRatings(restaurantId);
-    const customerNamesByOrderId = getCustomerNamesByOrderId(ratings);
-
-    if (customerNamesByOrderId.size === 0) return orders;
-
-    return orders.map((order) =>
-      mergeOrderCustomerName(order, customerNamesByOrderId.get(order.id)),
-    );
-  } catch (error) {
-    console.warn(
-      `No se pudieron cargar los nombres de clientes del local ${restaurantId}:`,
-      error,
-    );
-
-    return orders;
-  }
 }
 
 export default function RestaurantWorkbenchPage() {
@@ -363,14 +306,8 @@ export default function RestaurantWorkbenchPage() {
 
       try {
         const data = await fetchWorkbenchOrders(restaurantId, workbenchFilters);
-        const ordersWithCustomerNames = await hydrateCustomerNames(
-          restaurantId,
-          data,
-        );
         if (ignore) return;
-        setOrders(
-          ordersWithCustomerNames.filter((order) => isBoardStatus(order.status)),
-        );
+        setOrders(data.filter((order) => isBoardStatus(order.status)));
       } catch (err) {
         if (ignore) return;
         setError(
@@ -435,26 +372,28 @@ export default function RestaurantWorkbenchPage() {
       currentOrders.map((currentOrder) => {
         if (currentOrder.id !== updatedOrder.id) return currentOrder;
 
-        return mergeOrderCustomerName(
-          {
-            ...updatedOrder,
-            customerDocument:
-              updatedOrder.customerDocument ?? currentOrder.customerDocument,
-          },
-          currentOrder.customerName ?? undefined,
-        );
+        return {
+          ...updatedOrder,
+          customerName: updatedOrder.customerName ?? currentOrder.customerName,
+          customerDocument:
+            updatedOrder.customerDocument ?? currentOrder.customerDocument,
+          customerEmail: updatedOrder.customerEmail ?? currentOrder.customerEmail,
+          customerPhone: updatedOrder.customerPhone ?? currentOrder.customerPhone,
+        };
       }),
     );
     setSelectedOrder((currentOrder) =>
       currentOrder?.id === updatedOrder.id
-        ? mergeOrderCustomerName(
-            {
-              ...updatedOrder,
-              customerDocument:
-                updatedOrder.customerDocument ?? currentOrder.customerDocument,
-            },
-            currentOrder.customerName ?? undefined,
-          )
+        ? {
+            ...updatedOrder,
+            customerName: updatedOrder.customerName ?? currentOrder.customerName,
+            customerDocument:
+              updatedOrder.customerDocument ?? currentOrder.customerDocument,
+            customerEmail:
+              updatedOrder.customerEmail ?? currentOrder.customerEmail,
+            customerPhone:
+              updatedOrder.customerPhone ?? currentOrder.customerPhone,
+          }
         : currentOrder,
     );
   }
@@ -904,7 +843,9 @@ export default function RestaurantWorkbenchPage() {
 
           <div className="space-y-3">
             {isLoading ? (
-              <ColumnSkeleton />
+              <div className="py-8">
+                <LoadingIndicator label="Cargando pedidos..." />
+              </div>
             ) : mobileColumnOrders.length === 0 ? (
               <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
                 Sin pedidos
@@ -946,7 +887,9 @@ export default function RestaurantWorkbenchPage() {
 
                   <div className="space-y-3">
                     {isLoading ? (
-                      <ColumnSkeleton />
+                      <div className="py-8">
+                        <LoadingIndicator label="Cargando pedidos..." />
+                      </div>
                     ) : columnOrders.length === 0 ? (
                       <p className="rounded-xl border border-dashed border-slate-200 bg-white/70 px-3 py-8 text-center text-xs font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900/60 dark:text-slate-500">
                         Sin pedidos
@@ -994,19 +937,6 @@ export default function RestaurantWorkbenchPage() {
         />
       ) : null}
     </section>
-  );
-}
-
-function ColumnSkeleton() {
-  return (
-    <>
-      {Array.from({ length: 2 }).map((_, index) => (
-        <div
-          key={index}
-          className="h-[132px] animate-pulse rounded-2xl bg-white shadow-sm dark:bg-slate-900"
-        />
-      ))}
-    </>
   );
 }
 
@@ -1117,6 +1047,7 @@ function OrderInfoModal({
     order.customerRating,
   );
   const savedRating = loadedRating ?? order.customerRating;
+  const canShowCustomerRating = order.status !== "RECHAZADO_LOCAL";
   const canRateCustomer = order.status === "FINALIZADO";
   const isRatingReadOnly = Boolean(savedRating);
   const ratingTimestamp = formatRatingTimestamp(savedRating?.creacion);
@@ -1237,6 +1168,15 @@ function OrderInfoModal({
         <div className="space-y-5 px-5 py-5">
           <div className="grid gap-4 sm:grid-cols-2">
             <DetailItem label="Cliente">{getCustomerLabel(order)}</DetailItem>
+            {order.customerEmail ? (
+              <DetailItem label="Correo">{order.customerEmail}</DetailItem>
+            ) : null}
+            {order.customerPhone ? (
+              <DetailItem label="Telefono">{order.customerPhone}</DetailItem>
+            ) : null}
+            {order.customerDocument ? (
+              <DetailItem label="Documento">{order.customerDocument}</DetailItem>
+            ) : null}
             <DetailItem label="Estado">{statusLabels[order.status]}</DetailItem>
             <DetailItem label="Total">{formatPrice(order.total)}</DetailItem>
             <DetailItem label="Creado">{formatDate(order.createdAt)}</DetailItem>
@@ -1297,7 +1237,8 @@ function OrderInfoModal({
             </a>
           ) : null}
 
-          <div className="border-t border-gray-100 pt-4 dark:border-slate-800">
+          {canShowCustomerRating ? (
+            <div className="border-t border-gray-100 pt-4 dark:border-slate-800">
             <div className="mb-3 flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-sm font-black text-slate-700 dark:text-slate-200">
@@ -1333,7 +1274,23 @@ function OrderInfoModal({
               <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
                 Buscando calificacion registrada...
               </p>
-            ) : canRateCustomer || isRatingReadOnly ? (
+            ) : isRatingReadOnly ? (
+              <div className="rounded-xl border border-gray-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
+                <p className="text-sm font-black text-slate-800 dark:text-slate-100">
+                  {getRatingLabel(savedRating?.calificacion ?? selectedRating)}
+                </p>
+                {ratingTimestamp ? (
+                  <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
+                    {ratingTimestamp}
+                  </p>
+                ) : null}
+                {ratingComment ? (
+                  <p className="mt-3 whitespace-pre-line text-sm font-semibold text-slate-600 dark:text-slate-300">
+                    {ratingComment}
+                  </p>
+                ) : null}
+              </div>
+            ) : canRateCustomer ? (
               <form onSubmit={handleSubmitCustomerRating} className="space-y-3">
                 <div className="grid gap-3 sm:grid-cols-2">
                   {ratingOptions.map((option) => {
@@ -1344,13 +1301,9 @@ function OrderInfoModal({
                       <button
                         key={option.value}
                         type="button"
-                        disabled={isRatingReadOnly || isRatingSubmitting}
+                        disabled={isRatingSubmitting}
                         aria-pressed={isActive}
-                        onClick={() => {
-                          if (!isRatingReadOnly) {
-                            setSelectedRating(option.value);
-                          }
-                        }}
+                        onClick={() => setSelectedRating(option.value)}
                         className={clsx(
                           "flex h-11 items-center justify-center gap-2 rounded-xl border px-4 text-sm font-black transition disabled:cursor-default",
                           isActive
@@ -1368,14 +1321,9 @@ function OrderInfoModal({
                 <textarea
                   value={ratingComment}
                   onChange={(event) => setRatingComment(event.target.value)}
-                  readOnly={isRatingReadOnly}
                   placeholder="Agrega un comentario interno sobre el cliente."
                   rows={3}
-                  className={clsx(
-                    "w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20",
-                    isRatingReadOnly &&
-                      "cursor-default bg-slate-50 text-slate-800 focus:border-gray-200 focus:ring-0 dark:bg-slate-950 dark:text-slate-100",
-                  )}
+                  className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
 
                 {ratingError ? (
@@ -1387,11 +1335,7 @@ function OrderInfoModal({
                 <div className="flex justify-end">
                   <button
                     type="submit"
-                    disabled={
-                      selectedRating == null ||
-                      isRatingSubmitting ||
-                      isRatingReadOnly
-                    }
+                    disabled={selectedRating == null || isRatingSubmitting}
                     className="h-10 rounded-xl bg-orange-600 px-4 text-sm font-black text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isRatingSubmitting ? "Guardando..." : "Guardar calificacion"}
@@ -1399,7 +1343,8 @@ function OrderInfoModal({
                 </div>
               </form>
             ) : null}
-          </div>
+            </div>
+          ) : null}
 
           {order.status === "PENDIENTE_CONFIRMACION_LOCAL" ? (
             <div className="border-t border-gray-100 pt-4 dark:border-slate-800">

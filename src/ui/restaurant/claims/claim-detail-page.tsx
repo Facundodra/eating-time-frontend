@@ -109,7 +109,7 @@ function InfoField({ label, value }: { label: string; value: string }) {
 
 function OrderItemsTable({ order }: { order: ClaimOrder }) {
   return (
-    <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
+    <div className="overflow-hidden rounded-xl border border-gray-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950">
       {order.items.length === 0 ? (
         <p className="px-4 py-4 text-sm font-medium text-slate-400 dark:text-slate-500">
           No hay platos para mostrar.
@@ -516,7 +516,7 @@ export default function RestaurantClaimDetailPage({
                   rows={6}
                   disabled={isClaimClosed}
                   placeholder="Registra la accion tomada sobre el reclamo."
-                  className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-extrabold text-slate-800 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                  className="w-full resize-none rounded-xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm font-extrabold text-slate-800 outline-none transition disabled:opacity-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
               </label>
 
