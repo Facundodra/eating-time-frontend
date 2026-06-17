@@ -1,5 +1,5 @@
-import ChangePasswordPage from "@/ui/shared/auth/change-password-page";
+import RestaurantChangePasswordScreen from "@/ui/restaurant/change-password/change-password-page";
 
 export default function RestaurantChangePasswordPage() {
-  return <ChangePasswordPage backHref="/restaurant/my-data" />;
+  return <RestaurantChangePasswordScreen />;
 }
