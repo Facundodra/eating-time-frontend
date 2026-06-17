@@ -88,6 +88,7 @@ If a task requires modifying many files:
 - Do not generate placeholder architecture unrelated to the request.
 - Do not create unnecessary abstractions.
 - Prefer readability over cleverness.
+- Always ask for explicit confirmation before running `git commit` or `git push`.
 
 ---
 
