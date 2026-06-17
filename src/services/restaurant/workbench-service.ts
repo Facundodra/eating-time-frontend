@@ -7,7 +7,6 @@ import type {
   WorkbenchOrderItemApiResponse,
   WorkbenchOrder,
   WorkbenchOrderApiResponse,
-  WorkbenchLocalRating,
   WorkbenchOrderRating,
   WorkbenchRatingValue,
 } from "@/lib/restaurant/workbench/types";
@@ -44,19 +43,6 @@ type WorkbenchOrderRatingApiResponse = {
   comentario?: string | null;
   creacion?: string | null;
 };
-
-type WorkbenchLocalRatingsApiResponse =
-  | unknown[]
-  | {
-      calificaciones?: unknown;
-      content?: unknown;
-      data?: unknown;
-      items?: unknown;
-      ratings?: unknown;
-      registros?: unknown;
-      resultado?: unknown;
-      result?: unknown;
-    };
 
 function getRecord(value: unknown): Record<string, unknown> | null {
   return value != null && typeof value === "object"
@@ -148,37 +134,6 @@ function getFirstNullableNumber(...values: unknown[]) {
   return null;
 }
 
-function getLocalRatings(
-  data: WorkbenchLocalRatingsApiResponse | null | undefined,
-): unknown[] {
-  if (!data) return [];
-  if (Array.isArray(data)) return data;
-
-  const record = getRecord(data);
-  if (!record) return [];
-
-  const directArray =
-    getArray(record.content) ??
-    getArray(record.data) ??
-    getArray(record.items) ??
-    getArray(record.calificaciones) ??
-    getArray(record.ratings) ??
-    getArray(record.registros) ??
-    getArray(record.resultado) ??
-    getArray(record.result);
-
-  if (directArray) return directArray;
-
-  const nestedObject =
-    getRecord(record.data) ??
-    getRecord(record.resultado) ??
-    getRecord(record.result);
-
-  return nestedObject
-    ? getLocalRatings(nestedObject as WorkbenchLocalRatingsApiResponse)
-    : [];
-}
-
 function getNestedCustomerRecord(order: WorkbenchOrderApiResponse) {
   const customerRecord =
     getRecord(order.cliente) ??
@@ -187,8 +142,12 @@ function getNestedCustomerRecord(order: WorkbenchOrderApiResponse) {
     getRecord(order.clientePedido) ??
     getRecord(order.clienteResponse) ??
     getRecord(order.clienteResumen) ??
+    getRecord(order.clienteResumenDto) ??
     getRecord(order.clienteInfo) ??
     getRecord(order.clienteLocal) ??
+    getRecord(order.datosCliente) ??
+    getRecord(order.clienteDatos) ??
+    getRecord(order.clienteBasico) ??
     getRecord(order.usuarioCliente) ??
     getRecord(order.usuario) ??
     getRecord(order.user) ??
@@ -317,106 +276,43 @@ function getCustomerDocument(order: WorkbenchOrderApiResponse) {
   );
 }
 
-function getLocalRatingOrderId(record: Record<string, unknown>) {
-  const orderRecord = getRecord(record.pedido) ?? getRecord(record.order);
-
-  return getFirstNullableNumber(
-    record.pedidoId,
-    record.idPedido,
-    record.orderId,
-    orderRecord?.id,
-    orderRecord?.pedidoId,
-  );
-}
-
-function getLocalRatingCustomerRecord(record: Record<string, unknown>) {
-  const orderRecord = getRecord(record.pedido) ?? getRecord(record.order);
-  const customerRecord =
-    getRecord(record.cliente) ??
-    getRecord(record.clienteDto) ??
-    getRecord(record.clienteDTO) ??
-    getRecord(record.customer) ??
-    getRecord(record.usuarioCliente) ??
-    getRecord(record.usuario) ??
-    getRecord(record.user) ??
-    getRecord(orderRecord?.cliente) ??
-    getRecord(orderRecord?.clienteDto) ??
-    getRecord(orderRecord?.clienteDTO) ??
-    getRecord(orderRecord?.customer) ??
-    getRecord(orderRecord?.usuarioCliente) ??
-    getRecord(orderRecord?.usuario) ??
-    getRecord(orderRecord?.user);
-
-  if (!customerRecord) return null;
-
-  const userRecord =
-    getRecord(customerRecord.usuario) ?? getRecord(customerRecord.user);
-
-  return userRecord ? { ...customerRecord, ...userRecord } : customerRecord;
-}
-
-function getLocalRatingCustomerName(record: Record<string, unknown>) {
-  const nestedCustomer = getLocalRatingCustomerRecord(record);
-  const firstName = nestedCustomer
-    ? getFirstNullableString(
-        nestedCustomer.nombre,
-        nestedCustomer.nombres,
-        nestedCustomer.nombreUsuario,
-        nestedCustomer.name,
-        nestedCustomer.primerNombre,
-      )
-    : null;
-  const lastName = nestedCustomer
-    ? getFirstNullableString(
-        nestedCustomer.apellido,
-        nestedCustomer.apellidoUsuario,
-        nestedCustomer.lastname,
-        nestedCustomer.apellidos,
-        nestedCustomer.primerApellido,
-        nestedCustomer.segundoApellido,
-      )
-    : null;
-  const joinedName =
-    firstName && lastName ? `${firstName} ${lastName}` : firstName ?? lastName;
+function getCustomerEmail(order: WorkbenchOrderApiResponse) {
+  const nestedCustomer = getNestedCustomerRecord(order);
 
   return (
     getFirstNullableString(
-      record.nombreCliente,
-      record.clienteNombre,
-      record.customerName,
-      record.clientName,
-      record.nombreCompletoCliente,
-      record.clienteNombreCompleto,
-      record.nombreCompleto,
-      nestedCustomer?.nombreCompleto,
-      nestedCustomer?.fullName,
-      nestedCustomer?.full_name,
-      nestedCustomer?.nombreCompletoCliente,
-      nestedCustomer?.clienteNombreCompleto,
-      nestedCustomer?.nombreCliente,
-      nestedCustomer?.clienteNombre,
-      nestedCustomer?.customerName,
-      nestedCustomer?.clientName,
-      nestedCustomer?.displayName,
-      joinedName,
+      order.clienteEmail,
+      order.clienteCorreo,
+      order.correoCliente,
+      order.emailCliente,
+      order.customerEmail,
+      nestedCustomer?.email,
+      nestedCustomer?.correo,
+      nestedCustomer?.mail,
+      nestedCustomer?.clienteEmail,
+      nestedCustomer?.clienteCorreo,
+      nestedCustomer?.correoCliente,
+      nestedCustomer?.emailCliente,
     ) ?? null
   );
 }
 
-function mapWorkbenchLocalRatingFromApi(
-  rating: unknown,
-): WorkbenchLocalRating | null {
-  const record = getRecord(rating);
-  if (!record) return null;
+function getCustomerPhone(order: WorkbenchOrderApiResponse) {
+  const nestedCustomer = getNestedCustomerRecord(order);
 
-  const orderId = getLocalRatingOrderId(record);
-  if (orderId == null) return null;
-
-  return {
-    id: getFirstNullableNumber(record.id) ?? undefined,
-    orderId,
-    customerName: getLocalRatingCustomerName(record),
-  };
+  return (
+    getFirstNullableString(
+      order.clienteTelefono,
+      order.telefonoCliente,
+      order.customerPhone,
+      nestedCustomer?.telefono,
+      nestedCustomer?.celular,
+      nestedCustomer?.phone,
+      nestedCustomer?.telefonoCliente,
+      nestedCustomer?.clienteTelefono,
+      nestedCustomer?.customerPhone,
+    ) ?? null
+  );
 }
 
 function normalizeWorkbenchRatingValue(
@@ -578,6 +474,8 @@ function mapWorkbenchOrder(order: WorkbenchOrderApiResponse): WorkbenchOrder {
     customerId: getCustomerId(order),
     customerName: getCustomerName(order),
     customerDocument: getCustomerDocument(order),
+    customerEmail: getCustomerEmail(order),
+    customerPhone: getCustomerPhone(order),
     couponId: order.cuponId ?? null,
     status:
       order.estado ??
@@ -836,30 +734,6 @@ export async function fetchRestaurantOrders(
   throw new Error(
     getBackendErrorMessage(lastError, "No se pudieron cargar los pedidos."),
   );
-}
-
-export async function fetchRestaurantLocalRatings(
-  restaurantId: string,
-): Promise<WorkbenchLocalRating[]> {
-  const encodedRestaurantId = encodeURIComponent(restaurantId);
-
-  try {
-    const response = await api.get<WorkbenchLocalRatingsApiResponse>(
-      `/api/locales/${encodedRestaurantId}/calificaciones`,
-      { timeout: 15000 },
-    );
-
-    return getLocalRatings(response.data)
-      .map(mapWorkbenchLocalRatingFromApi)
-      .filter((rating): rating is WorkbenchLocalRating => Boolean(rating));
-  } catch (error) {
-    throw new Error(
-      getBackendErrorMessage(
-        error,
-        "No se pudieron cargar las calificaciones del local.",
-      ),
-    );
-  }
 }
 
 type WorkbenchOrderAction = "confirmar" | "rechazar";

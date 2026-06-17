@@ -53,7 +53,7 @@ function formatTime(dateStr: string) {
 function mapRecentOrder(order: WorkbenchOrder): RestaurantDashboardOrder {
   return {
     id: order.id,
-    customerLabel: order.customerName ?? `Cliente #${order.customerId}`,
+    customerLabel: order.customerName ?? "Cliente sin identificar",
     status: order.status,
     statusLabel: statusLabels[order.status],
     time: formatTime(order.createdAt),
