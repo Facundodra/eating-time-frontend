@@ -287,8 +287,8 @@ export default function ClientClaimsPage() {
               value={sort}
             >
               <option value="estado-desc">Estado: pendientes primero</option>
-              <option value="fecha-desc">Fecha: mas recientes</option>
-              <option value="fecha-asc">Fecha: mas antiguos</option>
+              <option value="fecha-desc">Fecha: más recientes</option>
+              <option value="fecha-asc">Fecha: más antiguos</option>
             </select>
           </label>
 
@@ -389,7 +389,7 @@ export default function ClientClaimsPage() {
 
         {restaurantsLoading ? (
           <p className="text-xs text-gray-400 dark:text-slate-500">
-            Cargando locales... los filtros se habilitaran en un momento.
+            Cargando locales... los filtros se habilitarán en un momento.
           </p>
         ) : null}
       </div>
@@ -444,6 +444,11 @@ export default function ClientClaimsPage() {
                       ? ` · ${formatPrice(claim.pedidoTotal)}`
                       : null}
                   </p>
+                  {claim.estado === "APROBADO" ? (
+                    <p className="mt-2 w-fit rounded-md border border-green-200 bg-green-50 px-2 py-1 text-xs font-bold text-green-800 dark:border-green-500/30 dark:bg-green-500/10 dark:text-green-200">
+                      Voucher disponible en Mi billetera
+                    </p>
+                  ) : null}
                 </div>
 
                 <div className="min-w-0">
@@ -483,7 +488,7 @@ export default function ClientClaimsPage() {
           {totalPages > 1 ? (
             <nav className="flex flex-wrap items-center justify-center gap-1.5 pt-2">
               <button
-                aria-label="Pagina anterior"
+                aria-label="Página anterior"
                 className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 disabled={page === 0}
                 onClick={() => goToPage(page - 1)}
@@ -516,7 +521,7 @@ export default function ClientClaimsPage() {
               )}
 
               <button
-                aria-label="Pagina siguiente"
+                aria-label="Página siguiente"
                 className="flex h-9 items-center gap-1 rounded-md border border-gray-200 px-3 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 disabled={page >= totalPages - 1}
                 onClick={() => goToPage(page + 1)}

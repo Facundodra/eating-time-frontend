@@ -164,6 +164,12 @@ export default function DishesDetailPage({ id }: { id: string }) {
               </span>
             </div>
 
+            {dish.description.trim() ? (
+              <p className="mt-3 whitespace-pre-line text-sm leading-6 text-slate-600 dark:text-slate-300">
+                {dish.description}
+              </p>
+            ) : null}
+
             {discountLoading ? (
               <div className="mt-3 h-9 w-32 animate-pulse rounded-md bg-gray-200" />
             ) : discountedPrice != null ? (

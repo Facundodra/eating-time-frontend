@@ -51,8 +51,8 @@ export default function PaymentResultPage() {
   if (!status) {
     return (
       <div className="max-w-md mx-auto px-4 py-16 text-center">
-        <p className="text-gray-500 text-sm">Estado de pago no reconocido.</p>
-        <Link href="/client" className="mt-4 block text-orange-700 text-sm font-semibold hover:underline">
+        <p className="text-gray-500 text-sm dark:text-slate-400">Estado de pago no reconocido.</p>
+        <Link href="/client" className="mt-4 block text-orange-700 text-sm font-semibold hover:underline dark:text-orange-400">
           Volver al inicio
         </Link>
       </div>
@@ -62,9 +62,9 @@ export default function PaymentResultPage() {
   const { icon, title, description, color } = STATUS_CONFIG[status];
 
   const colorMap = {
-    green: "bg-green-50 border-green-200",
-    yellow: "bg-yellow-50 border-yellow-200",
-    red: "bg-red-50 border-red-200",
+    green: "bg-green-50 border-green-200 dark:border-green-500/30 dark:bg-green-500/10",
+    yellow: "bg-yellow-50 border-yellow-200 dark:border-yellow-500/30 dark:bg-yellow-500/10",
+    red: "bg-red-50 border-red-200 dark:border-red-500/30 dark:bg-red-500/10",
   };
 
   return (
@@ -72,11 +72,11 @@ export default function PaymentResultPage() {
       <div className={`rounded-2xl border p-8 text-center space-y-4 ${colorMap[color as keyof typeof colorMap]}`}>
         <div className="flex justify-center">{icon}</div>
 
-        <h1 className="text-xl font-bold text-gray-800">{title}</h1>
-        <p className="text-sm text-gray-600">{description}</p>
+        <h1 className="text-xl font-bold text-gray-800 dark:text-slate-100">{title}</h1>
+        <p className="text-sm text-gray-600 dark:text-slate-300">{description}</p>
 
         {pedidoId && (
-          <p className="text-xs text-gray-400">Pedido #{pedidoId}</p>
+          <p className="text-xs text-gray-400 dark:text-slate-500">Pedido #{pedidoId}</p>
         )}
       </div>
 
@@ -93,7 +93,7 @@ export default function PaymentResultPage() {
 
         <Link
           href="/client"
-          className="block w-full text-center border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-6 py-3 rounded-xl transition-colors"
+          className="block w-full text-center border border-gray-200 hover:bg-gray-50 text-gray-700 font-semibold text-sm px-6 py-3 rounded-xl transition-colors dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
         >
           Volver al inicio
         </Link>

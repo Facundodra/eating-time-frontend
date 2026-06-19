@@ -14,6 +14,7 @@ import type {
     Discount,
     Cart,
     CartItem,
+    ClientVoucher,
     Order,
     OrderHistoryStatus,
     OrderRating,
@@ -23,7 +24,7 @@ import type {
     LocalRating,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, ClientDishCategorySummary, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, ClientDishCategorySummary, Cart, ClientVoucher, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
 
 const CATEGORY_RELATION_PAGE_SIZE = 100;
 
@@ -503,6 +504,13 @@ interface RestaurantDtoFromApi {
     fotoUrl?: string | null;
     imagenUrl?: string | null;
     imageUrl?: string | null;
+    urlFotoPerfil?: string | null;
+    fotoPerfilUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    urlPortada?: string | null;
+    urlFotoPortada?: string | null;
+    fotoPortadaUrl?: string | null;
+    coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
     servicio?: boolean | string | number | null;
     estado?: boolean | string | number | null;
@@ -513,15 +521,28 @@ interface RestaurantDtoFromApi {
 
 function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): RestaurantList {
     const id = getNumericValue(r.id ?? r.localId ?? r.idLocal) ?? 0;
+    const legacyPhotoUrl = getFirstStringValue(
+        r.urlFoto,
+        r.fotoUrl,
+        r.imagenUrl,
+        r.imageUrl,
+    );
+    const explicitCoverPhotoUrl = getFirstStringValue(
+        r.urlPortada,
+        r.urlFotoPortada,
+        r.fotoPortadaUrl,
+        r.coverPhotoUrl,
+    );
 
     return {
         id,
         name: getFirstStringValue(r.nombre, r.name, r.razonSocial) ?? `Local #${id}`,
-        url_photo: getFirstStringValue(
-            r.urlFoto,
-            r.fotoUrl,
-            r.imagenUrl,
-            r.imageUrl,
+        coverPhotoUrl: explicitCoverPhotoUrl ?? "",
+        profilePhotoUrl: getFirstStringValue(
+            r.urlFotoPerfil,
+            r.fotoPerfilUrl,
+            r.profilePhotoUrl,
+            legacyPhotoUrl,
         ) ?? "",
         stars: getNumericValue(r.calificacion ?? r.rating ?? r.stars) ?? 0,
         state: getBooleanValue(r.estadoServicio ?? r.servicio ?? r.estado) ?? false,
@@ -565,6 +586,13 @@ interface RestaurantSingleDtoFromApi {
     fotoUrl?: string | null;
     imagenUrl?: string | null;
     imageUrl?: string | null;
+    urlFotoPerfil?: string | null;
+    fotoPerfilUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    urlPortada?: string | null;
+    urlFotoPortada?: string | null;
+    fotoPortadaUrl?: string | null;
+    coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
     servicio?: boolean | string | number | null;
     estado?: boolean | string | number | null;
@@ -593,6 +621,11 @@ export async function getRestaurantName(id: number): Promise<string> {
     return restaurant.name;
 }
 
+export async function getDishName(id: number): Promise<string> {
+    const dish = await getDish(String(id));
+    return dish.name;
+}
+
 export async function getRestaurant(id: string): Promise<Restaurant> {
     if (typeof window !== 'undefined') {
         await requireCurrentSession();
@@ -617,8 +650,14 @@ export async function getRestaurant(id: string): Promise<Restaurant> {
 type CartFromApi = Omit<Cart, "restaurantId"> & { localId: number };
 
 function mapCartFromApi(cart: CartFromApi): Cart {
-    const { localId, ...rest } = cart;
-    return { ...rest, restaurantId: localId };
+    const { localId, voucherId, cuponCodigo, cuponPorcentaje, ...rest } = cart;
+    return {
+        ...rest,
+        restaurantId: localId,
+        voucherId: voucherId ?? null,
+        cuponCodigo: cuponCodigo ?? null,
+        cuponPorcentaje: cuponPorcentaje ?? null,
+    };
 }
 
 // Devuelve todos los carritos activos (EN_CARRITO) del cliente, uno por restaurante
@@ -722,6 +761,50 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
             throw new Error(message);
         }
         throw new Error("No se pudo realizar el pedido.");
+    }
+}
+
+// ── Cupones del carrito ────────────────────────────────────────────────────────
+
+export async function applyCartCoupon(
+    restaurantId: number,
+    code: string
+): Promise<Cart> {
+    const session = await requireCurrentSession();
+
+    try {
+        const response = await api.patch<CartFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}/cupon`,
+            { codigo: code.trim() }
+        );
+        return mapCartFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message =
+                data?.error ?? data?.message ?? `Error al aplicar cupón (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo aplicar el cupón.");
+    }
+}
+
+export async function removeCartCoupon(restaurantId: number): Promise<Cart> {
+    const session = await requireCurrentSession();
+
+    try {
+        const response = await api.delete<CartFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}/cupon`
+        );
+        return mapCartFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message =
+                data?.error ?? data?.message ?? `Error al quitar cupón (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo quitar el cupón.");
     }
 }
 

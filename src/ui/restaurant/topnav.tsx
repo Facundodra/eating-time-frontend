@@ -16,6 +16,7 @@ import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
 import RestaurantRating from "../shared/widgets/rating";
 import RestaurantStatus from "../shared/widgets/restaurant-status";
+import SessionWidget from "../shared/widgets/session-widget";
 import UserName from "../shared/widgets/user-name";
 
 export default function Topnav({ session }: { session: LoginWebResponse }) {
@@ -31,7 +32,7 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
           <button
             type="button"
             onClick={() => setIsMobileMenuOpen(true)}
-            aria-label="Abrir menu"
+            aria-label="Abrir menú"
             className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-white text-slate-700 shadow-sm ring-1 ring-gray-100 transition hover:bg-slate-50 lg:hidden dark:bg-slate-900 dark:text-slate-200 dark:ring-slate-800 dark:hover:bg-slate-800"
           >
             <Bars3Icon className="h-5 w-5" />
@@ -43,7 +44,7 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
               <RestaurantStatus />
             </div>
             <div className="hidden min-[390px]:block">
-              <RestaurantRating />
+              <RestaurantRating restaurantId={session.idTipoUsuario} />
             </div>
             <Link
               href="/restaurant/my-data"
@@ -84,7 +85,7 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
         >
           <button
             type="button"
-            aria-label="Cerrar menu"
+            aria-label="Cerrar menú"
             onClick={() => setIsMobileMenuOpen(false)}
             className="h-full w-full cursor-default"
           />
@@ -117,7 +118,7 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
               <button
                 type="button"
                 onClick={() => setIsMobileMenuOpen(false)}
-                aria-label="Cerrar menu"
+                aria-label="Cerrar menú"
                 className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700"
               >
                 <XMarkIcon className="h-4 w-4" />
@@ -157,6 +158,13 @@ export default function Topnav({ session }: { session: LoginWebResponse }) {
                 </div>
               ))}
             </nav>
+            <div className="mt-auto pt-5">
+              <SessionWidget
+                expanded
+                session={session}
+                profileHref="/restaurant/my-data"
+              />
+            </div>
         </aside>
       </div>
     </>

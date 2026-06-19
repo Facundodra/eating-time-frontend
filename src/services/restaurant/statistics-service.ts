@@ -60,6 +60,30 @@ async function getRestaurantId() {
   return String(session.idTipoUsuario);
 }
 
+export async function getRestaurantRating(
+  restaurantId: number | string,
+): Promise<number | null> {
+  try {
+    const response = await api.get<PopularityRatingApiResponse>(
+      `/api/local/${encodeURIComponent(restaurantId)}/estadisticas/popularidad-valoracion`,
+    );
+    const rating = response.data.valoracionLocalGlobal;
+
+    return rating == null || !Number.isFinite(Number(rating))
+      ? null
+      : Number(rating);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const message = getErrorMessage(error.response?.data);
+      throw new Error(
+        message ?? `Error al cargar la calificación (${error.response?.status})`,
+      );
+    }
+
+    throw new Error("No se pudo cargar la calificación del local.");
+  }
+}
+
 function mapStatisticsResponse(
   topSellingDishes: TopSellingDishesApiResponse,
   dishSalesEvolution: DishSalesEvolutionApiResponse,

@@ -1,6 +1,7 @@
 "use client";
 
-import { XMarkIcon } from "@heroicons/react/24/outline";
+import { TicketIcon, XMarkIcon } from "@heroicons/react/24/outline";
+import Link from "next/link";
 
 import type { OrderClaim, OrderClaimStatus } from "@/lib/client/types";
 
@@ -40,6 +41,12 @@ function formatDate(dateStr: string) {
   });
 }
 
+function formatPrice(price: number | null | undefined) {
+  if (price == null) return null;
+
+  return `$${price.toLocaleString("es-UY")}`;
+}
+
 export default function ViewClaimModal({
   claim,
   onClose,
@@ -47,6 +54,9 @@ export default function ViewClaimModal({
 }: ViewClaimModalProps) {
   const displayRestaurantName =
     restaurantName ?? claim.localNombre ?? "Local no disponible";
+  const voucherAmount = claim.voucherAmount ?? null;
+  const voucherAmountLabel = formatPrice(voucherAmount);
+  const showVoucher = claim.estado === "APROBADO";
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 px-4 py-6 backdrop-blur-sm">
@@ -116,6 +126,58 @@ export default function ViewClaimModal({
               <p className="mt-2 whitespace-pre-wrap text-sm font-semibold text-slate-800 dark:text-slate-100">
                 {claim.nota}
               </p>
+            </div>
+          ) : null}
+
+          {showVoucher ? (
+            <div className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-500/30 dark:bg-green-500/10">
+              <div className="flex items-start gap-3">
+                <TicketIcon className="mt-0.5 h-5 w-5 shrink-0 text-green-700 dark:text-green-300" />
+                <div className="min-w-0 flex-1">
+                  <span className="block text-xs font-bold uppercase text-green-700 dark:text-green-300">
+                    Voucher de compensación
+                  </span>
+                  <div className="mt-3 grid gap-3 text-sm">
+                    {claim.voucherCode?.trim() ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-slate-500 dark:text-slate-400">
+                          Código
+                        </span>
+                        <span className="rounded-md bg-white px-2 py-1 font-black tracking-wide text-slate-900 ring-1 ring-green-200 dark:bg-slate-950 dark:text-white dark:ring-green-500/30">
+                          {claim.voucherCode}
+                        </span>
+                      </div>
+                    ) : null}
+                    {voucherAmountLabel ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-slate-500 dark:text-slate-400">
+                          Monto
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {voucherAmountLabel}
+                        </span>
+                      </div>
+                    ) : null}
+                    {claim.voucherExpiresAt ? (
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <span className="font-medium text-slate-500 dark:text-slate-400">
+                          Vencimiento
+                        </span>
+                        <span className="font-bold text-slate-900 dark:text-white">
+                          {formatDate(claim.voucherExpiresAt)}
+                        </span>
+                      </div>
+                    ) : null}
+                    <Link
+                      href="/client/mi-cuenta/dinero-virtual"
+                      className="mt-1 inline-flex w-fit rounded-lg bg-green-700 px-3 py-2 text-xs font-black text-white transition hover:bg-green-800 dark:bg-green-600 dark:hover:bg-green-500"
+                      onClick={onClose}
+                    >
+                      Ver voucher en Mi billetera
+                    </Link>
+                  </div>
+                </div>
+              </div>
             </div>
           ) : null}
 
