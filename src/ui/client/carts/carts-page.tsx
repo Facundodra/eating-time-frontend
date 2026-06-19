@@ -14,18 +14,18 @@ import type { Cart } from "@/lib/client/types";
 
 function CartCardSkeleton() {
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse space-y-3">
+    <div className="rounded-xl border border-gray-200 bg-white p-5 animate-pulse space-y-3 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0" />
-        <div className="h-4 bg-gray-200 rounded w-1/3" />
+        <div className="w-10 h-10 rounded-full bg-gray-200 shrink-0 dark:bg-slate-700" />
+        <div className="h-4 bg-gray-200 rounded w-1/3 dark:bg-slate-700" />
       </div>
       <div className="space-y-2">
-        <div className="h-3 bg-gray-100 rounded w-2/3" />
-        <div className="h-3 bg-gray-100 rounded w-1/2" />
+        <div className="h-3 bg-gray-100 rounded w-2/3 dark:bg-slate-800" />
+        <div className="h-3 bg-gray-100 rounded w-1/2 dark:bg-slate-800" />
       </div>
       <div className="flex justify-between items-center pt-1">
-        <div className="h-4 bg-gray-200 rounded w-1/4" />
-        <div className="h-8 bg-gray-200 rounded-lg w-28" />
+        <div className="h-4 bg-gray-200 rounded w-1/4 dark:bg-slate-700" />
+        <div className="h-8 bg-gray-200 rounded-lg w-28 dark:bg-slate-700" />
       </div>
     </div>
   );
@@ -100,7 +100,7 @@ export default function CartsPage() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
-      <h1 className="text-xl font-bold text-gray-800 mb-6">Mis carritos</h1>
+      <h1 className="text-xl font-bold text-gray-800 mb-6 dark:text-slate-100">Mis carritos</h1>
 
       {loading && (
         <div className="space-y-4">
@@ -111,16 +111,16 @@ export default function CartsPage() {
       )}
 
       {!loading && error && (
-        <p className="text-red-500 text-sm">{error}</p>
+        <p className="text-red-500 text-sm dark:text-red-300">{error}</p>
       )}
 
       {!loading && !error && carts.length === 0 && (
-        <div className="flex flex-col items-center gap-4 py-16 text-gray-400">
+        <div className="flex flex-col items-center gap-4 py-16 text-gray-400 dark:text-slate-500">
           <ShoppingCartIcon className="w-14 h-14" />
           <p className="text-sm">No tenés carritos activos.</p>
           <Link
             href="/client"
-            className="text-orange-700 text-sm font-semibold hover:underline"
+            className="text-orange-700 text-sm font-semibold hover:underline dark:text-orange-400"
           >
             Explorar restaurantes
           </Link>
@@ -134,15 +134,15 @@ export default function CartsPage() {
             return (
               <div
                 key={cart.id}
-                className="rounded-xl border border-gray-200 bg-white p-5 space-y-3"
+                className="rounded-xl border border-gray-200 bg-white p-5 space-y-3 dark:border-slate-800 dark:bg-slate-900"
               >
                 {/* Encabezado del carrito */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0">
-                      <ShoppingCartIcon className="w-5 h-5 text-orange-600" />
+                    <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center shrink-0 dark:bg-orange-500/10">
+                      <ShoppingCartIcon className="w-5 h-5 text-orange-600 dark:text-orange-400" />
                     </div>
-                    <span className="font-bold text-gray-800">{cart.restaurantName}</span>
+                    <span className="font-bold text-gray-800 dark:text-slate-100">{cart.restaurantName}</span>
                   </div>
 
                   {/* Botón eliminar carrito */}
@@ -150,11 +150,11 @@ export default function CartsPage() {
                     type="button"
                     disabled={isDeleting}
                     onClick={() => handleDelete(cart.restaurantId)}
-                    className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50"
+                    className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors disabled:opacity-50 dark:text-slate-500 dark:hover:bg-red-500/10 dark:hover:text-red-300"
                     title="Eliminar carrito"
                   >
                     {isDeleting ? (
-                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-500 block" />
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-500 block dark:border-slate-600 dark:border-t-red-400" />
                     ) : (
                       <TrashIcon className="w-4 h-4" />
                     )}
@@ -162,7 +162,7 @@ export default function CartsPage() {
                 </div>
 
                 {/* Ítems del carrito */}
-                <ul className="text-sm text-gray-600 space-y-1 pl-1">
+                <ul className="text-sm text-gray-600 space-y-1 pl-1 dark:text-slate-300">
                   {cart.items
                     .filter((item) => item.eliminacion == null)
                     .map((item) => (
@@ -170,14 +170,14 @@ export default function CartsPage() {
                         <span>
                           {item.cantidad}x {item.nombre?.trim() || `Plato #${item.platoId}`}
                         </span>
-                        <span className="text-gray-500">${item.total.toFixed(2)}</span>
+                        <span className="text-gray-500 dark:text-slate-400">${item.total.toFixed(2)}</span>
                       </li>
                     ))}
                 </ul>
 
                 {/* Total + botón continuar */}
-                <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-                  <span className="font-bold text-orange-700">
+                <div className="flex items-center justify-between pt-1 border-t border-gray-100 dark:border-slate-800">
+                  <span className="font-bold text-orange-700 dark:text-orange-400">
                     Total: ${cart.total.toFixed(2)}
                   </span>
                   <Link

@@ -23,16 +23,16 @@ function RestaurantSkeleton() {
     <div className="locales-list flex flex-wrap max-w-[1440px] mx-auto">
       {Array.from({ length: PAGE_SIZE }).map((_, i) => (
         <div key={i} className="local px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
-          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden animate-pulse">
-            <div className="bg-gray-100 h-[125px]" />
+          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden animate-pulse dark:border-slate-800 dark:bg-slate-900">
+            <div className="bg-gray-100 h-[125px] dark:bg-slate-800" />
             <div className="p-4 space-y-3">
               <div className="flex items-center gap-2">
-                <div className="w-[45px] h-[45px] rounded-full bg-gray-200 shrink-0" />
-                <div className="h-4 bg-gray-200 rounded w-2/3" />
+                <div className="w-[45px] h-[45px] rounded-full bg-gray-200 shrink-0 dark:bg-slate-700" />
+                <div className="h-4 bg-gray-200 rounded w-2/3 dark:bg-slate-700" />
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded bg-gray-200" />
-                <div className="h-3 bg-gray-100 rounded w-1/4" />
+                <div className="w-4 h-4 rounded bg-gray-200 dark:bg-slate-700" />
+                <div className="h-3 bg-gray-100 rounded w-1/4 dark:bg-slate-800" />
               </div>
             </div>
           </div>
@@ -99,7 +99,7 @@ export default function RestaurantList() {
 
   if (error) {
     return (
-      <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+      <p className="rounded-lg bg-red-50 px-4 py-3 text-sm font-medium text-red-600 dark:bg-red-500/10 dark:text-red-300">
         {error}
       </p>
     );
@@ -111,7 +111,7 @@ export default function RestaurantList() {
 
   if (restaurant.length === 0) {
     return (
-      <p className="text-sm text-slate-400">
+      <p className="text-sm text-slate-400 dark:text-slate-500">
         No hay locales que coincidan con tu búsqueda.
       </p>
     );
@@ -138,13 +138,13 @@ export default function RestaurantList() {
   return (
     <div>
       {/* Barra de filtros */}
-      <div className="bg-white flex items-center gap-6 mb-4 text-sm text-gray-600 max-w-[1440px] mx-auto p-4 rounded-xl overflow-auto">
+      <div className="bg-white flex items-center gap-6 mb-4 text-sm text-gray-600 max-w-[1440px] mx-auto p-4 rounded-xl overflow-auto dark:bg-slate-900 dark:text-slate-300">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-700">Ordenar:</span>
+          <span className="font-medium text-gray-700 dark:text-slate-200">Ordenar:</span>
           <select
             value={sort}
             onChange={(e) => applySort(e.target.value as SortKey)}
-            className="border border-gray-200 rounded-lg px-2 py-1 text-sm text-gray-700 focus:outline-none focus:border-orange-700 cursor-pointer"
+            className="border border-gray-200 rounded-lg bg-white px-2 py-1 text-sm text-gray-700 focus:outline-none focus:border-orange-700 cursor-pointer dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-500"
           >
             <option value="calificacion_desc">Mejor calificación</option>
             <option value="calificacion_asc">Menor calificación</option>
@@ -154,15 +154,15 @@ export default function RestaurantList() {
         </div>
 
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-700">Filtrar:</span>
+          <span className="font-medium text-gray-700 dark:text-slate-200">Filtrar:</span>
 
           <button
             onClick={toggleOpen}
             className={clsx(
               "flex items-center gap-1 px-3 py-1 rounded-full border text-sm transition-colors",
               filterOpen
-                ? "border-orange-700 bg-orange-50 text-orange-700"
-                : "border-gray-200 text-gray-600 hover:border-orange-700",
+                ? "border-orange-700 bg-orange-50 text-orange-700 dark:border-orange-500 dark:bg-orange-500/10 dark:text-orange-300"
+                : "border-gray-200 text-gray-600 hover:border-orange-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-500",
             )}
           >
             <CheckCircleIcon className="w-4 h-4" />
@@ -174,8 +174,8 @@ export default function RestaurantList() {
             className={clsx(
               "flex items-center gap-1 px-3 py-1 rounded-full border text-sm transition-colors",
               filterStars
-                ? "border-orange-700 bg-orange-50 text-orange-700"
-                : "border-gray-200 text-gray-600 hover:border-orange-700",
+                ? "border-orange-700 bg-orange-50 text-orange-700 dark:border-orange-500 dark:bg-orange-500/10 dark:text-orange-300"
+                : "border-gray-200 text-gray-600 hover:border-orange-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-500",
             )}
           >
             <StarIcon className="w-4 h-4" />
@@ -191,8 +191,8 @@ export default function RestaurantList() {
             key={restaurant.id}
             className="local px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4"
           >
-            <Link href={`/client/restaurant/${restaurant.id}`} className="block local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
-              <div className="local-img bg-gray-50 h-[125px] relative">
+            <Link href={`/client/restaurant/${restaurant.id}`} className="block local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500">
+              <div className="local-img bg-gray-50 h-[125px] relative dark:bg-slate-800">
                 {restaurant.coverPhotoUrl ? (
                   <Image
                     alt={restaurant.name}
@@ -202,7 +202,7 @@ export default function RestaurantList() {
                     className="object-cover"
                   />
                 ) : (
-                  <div className="w-[120px] h-full mx-auto flex items-center justify-center text-gray-300 text-4xl">
+                  <div className="w-[120px] h-full mx-auto flex items-center justify-center text-gray-300 text-4xl dark:text-slate-600">
                     🍽
                   </div>
                 )}
@@ -210,8 +210,8 @@ export default function RestaurantList() {
                   className={clsx(
                     "local-estado absolute top-3 py-1 px-3 rounded-full right-3 text-sm",
                     {
-                      "bg-green-100 text-green-900": restaurant.state,
-                      "bg-gray-200 text-gray-500": !restaurant.state,
+                      "bg-green-100 text-green-900 dark:bg-green-500/15 dark:text-green-200": restaurant.state,
+                      "bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-300": !restaurant.state,
                     },
                   )}
                 >
@@ -244,13 +244,13 @@ export default function RestaurantList() {
                       restaurant.name.charAt(0).toUpperCase()
                     )}
                   </div>
-                  <span className="inline-block align-middle font-bold text-gray-800">
+                  <span className="inline-block align-middle font-bold text-gray-800 dark:text-slate-100">
                     {restaurant.name}
                   </span>
                 </div>
                 <div className="local-calificacion flex items-center gap-2 mt-2">
                   <StarIcon className="text-orange-400 w-4 h-4" />
-                  <span className="text-xs text-gray-400">
+                  <span className="text-xs text-gray-400 dark:text-slate-500">
                     {restaurant.stars} (384)
                   </span>
                 </div>
@@ -266,7 +266,7 @@ export default function RestaurantList() {
           <button
             onClick={() => setPage((p) => p - 1)}
             disabled={page === 1}
-            className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-orange-700 transition-colors"
+            className="p-2 rounded-lg border border-gray-200 text-gray-700 disabled:opacity-40 hover:border-orange-700 transition-colors dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-500"
           >
             <ChevronLeftIcon className="w-4 h-4" />
           </button>
@@ -279,7 +279,7 @@ export default function RestaurantList() {
                 "w-9 h-9 rounded-lg border text-sm font-medium transition-colors",
                 n === page
                   ? "border-orange-700 bg-orange-700 text-white"
-                  : "border-gray-200 text-gray-600 hover:border-orange-700",
+                  : "border-gray-200 text-gray-600 hover:border-orange-700 dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-500",
               )}
             >
               {n}
@@ -289,7 +289,7 @@ export default function RestaurantList() {
           <button
             onClick={() => setPage((p) => p + 1)}
             disabled={page === totalPages}
-            className="p-2 rounded-lg border border-gray-200 disabled:opacity-40 hover:border-orange-700 transition-colors"
+            className="p-2 rounded-lg border border-gray-200 text-gray-700 disabled:opacity-40 hover:border-orange-700 transition-colors dark:border-slate-700 dark:text-slate-300 dark:hover:border-orange-500"
           >
             <ChevronRightIcon className="w-4 h-4" />
           </button>

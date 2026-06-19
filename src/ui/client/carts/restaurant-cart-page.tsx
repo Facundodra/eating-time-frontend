@@ -389,9 +389,9 @@ export default function RestaurantCartPage({
             ? [appliedVoucher, ...availableVouchers]
             : availableVouchers,
         );
-      } else {
-        setVoucherError("No se pudieron cargar los vouchers disponibles.");
-      }
+      } //else {
+        //setVoucherError("No se pudieron cargar los vouchers disponibles.");
+      //} // La falla en wallet se ignora, el usuario igual puede aplicar vouchers ya cargados en el carrito
       setVouchersLoading(false);
       setLoading(false);
     }
