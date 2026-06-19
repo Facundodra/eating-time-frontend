@@ -167,6 +167,7 @@ export default function ClientHomePage() {
                         alt={category.name}
                         src={category.imageUrl}
                         fill
+                        unoptimized
                         sizes="(min-width: 768px) 25vw, 50vw"
                         className="object-cover transition duration-200 group-hover:scale-105"
                       />
@@ -203,13 +204,14 @@ export default function ClientHomePage() {
                   className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
                 >
                   <div className="relative h-[125px] bg-gray-50 dark:bg-slate-950">
-                    {restaurant.url_photo ? (
+                    {restaurant.coverPhotoUrl ? (
                       <Image
                         alt={restaurant.name}
-                        src={restaurant.url_photo}
-                        width={120}
-                        height={125}
-                        className="mx-auto h-full w-[120px] object-contain p-3"
+                        src={restaurant.coverPhotoUrl}
+                        fill
+                        unoptimized
+                        sizes="(min-width: 768px) 25vw, 50vw"
+                        className="object-cover"
                       />
                     ) : (
                       <div className="mx-auto flex h-full w-[120px] items-center justify-center text-gray-300 dark:text-slate-700">
@@ -238,17 +240,18 @@ export default function ClientHomePage() {
                   </div>
                   <div className="p-4">
                     <div className="flex items-center gap-2">
-                      <div className="h-[45px] w-[45px] shrink-0 rounded-full border border-gray-200 p-2 dark:border-slate-700 dark:bg-slate-950">
-                        {restaurant.url_photo ? (
+                      <div className="relative flex h-[45px] w-[45px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+                        {restaurant.profilePhotoUrl ? (
                           <Image
-                            alt={restaurant.name}
-                            src={restaurant.url_photo}
-                            width={45}
-                            height={45}
-                            className="h-full object-contain"
+                            alt={`Perfil de ${restaurant.name}`}
+                            src={restaurant.profilePhotoUrl}
+                            fill
+                            unoptimized
+                            sizes="45px"
+                            className="object-cover"
                           />
                         ) : (
-                          <div className="h-full w-full rounded-full bg-gray-100 dark:bg-slate-800" />
+                          restaurant.name.charAt(0).toUpperCase()
                         )}
                       </div>
                       <span className="text-sm font-bold text-gray-800 dark:text-slate-100">
@@ -303,6 +306,7 @@ export default function ClientHomePage() {
                           src={dish.imageUrl}
                           width={320}
                           height={180}
+                          unoptimized
                           className="h-full w-full object-cover"
                         />
                       ) : (

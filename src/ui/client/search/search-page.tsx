@@ -138,11 +138,13 @@ function RestaurantCard({ restaurant }: { restaurant: RestaurantList }) {
       className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
     >
       <div className="relative flex h-36 items-center justify-center bg-gray-50 dark:bg-slate-950">
-        {restaurant.url_photo ? (
-          <img
+        {restaurant.coverPhotoUrl ? (
+          <Image
             alt={restaurant.name}
-            src={restaurant.url_photo}
-            className="h-full w-full object-contain p-4"
+            src={restaurant.coverPhotoUrl}
+            fill
+            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
+            className="object-cover"
           />
         ) : (
           <BuildingStorefrontIcon className="h-12 w-12 text-gray-300 dark:text-slate-700" />
@@ -169,12 +171,29 @@ function RestaurantCard({ restaurant }: { restaurant: RestaurantList }) {
         </span>
       </div>
       <div className="p-4">
-        <h3 className="line-clamp-2 text-sm font-bold text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
-          {restaurant.name}
-        </h3>
-        <div className="mt-3 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-          <StarIcon className="h-4 w-4 text-orange-400" />
-          <span>{restaurant.stars || "Sin calificación"}</span>
+        <div className="flex items-center gap-3">
+          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+            {restaurant.profilePhotoUrl ? (
+              <Image
+                alt={`Perfil de ${restaurant.name}`}
+                src={restaurant.profilePhotoUrl}
+                fill
+                sizes="40px"
+                className="object-cover"
+              />
+            ) : (
+              restaurant.name.charAt(0).toUpperCase()
+            )}
+          </div>
+          <div className="min-w-0">
+            <h3 className="line-clamp-2 text-sm font-bold text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
+              {restaurant.name}
+            </h3>
+            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <StarIcon className="h-4 w-4 text-orange-400" />
+              <span>{restaurant.stars || "Sin calificación"}</span>
+            </div>
+          </div>
         </div>
       </div>
     </Link>

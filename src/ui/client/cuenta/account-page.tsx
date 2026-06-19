@@ -6,6 +6,7 @@ import {
   LockClosedIcon,
   MapPinIcon,
   UserCircleIcon,
+  WalletIcon,
 } from "@heroicons/react/24/outline";
 
 import DeleteAccountSection from "./delete-account-section";
@@ -28,6 +29,12 @@ const accountLinks = [
     title: "Seguimiento de reclamos",
     description: "Consultá el estado de tus reclamos y las respuestas del local.",
     icon: ChatBubbleLeftRightIcon,
+  },
+  {
+    href: "/client/mi-cuenta/dinero-virtual",
+    title: "Mi billetera",
+    description: "Consultá tus códigos de reembolso por local.",
+    icon: WalletIcon,
   },
   {
     href: "/client/order-history",

@@ -33,6 +33,26 @@ type ClaimApiResponse = {
   localId?: number | null;
   localNombre?: string | null;
   pedidoTotal?: number | null;
+  voucher?: ClaimApiVoucherResponse | null;
+  voucherId?: number | string | null;
+  codigoVoucher?: string | null;
+  voucherCodigo?: string | null;
+  voucherCode?: string | null;
+  valorVoucher?: number | string | null;
+  vencimientoVoucher?: string | null;
+  voucherVencimiento?: string | null;
+};
+
+type ClaimApiVoucherResponse = {
+  id?: number | string | null;
+  codigo?: string | null;
+  code?: string | null;
+  descripcion?: string | null;
+  valor?: number | string | null;
+  amount?: number | string | null;
+  creacion?: string | null;
+  vencimiento?: string | null;
+  expiresAt?: string | null;
 };
 
 type ClaimPageApiResponse = {
@@ -52,7 +72,41 @@ type ClaimErrorResponse = {
   message?: string;
 };
 
+function getNumberValue(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string" && value.trim()) {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : null;
+  }
+
+  return null;
+}
+
 function mapClaimFromApi(data: ClaimApiResponse): OrderClaim {
+  const voucher = data.voucher;
+  const voucherId =
+    voucher?.id != null
+      ? String(voucher.id)
+      : data.voucherId != null
+        ? String(data.voucherId)
+        : null;
+  const voucherCode =
+    voucher?.codigo ??
+    voucher?.code ??
+    data.codigoVoucher ??
+    data.voucherCodigo ??
+    data.voucherCode ??
+    null;
+  const voucherAmount = getNumberValue(
+    voucher?.valor ?? voucher?.amount ?? data.valorVoucher,
+  );
+  const voucherExpiresAt =
+    voucher?.vencimiento ??
+    voucher?.expiresAt ??
+    data.vencimientoVoucher ??
+    data.voucherVencimiento ??
+    null;
+
   return {
     id: data.id,
     pedidoId: data.pedidoId,
@@ -64,6 +118,10 @@ function mapClaimFromApi(data: ClaimApiResponse): OrderClaim {
     localNombre: data.localNombre ?? null,
     pedidoTotal:
       data.pedidoTotal != null ? Number(data.pedidoTotal) : null,
+    voucherId,
+    voucherCode,
+    voucherAmount,
+    voucherExpiresAt,
   };
 }
 
@@ -186,7 +244,7 @@ export async function submitOrderClaim(
     return mapClaimFromApi(response.data);
   } catch (error) {
     throw new Error(
-      getClaimErrorMessage(error, "No se pudo enviar el reclamo. Intentalo nuevamente."),
+      getClaimErrorMessage(error, "No se pudo enviar el reclamo. Inténtalo nuevamente."),
     );
   }
 }

@@ -10,6 +10,7 @@ import {
   MinusIcon,
   PlusIcon,
   ShoppingCartIcon,
+  TicketIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
@@ -17,11 +18,24 @@ import {
   deleteCart,
   getCart,
   getDeliveryPoints,
+  getDishName,
   getRestaurant,
   placeOrder,
   updateCartItem,
 } from "@/services/client/client-service";
-import type { Cart, DeliveryPoint, OrderRequest, Restaurant } from "@/lib/client/types";
+import {
+  applyClientVoucher,
+  getAvailableClientVouchers,
+  getClientVirtualMoney,
+  removeClientVoucher,
+} from "@/services/client/virtual-money-service";
+import type {
+  Cart,
+  ClientVoucher,
+  DeliveryPoint,
+  OrderRequest,
+  Restaurant,
+} from "@/lib/client/types";
 
 // ── Sección de checkout ────────────────────────────────────────────────────────
 
@@ -29,10 +43,39 @@ type AddressMode = "saved" | "manual";
 
 interface CheckoutSectionProps {
   restaurantId: number;
-  onSuccess: () => void;
 }
 
-function CheckoutSection({ restaurantId, onSuccess }: CheckoutSectionProps) {
+function getCartItemName(item: Cart["items"][number]) {
+  return item.nombre?.trim() || `Plato #${item.platoId}`;
+}
+
+async function hydrateCartDishNames(cart: Cart | null): Promise<Cart | null> {
+  if (!cart) return null;
+
+  const dishNameCache = new Map<number, Promise<string | null>>();
+
+  function resolveDishName(platoId: number) {
+    const cachedName = dishNameCache.get(platoId);
+    if (cachedName) return cachedName;
+
+    const dishName = getDishName(platoId).catch(() => null);
+    dishNameCache.set(platoId, dishName);
+    return dishName;
+  }
+
+  const items = await Promise.all(
+    cart.items.map(async (item) => {
+      if (item.nombre?.trim()) return item;
+
+      const dishName = await resolveDishName(item.platoId);
+      return dishName ? { ...item, nombre: dishName } : item;
+    })
+  );
+
+  return { ...cart, items };
+}
+
+function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
   const router = useRouter();
 
   const [deliveryPoints, setDeliveryPoints] = useState<DeliveryPoint[]>([]);
@@ -303,18 +346,53 @@ export default function RestaurantCartPage({
   const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
   const [deletingCart, setDeletingCart] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [vouchers, setVouchers] = useState<ClientVoucher[]>([]);
+  const [selectedVoucherId, setSelectedVoucherId] = useState("");
+  const [vouchersLoading, setVouchersLoading] = useState(true);
+  const [voucherUpdating, setVoucherUpdating] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
   // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
   const cartUpdateInFlight = useRef(false);
 
   useEffect(() => {
     async function load() {
-      const [cartData, restaurantData] = await Promise.allSettled([
+      const [cartData, restaurantData, availableVouchersData, walletData] =
+        await Promise.allSettled([
         getCart(restaurantId),
         getRestaurant(String(restaurantId)),
+        getAvailableClientVouchers(restaurantId),
+        getClientVirtualMoney(),
       ]);
 
-      if (cartData.status === "fulfilled") setCart(cartData.value);
+      if (cartData.status === "fulfilled") {
+        setCart(await hydrateCartDishNames(cartData.value));
+        setSelectedVoucherId(
+          cartData.value?.voucherId != null
+            ? String(cartData.value.voucherId)
+            : "",
+        );
+      }
       if (restaurantData.status === "fulfilled") setRestaurant(restaurantData.value);
+      if (availableVouchersData.status === "fulfilled") {
+        const availableVouchers = availableVouchersData.value;
+        const appliedVoucherId =
+          cartData.status === "fulfilled" ? cartData.value?.voucherId : null;
+        const appliedVoucher =
+          appliedVoucherId != null && walletData.status === "fulfilled"
+            ? walletData.value.vouchers.find(
+                (voucher) => voucher.id === String(appliedVoucherId),
+              )
+            : null;
+
+        setVouchers(
+          appliedVoucher
+            ? [appliedVoucher, ...availableVouchers]
+            : availableVouchers,
+        );
+      } //else {
+        //setVoucherError("No se pudieron cargar los vouchers disponibles.");
+      //} // La falla en wallet se ignora, el usuario igual puede aplicar vouchers ya cargados en el carrito
+      setVouchersLoading(false);
       setLoading(false);
     }
 
@@ -326,8 +404,10 @@ export default function RestaurantCartPage({
     cartUpdateInFlight.current = true;
     setUpdatingDishId(platoId);
     try {
-      const updated = await updateCartItem(restaurantId, platoId, delta);
-      const hasActiveItems = (updated.items ?? []).some((i) => i.eliminacion == null);
+      const updated = await hydrateCartDishNames(
+        await updateCartItem(restaurantId, platoId, delta)
+      );
+      const hasActiveItems = (updated?.items ?? []).some((i) => i.eliminacion == null);
       setCart(hasActiveItems ? updated : null);
       // Si el carrito quedó vacío cerramos el checkout
       if (!hasActiveItems) setCheckoutOpen(false);
@@ -349,6 +429,49 @@ export default function RestaurantCartPage({
       // Falla silenciosa
     } finally {
       setDeletingCart(false);
+    }
+  }
+
+  async function handleApplyVoucher() {
+    const voucherId = Number(selectedVoucherId);
+    if (!Number.isInteger(voucherId) || voucherId <= 0) return;
+
+    setVoucherUpdating(true);
+    setVoucherError(null);
+    try {
+      const updatedCart = await hydrateCartDishNames(
+        await applyClientVoucher(restaurantId, voucherId),
+      );
+      setCart(updatedCart);
+      setSelectedVoucherId(String(voucherId));
+    } catch (error) {
+      setVoucherError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo aplicar el voucher.",
+      );
+    } finally {
+      setVoucherUpdating(false);
+    }
+  }
+
+  async function handleRemoveVoucher() {
+    setVoucherUpdating(true);
+    setVoucherError(null);
+    try {
+      const updatedCart = await hydrateCartDishNames(
+        await removeClientVoucher(restaurantId),
+      );
+      setCart(updatedCart);
+      setSelectedVoucherId("");
+    } catch (error) {
+      setVoucherError(
+        error instanceof Error
+          ? error.message
+          : "No se pudo quitar el voucher.",
+      );
+    } finally {
+      setVoucherUpdating(false);
     }
   }
 
@@ -424,7 +547,7 @@ export default function RestaurantCartPage({
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-gray-800 text-sm truncate">
-                      Plato #{item.platoId}
+                      {getCartItemName(item)}
                     </p>
                     <p className="text-xs text-gray-500 mt-0.5">
                       ${item.costoUnitario.toFixed(2)} c/u
@@ -469,6 +592,72 @@ export default function RestaurantCartPage({
             })}
           </div>
 
+          <section className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-500/30 dark:bg-green-500/10">
+            <div className="flex items-start gap-3">
+              <TicketIcon className="mt-0.5 h-5 w-5 shrink-0 text-green-700 dark:text-green-300" />
+              <div className="min-w-0 flex-1">
+                <h2 className="text-sm font-black text-green-900 dark:text-green-200">
+                  Voucher de reclamo
+                </h2>
+                <p className="mt-1 text-xs text-green-800/80 dark:text-green-300/80">
+                  Aplicá un reembolso válido para este restaurante.
+                </p>
+
+                {vouchersLoading ? (
+                  <div className="mt-3 h-10 animate-pulse rounded-lg bg-green-100 dark:bg-green-500/10" />
+                ) : vouchers.length > 0 ? (
+                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
+                    <select
+                      value={selectedVoucherId}
+                      onChange={(event) => setSelectedVoucherId(event.target.value)}
+                      disabled={voucherUpdating}
+                      className="h-10 min-w-0 flex-1 rounded-lg border border-green-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-green-600 dark:border-green-500/30 dark:bg-slate-950 dark:text-slate-100"
+                    >
+                      <option value="">Seleccionar voucher</option>
+                      {vouchers.map((voucher) => (
+                        <option key={voucher.id} value={voucher.id}>
+                          {voucher.code} · ${voucher.amount?.toLocaleString("es-UY") ?? "-"}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      disabled={
+                        voucherUpdating ||
+                        !selectedVoucherId ||
+                        String(cart.voucherId ?? "") === selectedVoucherId
+                      }
+                      onClick={handleApplyVoucher}
+                      className="h-10 rounded-lg bg-green-700 px-4 text-sm font-black text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {voucherUpdating ? "Actualizando..." : "Aplicar"}
+                    </button>
+                    {cart.voucherId != null ? (
+                      <button
+                        type="button"
+                        disabled={voucherUpdating}
+                        onClick={handleRemoveVoucher}
+                        className="h-10 rounded-lg border border-green-300 px-4 text-sm font-black text-green-800 transition hover:bg-green-100 disabled:opacity-50 dark:border-green-500/30 dark:text-green-200 dark:hover:bg-green-500/10"
+                      >
+                        Quitar
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm font-medium text-green-800 dark:text-green-300">
+                    No tenés vouchers disponibles para este restaurante.
+                  </p>
+                )}
+
+                {voucherError ? (
+                  <p className="mt-2 text-sm font-bold text-red-600 dark:text-red-300">
+                    {voucherError}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+          </section>
+
           {/* Total + botón realizar pedido */}
           <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
             <div className="flex items-center justify-between">
@@ -492,10 +681,7 @@ export default function RestaurantCartPage({
 
             {/* Sección de dirección de entrega */}
             {checkoutOpen && (
-              <CheckoutSection
-                restaurantId={restaurantId}
-                onSuccess={() => setCart(null)}
-              />
+              <CheckoutSection restaurantId={restaurantId} />
             )}
           </div>
         </>

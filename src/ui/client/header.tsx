@@ -11,6 +11,7 @@ import {
   ShoppingCartIcon,
   StarIcon,
   UserCircleIcon,
+  WalletIcon,
 } from "@heroicons/react/24/outline";
 import Form from "next/form";
 import Image from "next/image";
@@ -44,6 +45,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pendingRatingCount, setPendingRatingCount] = useState(0);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const pendingNotificationCount = pendingRatingCount + pendingOrdersCount;
 
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
   const cartHref = restaurantMatch
@@ -182,7 +184,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
         {isClientSearchPage ? (
           <button
             type="button"
-            aria-label="Mostrar u ocultar filtros de busqueda"
+            aria-label="Mostrar u ocultar filtros de búsqueda"
             onClick={toggleSearchFilters}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
           >
@@ -210,22 +212,12 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             className="relative block rounded-full focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
           >
             <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
-            {pendingOrdersCount > 0 ? (
+            {pendingNotificationCount > 0 ? (
               <span
-                aria-label={`${pendingOrdersCount} pedidos en curso cancelables`}
-                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
+                aria-label={`${pendingNotificationCount} novedades pendientes`}
+                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:bg-orange-500 dark:ring-slate-950"
               >
-                {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
-              </span>
-            ) : null}
-            {pendingRatingCount > 0 ? (
-              <span
-                aria-label={`${pendingRatingCount} pedidos pendientes de calificacion`}
-                className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950 ${
-                  pendingOrdersCount > 0 ? "-left-1 -top-1" : "-right-1 -top-1"
-                }`}
-              >
-                {pendingRatingCount > 9 ? "9+" : pendingRatingCount}
+                {pendingNotificationCount > 9 ? "9+" : pendingNotificationCount}
               </span>
             ) : null}
           </button>
@@ -241,6 +233,16 @@ export default function Header({ session }: { session: LoginWebResponse }) {
                   >
                     <UserCircleIcon className={menuIconClass} />
                     Mi cuenta
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/client/mi-cuenta/dinero-virtual"
+                    onClick={closeHeaderMenus}
+                    className={menuLinkClass}
+                  >
+                    <WalletIcon className={menuIconClass} />
+                    Mi billetera
                   </Link>
                 </li>
                 <li>
@@ -272,7 +274,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           <button
             type="button"
             aria-expanded={navigationMenuOpen}
-            aria-label="Abrir menu de navegacion"
+            aria-label="Abrir menú de navegación"
             onClick={toggleNavigationMenu}
             className="grid h-[37px] w-[37px] place-items-center rounded-md text-gray-800 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
           >
@@ -322,6 +324,16 @@ export default function Header({ session }: { session: LoginWebResponse }) {
               >
                 <ChatBubbleLeftRightIcon className={menuIconClass} />
                 Seguimiento de reclamos
+              </Link>
+            </li>
+            <li>
+              <Link
+                href="/client/mi-cuenta/dinero-virtual"
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
+              >
+                <WalletIcon className={menuIconClass} />
+                Mi billetera
               </Link>
             </li>
             <li>

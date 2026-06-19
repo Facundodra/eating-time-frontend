@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeftEndOnRectangleIcon } from "@heroicons/react/24/outline";
+import clsx from "clsx";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -15,12 +16,14 @@ import UserEmail from "./user-email";
 import UserName from "./user-name";
 
 type SessionWidgetProps = {
+  expanded?: boolean;
   profileHref?: string;
   session: LoginWebResponse;
   showProfilePicture?: boolean;
 };
 
 export default function SessionWidget({
+  expanded = false,
   profileHref = "/restaurant/my-data",
   session,
   showProfilePicture = true,
@@ -29,7 +32,7 @@ export default function SessionWidget({
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // La sesión ya fue validada por el layout server. Este widget solo la muestra,
-  // evitando una segunda llamada a /api/auth/me en cada pagina interna.
+  // evitando una segunda llamada a /api/auth/me en cada página interna.
   const { email, imageUrl, name, profileAlt } = getSessionDisplayData(session);
 
   async function handleLogout() {
@@ -74,10 +77,18 @@ export default function SessionWidget({
         onClick={handleLogout}
         isLoading={isLoggingOut}
         loadingText="Cerrando sesión..."
-        className="logout-button btn-primary mt-3 flex w-full items-center gap-2 overflow-hidden text-center"
+        className={clsx(
+          "logout-button btn-primary mt-3 flex w-full items-center gap-2 overflow-hidden text-center",
+          expanded ? "justify-start px-4" : "justify-center",
+        )}
       >
         <ArrowLeftEndOnRectangleIcon className="h-5 w-5 shrink-0" />
-        <span className="logout-button-label block max-w-0 overflow-hidden whitespace-nowrap opacity-0 transition-all duration-200 ease-in-out">
+        <span
+          className={clsx(
+            "logout-button-label block overflow-hidden whitespace-nowrap transition-all duration-200 ease-in-out",
+            expanded ? "max-w-[120px] opacity-100" : "max-w-0 opacity-0",
+          )}
+        >
           Cerrar sesión
         </span>
       </LoadingButton>
