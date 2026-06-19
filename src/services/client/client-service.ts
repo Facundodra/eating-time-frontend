@@ -14,6 +14,7 @@ import type {
     Discount,
     Cart,
     CartItem,
+    ClientVoucher,
     Order,
     OrderHistoryStatus,
     OrderRating,
@@ -23,7 +24,7 @@ import type {
     LocalRating,
 } from "@/lib/client/types";
 
-export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, ClientDishCategorySummary, Cart, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
+export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, ClientDishCategorySummary, Cart, ClientVoucher, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
 
 const CATEGORY_RELATION_PAGE_SIZE = 100;
 
@@ -649,8 +650,14 @@ export async function getRestaurant(id: string): Promise<Restaurant> {
 type CartFromApi = Omit<Cart, "restaurantId"> & { localId: number };
 
 function mapCartFromApi(cart: CartFromApi): Cart {
-    const { localId, ...rest } = cart;
-    return { ...rest, restaurantId: localId };
+    const { localId, voucherId, cuponCodigo, cuponPorcentaje, ...rest } = cart;
+    return {
+        ...rest,
+        restaurantId: localId,
+        voucherId: voucherId ?? null,
+        cuponCodigo: cuponCodigo ?? null,
+        cuponPorcentaje: cuponPorcentaje ?? null,
+    };
 }
 
 // Devuelve todos los carritos activos (EN_CARRITO) del cliente, uno por restaurante
@@ -754,6 +761,50 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
             throw new Error(message);
         }
         throw new Error("No se pudo realizar el pedido.");
+    }
+}
+
+// ── Cupones del carrito ────────────────────────────────────────────────────────
+
+export async function applyCartCoupon(
+    restaurantId: number,
+    code: string
+): Promise<Cart> {
+    const session = await requireCurrentSession();
+
+    try {
+        const response = await api.patch<CartFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}/cupon`,
+            { codigo: code.trim() }
+        );
+        return mapCartFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message =
+                data?.error ?? data?.message ?? `Error al aplicar cupón (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo aplicar el cupón.");
+    }
+}
+
+export async function removeCartCoupon(restaurantId: number): Promise<Cart> {
+    const session = await requireCurrentSession();
+
+    try {
+        const response = await api.delete<CartFromApi>(
+            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}/cupon`
+        );
+        return mapCartFromApi(response.data);
+    } catch (error) {
+        if (axios.isAxiosError(error)) {
+            const data = error.response?.data;
+            const message =
+                data?.error ?? data?.message ?? `Error al quitar cupón (${error.response?.status})`;
+            throw new Error(message);
+        }
+        throw new Error("No se pudo quitar el cupón.");
     }
 }
 

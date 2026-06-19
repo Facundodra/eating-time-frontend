@@ -4,8 +4,6 @@ import { getBackendRoleHomePath } from "@/lib/shared/auth/routes";
 import { getServerSession } from "@/lib/shared/auth/server-session";
 import Header from "@/ui/client/header";
 import ClientNotificationStream from "@/ui/client/notifications/client-notification-stream";
-import ClientOrderRatingPrompt from "@/ui/client/ratings/client-order-rating-prompt";
-
 export default async function ClientLayout({
   children,
 }: Readonly<{
@@ -28,7 +26,6 @@ export default async function ClientLayout({
         {children}
       </main>
       <ClientNotificationStream clientId={session.idTipoUsuario} />
-      <ClientOrderRatingPrompt />
     </div>
   );
 }

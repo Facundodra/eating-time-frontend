@@ -7,20 +7,22 @@ import {
   ArrowLeftIcon,
   CheckCircleIcon,
   ChevronDownIcon,
+  ExclamationTriangleIcon,
   MinusIcon,
   PlusIcon,
   ShoppingCartIcon,
-  TicketIcon,
   TrashIcon,
 } from "@heroicons/react/24/outline";
 
 import {
+  applyCartCoupon,
   deleteCart,
   getCart,
   getDeliveryPoints,
   getDishName,
   getRestaurant,
   placeOrder,
+  removeCartCoupon,
   updateCartItem,
 } from "@/services/client/client-service";
 import {
@@ -30,19 +32,22 @@ import {
   removeClientVoucher,
 } from "@/services/client/virtual-money-service";
 import type {
+  AppliedCartCoupon,
   Cart,
   ClientVoucher,
   DeliveryPoint,
   OrderRequest,
   Restaurant,
 } from "@/lib/client/types";
-
-// ── Sección de checkout ────────────────────────────────────────────────────────
+import CartCouponPanel from "@/ui/client/carts/cart-coupon-panel";
+import { formatCartPrice } from "@/ui/client/carts/cart-formatters";
+import CartVoucherPanel from "@/ui/client/carts/cart-voucher-panel";
 
 type AddressMode = "saved" | "manual";
 
 interface CheckoutSectionProps {
   restaurantId: number;
+  voucherExceedsOrder: boolean;
 }
 
 function getCartItemName(item: Cart["items"][number]) {
@@ -69,13 +74,13 @@ async function hydrateCartDishNames(cart: Cart | null): Promise<Cart | null> {
 
       const dishName = await resolveDishName(item.platoId);
       return dishName ? { ...item, nombre: dishName } : item;
-    })
+    }),
   );
 
   return { ...cart, items };
 }
 
-function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
+function CheckoutSection({ restaurantId, voucherExceedsOrder }: CheckoutSectionProps) {
   const router = useRouter();
 
   const [deliveryPoints, setDeliveryPoints] = useState<DeliveryPoint[]>([]);
@@ -99,7 +104,6 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
     getDeliveryPoints()
       .then((pts) => {
         setDeliveryPoints(pts);
-        // Si no tiene puntos guardados, va directo al formulario manual
         if (pts.length === 0) setMode("manual");
         else setSelectedPointId(pts[0].id);
       })
@@ -136,7 +140,18 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
       const { linkPago } = await placeOrder(restaurantId, body);
       router.push(linkPago);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo realizar el pedido.");
+      const message = err instanceof Error ? err.message : "No se pudo realizar el pedido.";
+      if (message.toLowerCase().includes("venc")) {
+        setError(
+          "El voucher ya no es válido. Quitá el voucher aplicado e intentá realizar el pedido nuevamente.",
+        );
+      } else if (message.toLowerCase().includes("cupón") || message.toLowerCase().includes("cupon")) {
+        setError(
+          "El cupón ya no es válido. Quitá el cupón aplicado e intentá realizar el pedido nuevamente.",
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setPlacing(false);
     }
@@ -145,25 +160,24 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
   if (loadingPoints) {
     return (
       <div className="mt-4 flex justify-center py-6">
-        <span className="h-5 w-5 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700 block" />
+        <span className="block h-5 w-5 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700" />
       </div>
     );
   }
 
   return (
-    <div className="mt-4 border border-orange-200 rounded-xl overflow-hidden">
-      <div className="bg-orange-50 px-5 py-3 border-b border-orange-100">
+    <div className="mt-4 overflow-hidden rounded-xl border border-orange-200">
+      <div className="border-b border-orange-100 bg-orange-50 px-5 py-3">
         <p className="text-sm font-semibold text-gray-700">Dirección de entrega</p>
       </div>
 
-      <div className="p-5 space-y-4">
-        {/* Selector de modo — solo si tiene puntos guardados */}
+      <div className="space-y-4 p-5">
         {deliveryPoints.length > 0 && (
           <div className="flex gap-3">
             <button
               type="button"
               onClick={() => setMode("saved")}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
                 mode === "saved"
                   ? "border-orange-600 bg-orange-600 text-white"
                   : "border-gray-200 text-gray-600 hover:border-orange-300"
@@ -174,7 +188,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
             <button
               type="button"
               onClick={() => setMode("manual")}
-              className={`flex-1 py-2 rounded-lg text-sm font-medium border transition-colors ${
+              className={`flex-1 rounded-lg border py-2 text-sm font-medium transition-colors ${
                 mode === "manual"
                   ? "border-orange-600 bg-orange-600 text-white"
                   : "border-gray-200 text-gray-600 hover:border-orange-300"
@@ -185,12 +199,11 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
           </div>
         )}
 
-        {/* Lista de puntos guardados */}
         {mode === "saved" && (
           <ul className="space-y-2">
             {deliveryPoints.map((pt) => (
               <li key={pt.id}>
-                <label className="flex items-start gap-3 cursor-pointer rounded-lg border border-gray-200 p-3 hover:border-orange-300 transition-colors has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
+                <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-gray-200 p-3 transition-colors hover:border-orange-300 has-[:checked]:border-orange-500 has-[:checked]:bg-orange-50">
                   <input
                     type="radio"
                     name="delivery-point"
@@ -206,7 +219,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
                     </p>
                     <p className="text-gray-500">{pt.localidad}</p>
                     {pt.indicaciones && (
-                      <p className="text-gray-400 text-xs mt-0.5">{pt.indicaciones}</p>
+                      <p className="mt-0.5 text-xs text-gray-400">{pt.indicaciones}</p>
                     )}
                   </div>
                 </label>
@@ -215,12 +228,11 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
           </ul>
         )}
 
-        {/* Formulario manual */}
         {mode === "manual" && (
           <div className="space-y-3">
             <div className="grid grid-cols-2 gap-3">
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
                   Localidad <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -232,7 +244,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
                   Calle <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -244,7 +256,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
                   Número <span className="text-red-500">*</span>
                 </label>
                 <input
@@ -256,7 +268,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-600 mb-1">Apto</label>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Apto</label>
                 <input
                   type="text"
                   value={nroApto}
@@ -266,7 +278,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-medium text-gray-600 mb-1">
+                <label className="mb-1 block text-xs font-medium text-gray-600">
                   Indicaciones de entrega
                 </label>
                 <input
@@ -279,7 +291,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
               </div>
             </div>
 
-            <label className="flex items-center gap-2 cursor-pointer text-sm text-gray-600">
+            <label className="flex cursor-pointer items-center gap-2 text-sm text-gray-600">
               <input
                 type="checkbox"
                 checked={guardarEnCuenta}
@@ -292,7 +304,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
         )}
 
         <div className="border-t border-orange-100 pt-4">
-          <label className="block text-xs font-medium text-gray-600 mb-1">
+          <label className="mb-1 block text-xs font-medium text-gray-600">
             Notas para el local (opcional)
           </label>
           <textarea
@@ -300,21 +312,35 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
             onChange={(e) => setLocalNotes(e.target.value)}
             placeholder="Ej: Sin cebolla, bien cocido, traer cubiertos"
             rows={3}
-            className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm resize-none focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-full resize-none rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
           />
         </div>
 
-        {/* Error */}
         {error && (
           <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>
         )}
 
-        {/* Botón confirmar */}
+        {voucherExceedsOrder && (
+          <div
+            className="flex gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-500/40 dark:bg-red-500/10"
+            role="alert"
+          >
+            <ExclamationTriangleIcon
+              className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400"
+              aria-hidden
+            />
+            <p className="text-sm font-semibold leading-snug text-red-800 dark:text-red-200">
+              El voucher que seleccionaste supera el valor de tu pedido. Si continuás, se
+              perderá el saldo restante del voucher.
+            </p>
+          </div>
+        )}
+
         <button
           type="button"
           disabled={placing || (mode === "saved" && selectedPointId == null)}
           onClick={handleConfirm}
-          className="w-full flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 disabled:opacity-60 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
+          className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-700 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-orange-800 disabled:opacity-60"
         >
           {placing ? (
             <>
@@ -323,7 +349,7 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
             </>
           ) : (
             <>
-              <CheckCircleIcon className="w-5 h-5" />
+              <CheckCircleIcon className="h-5 w-5" />
               Confirmar y pagar
             </>
           )}
@@ -332,8 +358,6 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
     </div>
   );
 }
-
-// ── Página principal del carrito ───────────────────────────────────────────────
 
 export default function RestaurantCartPage({
   restaurantId,
@@ -346,58 +370,101 @@ export default function RestaurantCartPage({
   const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
   const [deletingCart, setDeletingCart] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
-  const [vouchers, setVouchers] = useState<ClientVoucher[]>([]);
-  const [selectedVoucherId, setSelectedVoucherId] = useState("");
-  const [vouchersLoading, setVouchersLoading] = useState(true);
-  const [voucherUpdating, setVoucherUpdating] = useState(false);
+  const [availableVouchers, setAvailableVouchers] = useState<ClientVoucher[]>([]);
+  const [appliedVoucher, setAppliedVoucher] = useState<ClientVoucher | null>(null);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
   const [voucherError, setVoucherError] = useState<string | null>(null);
-  // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
+  const [applyingVoucherId, setApplyingVoucherId] = useState<string | null>(null);
+  const [removingVoucher, setRemovingVoucher] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [removingCoupon, setRemovingCoupon] = useState(false);
   const cartUpdateInFlight = useRef(false);
+
+  const activeItems = cart?.items.filter((i) => i.eliminacion == null) ?? [];
+  const itemsSubtotal = activeItems.reduce((sum, item) => sum + item.total, 0);
+  const couponDiscount = cart?.descuento ?? 0;
+  const subtotalAfterCoupon = Math.max(0, itemsSubtotal - couponDiscount);
+  const appliedCoupon: AppliedCartCoupon | null =
+    cart?.cuponId != null && cart.cuponCodigo && cart.cuponPorcentaje != null
+      ? {
+          code: cart.cuponCodigo,
+          percentage: cart.cuponPorcentaje,
+          discountAmount: couponDiscount,
+        }
+      : null;
+  const hasCouponDiscount = appliedCoupon != null && couponDiscount > 0;
+  const hasVoucherDiscount =
+    cart?.voucherId != null && subtotalAfterCoupon > (cart?.total ?? 0);
+  const activeVoucher =
+    appliedVoucher ??
+    (cart?.voucherId != null
+      ? availableVouchers.find((voucher) => voucher.id === String(cart.voucherId)) ??
+        null
+      : null);
+  const voucherExceedsOrder =
+    activeVoucher?.amount != null && activeVoucher.amount > subtotalAfterCoupon;
+
+  async function loadVoucherPanels(cartData: Cart) {
+    setLoadingVouchers(true);
+    setVoucherError(null);
+
+    try {
+      const [available, wallet] = await Promise.all([
+        getAvailableClientVouchers(restaurantId),
+        getClientVirtualMoney().catch(() => ({ vouchers: [] })),
+      ]);
+
+      setAvailableVouchers(available);
+
+      if (cartData.voucherId != null) {
+        const applied =
+          wallet.vouchers.find((voucher) => voucher.id === String(cartData.voucherId)) ??
+          available.find((voucher) => voucher.id === String(cartData.voucherId)) ??
+          null;
+        setAppliedVoucher(applied);
+      } else {
+        setAppliedVoucher(null);
+      }
+    } catch (err) {
+      setVoucherError(
+        err instanceof Error ? err.message : "No se pudieron cargar los vouchers.",
+      );
+    } finally {
+      setLoadingVouchers(false);
+    }
+  }
 
   useEffect(() => {
     async function load() {
-      const [cartData, restaurantData, availableVouchersData, walletData] =
-        await Promise.allSettled([
+      const [cartData, restaurantData] = await Promise.allSettled([
         getCart(restaurantId),
         getRestaurant(String(restaurantId)),
-        getAvailableClientVouchers(restaurantId),
-        getClientVirtualMoney(),
       ]);
 
       if (cartData.status === "fulfilled") {
         setCart(await hydrateCartDishNames(cartData.value));
-        setSelectedVoucherId(
-          cartData.value?.voucherId != null
-            ? String(cartData.value.voucherId)
-            : "",
-        );
       }
       if (restaurantData.status === "fulfilled") setRestaurant(restaurantData.value);
-      if (availableVouchersData.status === "fulfilled") {
-        const availableVouchers = availableVouchersData.value;
-        const appliedVoucherId =
-          cartData.status === "fulfilled" ? cartData.value?.voucherId : null;
-        const appliedVoucher =
-          appliedVoucherId != null && walletData.status === "fulfilled"
-            ? walletData.value.vouchers.find(
-                (voucher) => voucher.id === String(appliedVoucherId),
-              )
-            : null;
-
-        setVouchers(
-          appliedVoucher
-            ? [appliedVoucher, ...availableVouchers]
-            : availableVouchers,
-        );
-      } //else {
-        //setVoucherError("No se pudieron cargar los vouchers disponibles.");
-      //} // La falla en wallet se ignora, el usuario igual puede aplicar vouchers ya cargados en el carrito
-      setVouchersLoading(false);
       setLoading(false);
     }
 
-    load();
+    void load();
   }, [restaurantId]);
+
+  useEffect(() => {
+    if (!loading && cart && activeItems.length > 0) {
+      void loadVoucherPanels(cart);
+      return;
+    }
+
+    if (!cart || activeItems.length === 0) {
+      setAvailableVouchers([]);
+      setAppliedVoucher(null);
+      setVoucherError(null);
+      setCouponError(null);
+    }
+  }, [loading, cart?.id, cart?.voucherId, cart?.cuponId, activeItems.length, restaurantId]);
 
   async function handleUpdateItem(platoId: number, delta: number) {
     if (cartUpdateInFlight.current) return;
@@ -405,11 +472,10 @@ export default function RestaurantCartPage({
     setUpdatingDishId(platoId);
     try {
       const updated = await hydrateCartDishNames(
-        await updateCartItem(restaurantId, platoId, delta)
+        await updateCartItem(restaurantId, platoId, delta),
       );
       const hasActiveItems = (updated?.items ?? []).some((i) => i.eliminacion == null);
       setCart(hasActiveItems ? updated : null);
-      // Si el carrito quedó vacío cerramos el checkout
       if (!hasActiveItems) setCheckoutOpen(false);
     } catch {
       // Falla silenciosa; el usuario puede reintentar
@@ -425,6 +491,10 @@ export default function RestaurantCartPage({
       await deleteCart(restaurantId);
       setCart(null);
       setCheckoutOpen(false);
+      setAvailableVouchers([]);
+      setAppliedVoucher(null);
+      setVoucherError(null);
+      setCouponError(null);
     } catch {
       // Falla silenciosa
     } finally {
@@ -432,75 +502,109 @@ export default function RestaurantCartPage({
     }
   }
 
-  async function handleApplyVoucher() {
-    const voucherId = Number(selectedVoucherId);
-    if (!Number.isInteger(voucherId) || voucherId <= 0) return;
-
-    setVoucherUpdating(true);
+  async function handleApplyVoucher(voucher: ClientVoucher) {
     setVoucherError(null);
+    setApplyingVoucherId(voucher.id);
+
     try {
-      const updatedCart = await hydrateCartDishNames(
-        await applyClientVoucher(restaurantId, voucherId),
+      const updated = await hydrateCartDishNames(
+        await applyClientVoucher(restaurantId, Number(voucher.id)),
       );
-      setCart(updatedCart);
-      setSelectedVoucherId(String(voucherId));
-    } catch (error) {
+      setCart(updated);
+      setAppliedVoucher(voucher);
+      setAvailableVouchers((previous) =>
+        previous.filter((entry) => entry.id !== voucher.id),
+      );
+    } catch (err) {
       setVoucherError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo aplicar el voucher.",
+        err instanceof Error ? err.message : "No se pudo aplicar el voucher.",
       );
     } finally {
-      setVoucherUpdating(false);
+      setApplyingVoucherId(null);
     }
   }
 
   async function handleRemoveVoucher() {
-    setVoucherUpdating(true);
     setVoucherError(null);
+    setRemovingVoucher(true);
+
     try {
-      const updatedCart = await hydrateCartDishNames(
-        await removeClientVoucher(restaurantId),
-      );
-      setCart(updatedCart);
-      setSelectedVoucherId("");
-    } catch (error) {
+      const removedVoucher = appliedVoucher;
+      const updated = await hydrateCartDishNames(await removeClientVoucher(restaurantId));
+      setCart(updated);
+      setAppliedVoucher(null);
+
+      if (removedVoucher) {
+        setAvailableVouchers((previous) =>
+          [...previous, removedVoucher].sort((left, right) =>
+            left.code.localeCompare(right.code),
+          ),
+        );
+      }
+    } catch (err) {
       setVoucherError(
-        error instanceof Error
-          ? error.message
-          : "No se pudo quitar el voucher.",
+        err instanceof Error ? err.message : "No se pudo quitar el voucher.",
       );
     } finally {
-      setVoucherUpdating(false);
+      setRemovingVoucher(false);
     }
   }
 
-  const activeItems = cart?.items.filter((i) => i.eliminacion == null) ?? [];
+  async function handleApplyCoupon(code: string) {
+    setCouponError(null);
+    setApplyingCoupon(true);
+
+    try {
+      const updated = await hydrateCartDishNames(await applyCartCoupon(restaurantId, code));
+      setCart(updated);
+    } catch (err) {
+      setCouponError(
+        err instanceof Error ? err.message : "No se pudo aplicar el cupón.",
+      );
+    } finally {
+      setApplyingCoupon(false);
+    }
+  }
+
+  async function handleRemoveCoupon() {
+    setCouponError(null);
+    setRemovingCoupon(true);
+
+    try {
+      const updated = await hydrateCartDishNames(await removeCartCoupon(restaurantId));
+      setCart(updated);
+    } catch (err) {
+      setCouponError(
+        err instanceof Error ? err.message : "No se pudo quitar el cupón.",
+      );
+    } finally {
+      setRemovingCoupon(false);
+    }
+  }
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8">
-      {/* Volver al restaurante */}
+    <div className="mx-auto max-w-6xl px-4 py-8">
       <Link
         href={`/client/restaurant/${restaurantId}`}
-        className="inline-flex items-center gap-1 text-sm text-gray-500 hover:text-orange-600 transition-colors mb-6"
+        className="mb-6 inline-flex items-center gap-1 text-sm text-gray-500 transition-colors hover:text-orange-600"
       >
-        <ArrowLeftIcon className="w-4 h-4" />
+        <ArrowLeftIcon className="h-4 w-4" />
         Volver a {restaurant?.name ?? "el restaurante"}
       </Link>
 
-      <div className="flex items-center justify-between mb-6">
+      <div className="mb-6 flex items-center justify-between">
         <h1 className="text-xl font-bold text-gray-800">Tu carrito</h1>
         {cart && (
           <button
             type="button"
             disabled={deletingCart}
             onClick={handleDeleteCart}
-            className="flex items-center gap-1.5 text-sm text-gray-400 hover:text-red-500 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 text-sm text-gray-400 transition-colors hover:text-red-500 disabled:opacity-50"
           >
             {deletingCart ? (
-              <span className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-400 block" />
+              <span className="block h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-red-400" />
             ) : (
-              <TrashIcon className="w-4 h-4" />
+              <TrashIcon className="h-4 w-4" />
             )}
             Vaciar carrito
           </button>
@@ -510,12 +614,15 @@ export default function RestaurantCartPage({
       {loading && (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, i) => (
-            <div key={i} className="rounded-xl border border-gray-100 bg-white p-4 animate-pulse flex justify-between">
-              <div className="space-y-2 flex-1">
-                <div className="h-4 bg-gray-200 rounded w-1/2" />
-                <div className="h-3 bg-gray-100 rounded w-1/4" />
+            <div
+              key={i}
+              className="flex animate-pulse justify-between rounded-xl border border-gray-100 bg-white p-4"
+            >
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-1/2 rounded bg-gray-200" />
+                <div className="h-3 w-1/4 rounded bg-gray-100" />
               </div>
-              <div className="h-8 w-24 bg-gray-200 rounded-lg" />
+              <div className="h-8 w-24 rounded-lg bg-gray-200" />
             </div>
           ))}
         </div>
@@ -523,11 +630,11 @@ export default function RestaurantCartPage({
 
       {!loading && (!cart || activeItems.length === 0) && (
         <div className="flex flex-col items-center gap-4 py-16 text-gray-400">
-          <ShoppingCartIcon className="w-14 h-14" />
+          <ShoppingCartIcon className="h-14 w-14" />
           <p className="text-sm">Tu carrito está vacío.</p>
           <Link
             href={`/client/restaurant/${restaurantId}`}
-            className="text-orange-700 text-sm font-semibold hover:underline"
+            className="text-sm font-semibold text-orange-700 hover:underline"
           >
             Ver platos del restaurante
           </Link>
@@ -535,156 +642,137 @@ export default function RestaurantCartPage({
       )}
 
       {!loading && cart && activeItems.length > 0 && (
-        <>
-          {/* Listado de ítems */}
-          <div className="space-y-3 mb-6">
-            {activeItems.map((item) => {
-              const isUpdating = updatingDishId === item.platoId;
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 text-sm truncate">
-                      {getCartItemName(item)}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      ${item.costoUnitario.toFixed(2)} c/u
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex items-center border border-orange-200 rounded-lg px-1 py-1 gap-2">
-                      <button
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() => handleUpdateItem(item.platoId, -1)}
-                        className="p-1 rounded hover:bg-orange-50 transition-colors disabled:opacity-50"
-                      >
-                        <MinusIcon className="w-3.5 h-3.5 text-orange-700" />
-                      </button>
-
-                      {isUpdating ? (
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700 block" />
-                      ) : (
-                        <span className="text-sm font-bold text-orange-700 min-w-[18px] text-center">
-                          {item.cantidad}
-                        </span>
-                      )}
-
-                      <button
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() => handleUpdateItem(item.platoId, 1)}
-                        className="p-1 rounded hover:bg-orange-50 transition-colors disabled:opacity-50"
-                      >
-                        <PlusIcon className="w-3.5 h-3.5 text-orange-700" />
-                      </button>
+        <div className="items-start lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8">
+          <div className="min-w-0">
+            <div className="mb-6 space-y-3">
+              {activeItems.map((item) => {
+                const isUpdating = updatingDishId === item.platoId;
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white p-4"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold text-gray-800">
+                        {getCartItemName(item)}
+                      </p>
+                      <p className="mt-0.5 text-xs text-gray-500">
+                        ${item.costoUnitario.toFixed(2)} c/u
+                      </p>
                     </div>
 
-                    <span className="text-sm font-bold text-gray-800 min-w-[60px] text-right">
-                      ${item.total.toFixed(2)}
-                    </span>
+                    <div className="flex shrink-0 items-center gap-2">
+                      <div className="flex items-center gap-2 rounded-lg border border-orange-200 px-1 py-1">
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() => handleUpdateItem(item.platoId, -1)}
+                          className="rounded p-1 transition-colors hover:bg-orange-50 disabled:opacity-50"
+                        >
+                          <MinusIcon className="h-3.5 w-3.5 text-orange-700" />
+                        </button>
+
+                        {isUpdating ? (
+                          <span className="block h-4 w-4 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700" />
+                        ) : (
+                          <span className="min-w-[18px] text-center text-sm font-bold text-orange-700">
+                            {item.cantidad}
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() => handleUpdateItem(item.platoId, 1)}
+                          className="rounded p-1 transition-colors hover:bg-orange-50 disabled:opacity-50"
+                        >
+                          <PlusIcon className="h-3.5 w-3.5 text-orange-700" />
+                        </button>
+                      </div>
+
+                      <span className="min-w-[60px] text-right text-sm font-bold text-gray-800">
+                        ${item.total.toFixed(2)}
+                      </span>
+                    </div>
                   </div>
+                );
+              })}
+            </div>
+
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="space-y-1">
+                  {(hasCouponDiscount || hasVoucherDiscount) && (
+                    <p className="text-xs text-gray-500">
+                      Subtotal{" "}
+                      <span className="font-medium text-gray-700">
+                        {formatCartPrice(itemsSubtotal)}
+                      </span>
+                    </p>
+                  )}
+                  {hasCouponDiscount && (
+                    <p className="text-xs text-green-700">
+                      Cupón ({appliedCoupon?.code}){" "}
+                      <span className="font-medium">
+                        -{formatCartPrice(couponDiscount)}
+                      </span>
+                    </p>
+                  )}
+                  {hasVoucherDiscount && (
+                    <p className="text-xs text-green-700">
+                      Voucher{" "}
+                      <span className="font-medium">
+                        -{formatCartPrice(subtotalAfterCoupon - cart.total)}
+                      </span>
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-2xl font-extrabold text-orange-700">
+                    {formatCartPrice(cart.total)}
+                  </p>
                 </div>
-              );
-            })}
-          </div>
-
-          <section className="mb-6 rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-500/30 dark:bg-green-500/10">
-            <div className="flex items-start gap-3">
-              <TicketIcon className="mt-0.5 h-5 w-5 shrink-0 text-green-700 dark:text-green-300" />
-              <div className="min-w-0 flex-1">
-                <h2 className="text-sm font-black text-green-900 dark:text-green-200">
-                  Voucher de reclamo
-                </h2>
-                <p className="mt-1 text-xs text-green-800/80 dark:text-green-300/80">
-                  Aplicá un reembolso válido para este restaurante.
-                </p>
-
-                {vouchersLoading ? (
-                  <div className="mt-3 h-10 animate-pulse rounded-lg bg-green-100 dark:bg-green-500/10" />
-                ) : vouchers.length > 0 ? (
-                  <div className="mt-3 flex flex-col gap-2 sm:flex-row">
-                    <select
-                      value={selectedVoucherId}
-                      onChange={(event) => setSelectedVoucherId(event.target.value)}
-                      disabled={voucherUpdating}
-                      className="h-10 min-w-0 flex-1 rounded-lg border border-green-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none focus:border-green-600 dark:border-green-500/30 dark:bg-slate-950 dark:text-slate-100"
-                    >
-                      <option value="">Seleccionar voucher</option>
-                      {vouchers.map((voucher) => (
-                        <option key={voucher.id} value={voucher.id}>
-                          {voucher.code} · ${voucher.amount?.toLocaleString("es-UY") ?? "-"}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      type="button"
-                      disabled={
-                        voucherUpdating ||
-                        !selectedVoucherId ||
-                        String(cart.voucherId ?? "") === selectedVoucherId
-                      }
-                      onClick={handleApplyVoucher}
-                      className="h-10 rounded-lg bg-green-700 px-4 text-sm font-black text-white transition hover:bg-green-800 disabled:cursor-not-allowed disabled:opacity-50"
-                    >
-                      {voucherUpdating ? "Actualizando..." : "Aplicar"}
-                    </button>
-                    {cart.voucherId != null ? (
-                      <button
-                        type="button"
-                        disabled={voucherUpdating}
-                        onClick={handleRemoveVoucher}
-                        className="h-10 rounded-lg border border-green-300 px-4 text-sm font-black text-green-800 transition hover:bg-green-100 disabled:opacity-50 dark:border-green-500/30 dark:text-green-200 dark:hover:bg-green-500/10"
-                      >
-                        Quitar
-                      </button>
-                    ) : null}
-                  </div>
-                ) : (
-                  <p className="mt-3 text-sm font-medium text-green-800 dark:text-green-300">
-                    No tenés vouchers disponibles para este restaurante.
-                  </p>
-                )}
-
-                {voucherError ? (
-                  <p className="mt-2 text-sm font-bold text-red-600 dark:text-red-300">
-                    {voucherError}
-                  </p>
-                ) : null}
+                <button
+                  type="button"
+                  onClick={() => setCheckoutOpen((value) => !value)}
+                  className="flex shrink-0 items-center justify-center gap-2 rounded-xl bg-orange-700 px-6 py-3 text-sm font-bold text-white transition-colors hover:bg-orange-800"
+                >
+                  Realizar pedido
+                  <ChevronDownIcon
+                    className={`h-4 w-4 transition-transform ${checkoutOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
               </div>
-            </div>
-          </section>
 
-          {/* Total + botón realizar pedido */}
-          <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Total</p>
-                <p className="text-2xl font-extrabold text-orange-700">
-                  ${cart.total.toFixed(2)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCheckoutOpen((v) => !v)}
-                className="flex items-center gap-2 bg-orange-700 hover:bg-orange-800 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
-              >
-                Realizar pedido
-                <ChevronDownIcon
-                  className={`w-4 h-4 transition-transform ${checkoutOpen ? "rotate-180" : ""}`}
+              {checkoutOpen && (
+                <CheckoutSection
+                  restaurantId={restaurantId}
+                  voucherExceedsOrder={voucherExceedsOrder}
                 />
-              </button>
+              )}
             </div>
-
-            {/* Sección de dirección de entrega */}
-            {checkoutOpen && (
-              <CheckoutSection restaurantId={restaurantId} />
-            )}
           </div>
-        </>
+
+          <aside className="mt-8 space-y-4 lg:sticky lg:top-24 lg:mt-0">
+            <CartCouponPanel
+              appliedCoupon={appliedCoupon}
+              applying={applyingCoupon}
+              removing={removingCoupon}
+              error={couponError}
+              onApply={handleApplyCoupon}
+              onRemove={handleRemoveCoupon}
+            />
+            <CartVoucherPanel
+              vouchers={availableVouchers}
+              appliedVoucher={appliedVoucher}
+              loading={loadingVouchers}
+              applyingVoucherId={applyingVoucherId}
+              removingVoucher={removingVoucher}
+              error={voucherError}
+              onApply={handleApplyVoucher}
+              onRemove={handleRemoveVoucher}
+            />
+          </aside>
+        </div>
       )}
     </div>
   );
