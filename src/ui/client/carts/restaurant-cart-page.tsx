@@ -14,14 +14,23 @@ import {
 } from "@heroicons/react/24/outline";
 
 import {
+  applyCartCoupon,
+  applyCartVoucher,
   deleteCart,
+  getAvailableVouchers,
   getCart,
+  getClientVouchers,
   getDeliveryPoints,
   getRestaurant,
   placeOrder,
+  removeCartCoupon,
+  removeCartVoucher,
   updateCartItem,
 } from "@/services/client/client-service";
-import type { Cart, DeliveryPoint, OrderRequest, Restaurant } from "@/lib/client/types";
+import type { AppliedCartCoupon, Cart, ClientVoucher, DeliveryPoint, OrderRequest, Restaurant } from "@/lib/client/types";
+import CartCouponPanel from "@/ui/client/carts/cart-coupon-panel";
+import { formatCartPrice } from "@/ui/client/carts/cart-formatters";
+import CartVoucherPanel from "@/ui/client/carts/cart-voucher-panel";
 
 // ── Sección de checkout ────────────────────────────────────────────────────────
 
@@ -93,7 +102,18 @@ function CheckoutSection({ restaurantId, onSuccess }: CheckoutSectionProps) {
       const { linkPago } = await placeOrder(restaurantId, body);
       router.push(linkPago);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "No se pudo realizar el pedido.");
+      const message = err instanceof Error ? err.message : "No se pudo realizar el pedido.";
+      if (message.toLowerCase().includes("venc")) {
+        setError(
+          "El voucher ya no es válido. Quitá el voucher aplicado e intentá realizar el pedido nuevamente."
+        );
+      } else if (message.toLowerCase().includes("cupón") || message.toLowerCase().includes("cupon")) {
+        setError(
+          "El cupón ya no es válido. Quitá el cupón aplicado e intentá realizar el pedido nuevamente."
+        );
+      } else {
+        setError(message);
+      }
     } finally {
       setPlacing(false);
     }
@@ -303,8 +323,67 @@ export default function RestaurantCartPage({
   const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
   const [deletingCart, setDeletingCart] = useState(false);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [availableVouchers, setAvailableVouchers] = useState<ClientVoucher[]>([]);
+  const [appliedVoucher, setAppliedVoucher] = useState<ClientVoucher | null>(null);
+  const [loadingVouchers, setLoadingVouchers] = useState(false);
+  const [voucherError, setVoucherError] = useState<string | null>(null);
+  const [applyingVoucherId, setApplyingVoucherId] = useState<number | null>(null);
+  const [removingVoucher, setRemovingVoucher] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [applyingCoupon, setApplyingCoupon] = useState(false);
+  const [removingCoupon, setRemovingCoupon] = useState(false);
   // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
   const cartUpdateInFlight = useRef(false);
+
+  const activeItems = cart?.items.filter((i) => i.eliminacion == null) ?? [];
+  const itemsSubtotal = activeItems.reduce((sum, item) => sum + item.total, 0);
+  const couponDiscount = cart?.descuento ?? 0;
+  const subtotalAfterCoupon = Math.max(0, itemsSubtotal - couponDiscount);
+  const appliedCoupon: AppliedCartCoupon | null =
+    cart?.cuponId != null && cart.cuponCodigo && cart.cuponPorcentaje != null
+      ? {
+          code: cart.cuponCodigo,
+          percentage: cart.cuponPorcentaje,
+          discountAmount: couponDiscount,
+        }
+      : null;
+
+  async function loadVoucherPanels(cartData: Cart) {
+    setLoadingVouchers(true);
+    setVoucherError(null);
+
+    try {
+      const available = await getAvailableVouchers(restaurantId);
+      setAvailableVouchers(available);
+
+      if (cartData.voucherId != null) {
+        const allVouchers = await getClientVouchers();
+        setAppliedVoucher(allVouchers.find((voucher) => voucher.id === cartData.voucherId) ?? null);
+      } else {
+        setAppliedVoucher(null);
+      }
+    } catch (err) {
+      setVoucherError(
+        err instanceof Error ? err.message : "No se pudieron cargar los vouchers."
+      );
+    } finally {
+      setLoadingVouchers(false);
+    }
+  }
+
+  useEffect(() => {
+    if (!loading && cart && activeItems.length > 0) {
+      void loadVoucherPanels(cart);
+      return;
+    }
+
+    if (!cart || activeItems.length === 0) {
+      setAvailableVouchers([]);
+      setAppliedVoucher(null);
+      setVoucherError(null);
+      setCouponError(null);
+    }
+  }, [loading, cart?.id, cart?.voucherId, activeItems.length, restaurantId]);
 
   useEffect(() => {
     async function load() {
@@ -345,6 +424,10 @@ export default function RestaurantCartPage({
       await deleteCart(restaurantId);
       setCart(null);
       setCheckoutOpen(false);
+      setAvailableVouchers([]);
+      setAppliedVoucher(null);
+      setVoucherError(null);
+      setCouponError(null);
     } catch {
       // Falla silenciosa
     } finally {
@@ -352,10 +435,88 @@ export default function RestaurantCartPage({
     }
   }
 
-  const activeItems = cart?.items.filter((i) => i.eliminacion == null) ?? [];
+  async function handleApplyVoucher(voucher: ClientVoucher) {
+    setVoucherError(null);
+    setApplyingVoucherId(voucher.id);
+
+    try {
+      const updated = await applyCartVoucher(restaurantId, voucher.id);
+      setCart(updated);
+      setAppliedVoucher(voucher);
+      setAvailableVouchers((previous) =>
+        previous.filter((entry) => entry.id !== voucher.id)
+      );
+    } catch (err) {
+      setVoucherError(
+        err instanceof Error ? err.message : "No se pudo aplicar el voucher."
+      );
+    } finally {
+      setApplyingVoucherId(null);
+    }
+  }
+
+  async function handleRemoveVoucher() {
+    setVoucherError(null);
+    setRemovingVoucher(true);
+
+    try {
+      const removedVoucher = appliedVoucher;
+      const updated = await removeCartVoucher(restaurantId);
+      setCart(updated);
+      setAppliedVoucher(null);
+
+      if (removedVoucher) {
+        setAvailableVouchers((previous) =>
+          [...previous, removedVoucher].sort((left, right) => left.id - right.id)
+        );
+      }
+    } catch (err) {
+      setVoucherError(
+        err instanceof Error ? err.message : "No se pudo quitar el voucher."
+      );
+    } finally {
+      setRemovingVoucher(false);
+    }
+  }
+
+  async function handleApplyCoupon(code: string) {
+    setCouponError(null);
+    setApplyingCoupon(true);
+
+    try {
+      const updated = await applyCartCoupon(restaurantId, code);
+      setCart(updated);
+    } catch (err) {
+      setCouponError(
+        err instanceof Error ? err.message : "No se pudo aplicar el cupón."
+      );
+    } finally {
+      setApplyingCoupon(false);
+    }
+  }
+
+  async function handleRemoveCoupon() {
+    setCouponError(null);
+    setRemovingCoupon(true);
+
+    try {
+      const updated = await removeCartCoupon(restaurantId);
+      setCart(updated);
+    } catch (err) {
+      setCouponError(
+        err instanceof Error ? err.message : "No se pudo quitar el cupón."
+      );
+    } finally {
+      setRemovingCoupon(false);
+    }
+  }
+
+  const hasCouponDiscount = appliedCoupon != null && couponDiscount > 0;
+  const hasVoucherDiscount =
+    cart?.voucherId != null && subtotalAfterCoupon > (cart?.total ?? 0);
 
   return (
-    <div className="max-w-xl mx-auto px-4 py-8">
+    <div className="max-w-6xl mx-auto px-4 py-8">
       {/* Volver al restaurante */}
       <Link
         href={`/client/restaurant/${restaurantId}`}
@@ -412,93 +573,139 @@ export default function RestaurantCartPage({
       )}
 
       {!loading && cart && activeItems.length > 0 && (
-        <>
-          {/* Listado de ítems */}
-          <div className="space-y-3 mb-6">
-            {activeItems.map((item) => {
-              const isUpdating = updatingDishId === item.platoId;
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-4"
-                >
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-gray-800 text-sm truncate">
-                      Plato #{item.platoId}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      ${item.costoUnitario.toFixed(2)} c/u
-                    </p>
-                  </div>
-
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="flex items-center border border-orange-200 rounded-lg px-1 py-1 gap-2">
-                      <button
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() => handleUpdateItem(item.platoId, -1)}
-                        className="p-1 rounded hover:bg-orange-50 transition-colors disabled:opacity-50"
-                      >
-                        <MinusIcon className="w-3.5 h-3.5 text-orange-700" />
-                      </button>
-
-                      {isUpdating ? (
-                        <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700 block" />
-                      ) : (
-                        <span className="text-sm font-bold text-orange-700 min-w-[18px] text-center">
-                          {item.cantidad}
-                        </span>
-                      )}
-
-                      <button
-                        type="button"
-                        disabled={isUpdating}
-                        onClick={() => handleUpdateItem(item.platoId, 1)}
-                        className="p-1 rounded hover:bg-orange-50 transition-colors disabled:opacity-50"
-                      >
-                        <PlusIcon className="w-3.5 h-3.5 text-orange-700" />
-                      </button>
+        <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:gap-8 lg:items-start">
+          <div className="min-w-0">
+            {/* Listado de ítems */}
+            <div className="space-y-3 mb-6">
+              {activeItems.map((item) => {
+                const isUpdating = updatingDishId === item.platoId;
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-xl border border-gray-200 bg-white p-4 flex items-center justify-between gap-4"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-gray-800 text-sm truncate">
+                        Plato #{item.platoId}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        ${item.costoUnitario.toFixed(2)} c/u
+                      </p>
                     </div>
 
-                    <span className="text-sm font-bold text-gray-800 min-w-[60px] text-right">
-                      ${item.total.toFixed(2)}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="flex items-center border border-orange-200 rounded-lg px-1 py-1 gap-2">
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() => handleUpdateItem(item.platoId, -1)}
+                          className="p-1 rounded hover:bg-orange-50 transition-colors disabled:opacity-50"
+                        >
+                          <MinusIcon className="w-3.5 h-3.5 text-orange-700" />
+                        </button>
 
-          {/* Total + botón realizar pedido */}
-          <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-xs text-gray-500">Total</p>
-                <p className="text-2xl font-extrabold text-orange-700">
-                  ${cart.total.toFixed(2)}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setCheckoutOpen((v) => !v)}
-                className="flex items-center gap-2 bg-orange-700 hover:bg-orange-800 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors"
-              >
-                Realizar pedido
-                <ChevronDownIcon
-                  className={`w-4 h-4 transition-transform ${checkoutOpen ? "rotate-180" : ""}`}
-                />
-              </button>
+                        {isUpdating ? (
+                          <span className="h-4 w-4 animate-spin rounded-full border-2 border-orange-200 border-t-orange-700 block" />
+                        ) : (
+                          <span className="text-sm font-bold text-orange-700 min-w-[18px] text-center">
+                            {item.cantidad}
+                          </span>
+                        )}
+
+                        <button
+                          type="button"
+                          disabled={isUpdating}
+                          onClick={() => handleUpdateItem(item.platoId, 1)}
+                          className="p-1 rounded hover:bg-orange-50 transition-colors disabled:opacity-50"
+                        >
+                          <PlusIcon className="w-3.5 h-3.5 text-orange-700" />
+                        </button>
+                      </div>
+
+                      <span className="text-sm font-bold text-gray-800 min-w-[60px] text-right">
+                        ${item.total.toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                );
+              })}
             </div>
 
-            {/* Sección de dirección de entrega */}
-            {checkoutOpen && (
-              <CheckoutSection
-                restaurantId={restaurantId}
-                onSuccess={() => setCart(null)}
-              />
-            )}
+            {/* Total + botón realizar pedido */}
+            <div className="rounded-xl border border-orange-200 bg-orange-50 p-5">
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+                <div className="space-y-1">
+                  {(hasCouponDiscount || hasVoucherDiscount) && (
+                    <p className="text-xs text-gray-500">
+                      Subtotal{" "}
+                      <span className="font-medium text-gray-700">
+                        {formatCartPrice(itemsSubtotal)}
+                      </span>
+                    </p>
+                  )}
+                  {hasCouponDiscount && (
+                    <p className="text-xs text-green-700">
+                      Cupón ({appliedCoupon?.code}){" "}
+                      <span className="font-medium">
+                        -{formatCartPrice(couponDiscount)}
+                      </span>
+                    </p>
+                  )}
+                  {hasVoucherDiscount && (
+                    <p className="text-xs text-green-700">
+                      Voucher{" "}
+                      <span className="font-medium">
+                        -{formatCartPrice(subtotalAfterCoupon - cart.total)}
+                      </span>
+                    </p>
+                  )}
+                  <p className="text-xs text-gray-500">Total</p>
+                  <p className="text-2xl font-extrabold text-orange-700">
+                    {formatCartPrice(cart.total)}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setCheckoutOpen((value) => !value)}
+                  className="flex items-center justify-center gap-2 bg-orange-700 hover:bg-orange-800 text-white font-bold text-sm px-6 py-3 rounded-xl transition-colors shrink-0"
+                >
+                  Realizar pedido
+                  <ChevronDownIcon
+                    className={`w-4 h-4 transition-transform ${checkoutOpen ? "rotate-180" : ""}`}
+                  />
+                </button>
+              </div>
+
+              {checkoutOpen && (
+                <CheckoutSection
+                  restaurantId={restaurantId}
+                  onSuccess={() => setCart(null)}
+                />
+              )}
+            </div>
           </div>
-        </>
+
+          <aside className="mt-8 space-y-4 lg:mt-0 lg:sticky lg:top-24">
+            <CartCouponPanel
+              appliedCoupon={appliedCoupon}
+              applying={applyingCoupon}
+              removing={removingCoupon}
+              error={couponError}
+              onApply={handleApplyCoupon}
+              onRemove={handleRemoveCoupon}
+            />
+            <CartVoucherPanel
+              vouchers={availableVouchers}
+              appliedVoucher={appliedVoucher}
+              loading={loadingVouchers}
+              applyingVoucherId={applyingVoucherId}
+              removingVoucher={removingVoucher}
+              error={voucherError}
+              onApply={handleApplyVoucher}
+              onRemove={handleRemoveVoucher}
+            />
+          </aside>
+        </div>
       )}
     </div>
   );

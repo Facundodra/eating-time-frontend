@@ -117,11 +117,31 @@ export type CartItem = {
   eliminacion: string | null;
 };
 
+export type ClientVoucher = {
+  id: number;
+  code: string;
+  description: string | null;
+  amount: number;
+  createdAt: string;
+  expiresAt: string | null;
+  claimId: number;
+  orderId: number | null;
+};
+
+export type AppliedCartCoupon = {
+  code: string;
+  percentage: number;
+  discountAmount: number;
+};
+
 export type Cart = {
   id: number;
   restaurantId: number;
   clienteId: number;
   cuponId: number | null;
+  cuponCodigo: string | null;
+  cuponPorcentaje: number | null;
+  voucherId: number | null;
   estado: OrderStatus;
   total: number;
   descuento: number | null;
