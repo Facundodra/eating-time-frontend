@@ -1,18 +1,19 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import type { Order, OrderRating } from "@/lib/client/types";
 import { getOrderHistory } from "@/services/client/client-service";
 import OrderRatingModal from "@/ui/client/ratings/order-rating-modal";
 
-const RATING_CHECK_INTERVAL_MS = 30_000;
 const RECENT_ORDER_LIMIT = 20;
 const DISMISSED_ORDER_IDS_KEY = "eating-time:dismissed-rating-prompts";
+/** Solo pedidos recientes: evita popups por historial antiguo de prueba. */
+const PROMPT_MAX_ORDER_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 function getDismissedOrderIds() {
   try {
-    const storedValue = sessionStorage.getItem(DISMISSED_ORDER_IDS_KEY);
+    const storedValue = localStorage.getItem(DISMISSED_ORDER_IDS_KEY);
     const parsedValue: unknown = storedValue ? JSON.parse(storedValue) : [];
 
     if (!Array.isArray(parsedValue)) return new Set<number>();
@@ -32,7 +33,7 @@ function rememberDismissedOrder(orderId: number) {
   try {
     const dismissedOrderIds = getDismissedOrderIds();
     dismissedOrderIds.add(orderId);
-    sessionStorage.setItem(
+    localStorage.setItem(
       DISMISSED_ORDER_IDS_KEY,
       JSON.stringify(Array.from(dismissedOrderIds)),
     );
@@ -41,16 +42,24 @@ function rememberDismissedOrder(orderId: number) {
   }
 }
 
+function isRecentEnoughToPrompt(order: Order) {
+  const createdAt = new Date(order.creacion).getTime();
+  if (Number.isNaN(createdAt)) return false;
+  return Date.now() - createdAt <= PROMPT_MAX_ORDER_AGE_MS;
+}
+
 function isPendingRating(order: Order) {
   return (
     order.estado === "FINALIZADO" &&
     !order.hasLocalRating &&
-    !order.calificacionLocal
+    !order.calificacionLocal &&
+    isRecentEnoughToPrompt(order)
   );
 }
 
 export default function ClientOrderRatingPrompt() {
   const [orderToRate, setOrderToRate] = useState<Order | null>(null);
+  const promptedOrderIdsRef = useRef(new Set<number>());
 
   useEffect(() => {
     let cancelled = false;
@@ -75,39 +84,36 @@ export default function ClientOrderRatingPrompt() {
         const nextOrder =
           orders.find(
             (order) =>
-              isPendingRating(order) && !dismissedOrderIds.has(order.id),
+              isPendingRating(order) &&
+              !dismissedOrderIds.has(order.id) &&
+              !promptedOrderIdsRef.current.has(order.id),
           ) ?? null;
 
+        if (!nextOrder) {
+          setOrderToRate(null);
+          return;
+        }
+
+        promptedOrderIdsRef.current.add(nextOrder.id);
         setOrderToRate(nextOrder);
       } catch {
-        // The manual rating page remains available when this background check fails.
+        // La página de calificaciones sigue disponible si falla este chequeo.
       } finally {
         requestInProgress = false;
       }
     }
 
-    function checkWhenVisible() {
-      if (document.visibilityState === "visible") {
-        void checkForFinishedOrder();
-      }
+    void checkForFinishedOrder();
+
+    function handleRatingUpdated() {
+      void checkForFinishedOrder();
     }
 
-    void checkForFinishedOrder();
-    const intervalId = window.setInterval(
-      checkForFinishedOrder,
-      RATING_CHECK_INTERVAL_MS,
-    );
-
-    document.addEventListener("visibilitychange", checkWhenVisible);
-    window.addEventListener("focus", checkForFinishedOrder);
-    window.addEventListener("order-rating-updated", checkForFinishedOrder);
+    window.addEventListener("order-rating-updated", handleRatingUpdated);
 
     return () => {
       cancelled = true;
-      window.clearInterval(intervalId);
-      document.removeEventListener("visibilitychange", checkWhenVisible);
-      window.removeEventListener("focus", checkForFinishedOrder);
-      window.removeEventListener("order-rating-updated", checkForFinishedOrder);
+      window.removeEventListener("order-rating-updated", handleRatingUpdated);
     };
   }, []);
 

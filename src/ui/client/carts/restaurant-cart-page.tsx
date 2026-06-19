@@ -7,6 +7,7 @@ import {
   ArrowLeftIcon,
   CheckCircleIcon,
   ChevronDownIcon,
+  ExclamationTriangleIcon,
   MinusIcon,
   PlusIcon,
   ShoppingCartIcon,
@@ -46,6 +47,7 @@ type AddressMode = "saved" | "manual";
 
 interface CheckoutSectionProps {
   restaurantId: number;
+  voucherExceedsOrder: boolean;
 }
 
 function getCartItemName(item: Cart["items"][number]) {
@@ -78,7 +80,7 @@ async function hydrateCartDishNames(cart: Cart | null): Promise<Cart | null> {
   return { ...cart, items };
 }
 
-function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
+function CheckoutSection({ restaurantId, voucherExceedsOrder }: CheckoutSectionProps) {
   const router = useRouter();
 
   const [deliveryPoints, setDeliveryPoints] = useState<DeliveryPoint[]>([]);
@@ -318,6 +320,22 @@ function CheckoutSection({ restaurantId }: CheckoutSectionProps) {
           <p className="rounded-lg bg-red-50 px-4 py-2.5 text-sm text-red-600">{error}</p>
         )}
 
+        {voucherExceedsOrder && (
+          <div
+            className="flex gap-3 rounded-lg border border-red-300 bg-red-50 px-4 py-3 dark:border-red-500/40 dark:bg-red-500/10"
+            role="alert"
+          >
+            <ExclamationTriangleIcon
+              className="mt-0.5 h-5 w-5 shrink-0 text-red-600 dark:text-red-400"
+              aria-hidden
+            />
+            <p className="text-sm font-semibold leading-snug text-red-800 dark:text-red-200">
+              El voucher que seleccionaste supera el valor de tu pedido. Si continuás, se
+              perderá el saldo restante del voucher.
+            </p>
+          </div>
+        )}
+
         <button
           type="button"
           disabled={placing || (mode === "saved" && selectedPointId == null)}
@@ -378,6 +396,14 @@ export default function RestaurantCartPage({
   const hasCouponDiscount = appliedCoupon != null && couponDiscount > 0;
   const hasVoucherDiscount =
     cart?.voucherId != null && subtotalAfterCoupon > (cart?.total ?? 0);
+  const activeVoucher =
+    appliedVoucher ??
+    (cart?.voucherId != null
+      ? availableVouchers.find((voucher) => voucher.id === String(cart.voucherId)) ??
+        null
+      : null);
+  const voucherExceedsOrder =
+    activeVoucher?.amount != null && activeVoucher.amount > subtotalAfterCoupon;
 
   async function loadVoucherPanels(cartData: Cart) {
     setLoadingVouchers(true);
@@ -717,7 +743,12 @@ export default function RestaurantCartPage({
                 </button>
               </div>
 
-              {checkoutOpen && <CheckoutSection restaurantId={restaurantId} />}
+              {checkoutOpen && (
+                <CheckoutSection
+                  restaurantId={restaurantId}
+                  voucherExceedsOrder={voucherExceedsOrder}
+                />
+              )}
             </div>
           </div>
 
