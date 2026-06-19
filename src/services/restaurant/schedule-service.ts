@@ -44,10 +44,10 @@ const weekDays: Array<{
 }> = [
   { apiId: "L", id: "monday", label: "Lunes" },
   { apiId: "M", id: "tuesday", label: "Martes" },
-  { apiId: "X", id: "wednesday", label: "Miercoles" },
+  { apiId: "X", id: "wednesday", label: "Miércoles" },
   { apiId: "J", id: "thursday", label: "Jueves" },
   { apiId: "V", id: "friday", label: "Viernes" },
-  { apiId: "S", id: "saturday", label: "Sabado" },
+  { apiId: "S", id: "saturday", label: "Sábado" },
   { apiId: "D", id: "sunday", label: "Domingo" },
 ];
 

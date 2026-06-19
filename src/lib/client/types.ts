@@ -47,10 +47,35 @@ export type Discount = {
   estado: boolean;
 }
 
+export type ClientVoucher = {
+  id: string;
+  code: string;
+  description: string;
+  amount: number | null;
+  createdAt: string | null;
+  expiresAt: string | null;
+  claimId?: number | null;
+  orderId?: number | null;
+  restaurantName?: string | null;
+  status?: string | null;
+}
+
+export type ClientCoupon = {
+  id: string;
+  code: string;
+  description: string;
+  percentage: number | null;
+  createdAt: string | null;
+  expiresAt: string | null;
+  restaurantName?: string | null;
+  status?: string | null;
+}
+
 export type RestaurantList = {
   id: number;
   name: string;
-  url_photo: string;
+  coverPhotoUrl: string;
+  profilePhotoUrl: string;
   stars: number;
   state: boolean;
 }
@@ -58,7 +83,8 @@ export type RestaurantList = {
 export type Restaurant ={
   id: number;
   name: string;
-  url_photo: string;
+  coverPhotoUrl: string;
+  profilePhotoUrl: string;
   stars: number;
   state: boolean;
   address: string | null;
@@ -115,17 +141,6 @@ export type CartItem = {
   total: number;
   creacion: string;
   eliminacion: string | null;
-};
-
-export type ClientVoucher = {
-  id: number;
-  code: string;
-  description: string | null;
-  amount: number;
-  createdAt: string;
-  expiresAt: string | null;
-  claimId: number;
-  orderId: number | null;
 };
 
 export type AppliedCartCoupon = {
@@ -201,11 +216,16 @@ export type OrderClaim = {
   localId?: number;
   localNombre?: string | null;
   pedidoTotal?: number | null;
+  voucherId?: string | null;
+  voucherCode?: string | null;
+  voucherAmount?: number | null;
+  voucherExpiresAt?: string | null;
 };
 
-// Calificacion de local 
+// Calificación de local
 export type LocalRating = {
   id: number;
+  clienteId?: number | null;
   calificacion: number;
   comentario: string | null;
   creacion: string;

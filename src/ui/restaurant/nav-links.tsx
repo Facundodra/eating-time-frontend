@@ -56,7 +56,7 @@ export default function NavLinksRestaurant() {
     <div className="restaurant-menu space-y-1">
       {restaurantNavGroups.map((group) => (
         <div key={group.label}>
-          <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400">
+          <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400 dark:text-slate-500">
             {group.label}
           </p>
           <ul className={clsx("nav-links space-y-0", group.className)}>
@@ -67,9 +67,9 @@ export default function NavLinksRestaurant() {
               return (
                 <li
                   className={clsx(
-                    "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li",
+                    "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li dark:hover:bg-orange-500/10",
                     {
-                      "bg-orange-700/10": isActive,
+                      "bg-orange-700/10 dark:bg-orange-500/10": isActive,
                     },
                   )}
                   key={link.name}
@@ -77,16 +77,16 @@ export default function NavLinksRestaurant() {
                   <Link className="flex items-center gap-2" href={link.href}>
                     <Icon
                       className={clsx("h-[18px] w-[18px] shrink-0 transition-all duration-300", {
-                        "text-orange-700": isActive,
-                        "text-gray-700 group-hover/li:text-orange-700": !isActive,
+                        "text-orange-700 dark:text-orange-400": isActive,
+                        "text-gray-700 group-hover/li:text-orange-700 dark:text-slate-300 dark:group-hover/li:text-orange-300": !isActive,
                       })}
                     />
                     <span
                       className={clsx(
-                        "relative top-[1px] overflow-hidden whitespace-nowrap text-sm transition-all duration-300 group-hover/li:text-orange-700",
+                        "relative top-[1px] overflow-hidden whitespace-nowrap text-sm transition-all duration-300 group-hover/li:text-orange-700 dark:group-hover/li:text-orange-300",
                         {
-                          "text-orange-700": isActive,
-                          "text-gray-700": !isActive,
+                          "text-orange-700 dark:text-orange-400": isActive,
+                          "text-gray-700 dark:text-slate-200": !isActive,
                         },
                       )}
                     >

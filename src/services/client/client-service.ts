@@ -504,6 +504,13 @@ interface RestaurantDtoFromApi {
     fotoUrl?: string | null;
     imagenUrl?: string | null;
     imageUrl?: string | null;
+    urlFotoPerfil?: string | null;
+    fotoPerfilUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    urlPortada?: string | null;
+    urlFotoPortada?: string | null;
+    fotoPortadaUrl?: string | null;
+    coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
     servicio?: boolean | string | number | null;
     estado?: boolean | string | number | null;
@@ -514,15 +521,28 @@ interface RestaurantDtoFromApi {
 
 function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): RestaurantList {
     const id = getNumericValue(r.id ?? r.localId ?? r.idLocal) ?? 0;
+    const legacyPhotoUrl = getFirstStringValue(
+        r.urlFoto,
+        r.fotoUrl,
+        r.imagenUrl,
+        r.imageUrl,
+    );
+    const explicitCoverPhotoUrl = getFirstStringValue(
+        r.urlPortada,
+        r.urlFotoPortada,
+        r.fotoPortadaUrl,
+        r.coverPhotoUrl,
+    );
 
     return {
         id,
         name: getFirstStringValue(r.nombre, r.name, r.razonSocial) ?? `Local #${id}`,
-        url_photo: getFirstStringValue(
-            r.urlFoto,
-            r.fotoUrl,
-            r.imagenUrl,
-            r.imageUrl,
+        coverPhotoUrl: explicitCoverPhotoUrl ?? "",
+        profilePhotoUrl: getFirstStringValue(
+            r.urlFotoPerfil,
+            r.fotoPerfilUrl,
+            r.profilePhotoUrl,
+            legacyPhotoUrl,
         ) ?? "",
         stars: getNumericValue(r.calificacion ?? r.rating ?? r.stars) ?? 0,
         state: getBooleanValue(r.estadoServicio ?? r.servicio ?? r.estado) ?? false,
@@ -566,6 +586,13 @@ interface RestaurantSingleDtoFromApi {
     fotoUrl?: string | null;
     imagenUrl?: string | null;
     imageUrl?: string | null;
+    urlFotoPerfil?: string | null;
+    fotoPerfilUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    urlPortada?: string | null;
+    urlFotoPortada?: string | null;
+    fotoPortadaUrl?: string | null;
+    coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
     servicio?: boolean | string | number | null;
     estado?: boolean | string | number | null;
@@ -592,6 +619,11 @@ function mapRestaurantDtoApiToRestaurant(r: RestaurantSingleDtoFromApi): Restaur
 export async function getRestaurantName(id: number): Promise<string> {
     const restaurant = await getRestaurant(String(id));
     return restaurant.name;
+}
+
+export async function getDishName(id: number): Promise<string> {
+    const dish = await getDish(String(id));
+    return dish.name;
 }
 
 export async function getRestaurant(id: string): Promise<Restaurant> {
@@ -729,112 +761,6 @@ export async function placeOrder(restaurantId: number, body: OrderRequest): Prom
             throw new Error(message);
         }
         throw new Error("No se pudo realizar el pedido.");
-    }
-}
-
-// ── Vouchers del carrito ───────────────────────────────────────────────────────
-
-type VoucherFromApi = {
-    id: number;
-    codigo: string;
-    descripcion: string | null;
-    valor: number;
-    creacion: string;
-    vencimiento: string | null;
-    reclamoId: number;
-    pedidoId: number | null;
-};
-
-function mapVoucherFromApi(voucher: VoucherFromApi): ClientVoucher {
-    return {
-        id: voucher.id,
-        code: voucher.codigo,
-        description: voucher.descripcion,
-        amount: voucher.valor,
-        createdAt: voucher.creacion,
-        expiresAt: voucher.vencimiento,
-        claimId: voucher.reclamoId,
-        orderId: voucher.pedidoId,
-    };
-}
-
-export async function getAvailableVouchers(restaurantId: number): Promise<ClientVoucher[]> {
-    const session = await requireCurrentSession();
-
-    try {
-        const response = await api.get<VoucherFromApi[]>(
-            `/api/clientes/${session.idTipoUsuario}/local/${restaurantId}/vouchers`
-        );
-        return response.data.map(mapVoucherFromApi);
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const data = error.response?.data;
-            const message =
-                data?.error ?? data?.message ?? `Error al obtener vouchers (${error.response?.status})`;
-            throw new Error(message);
-        }
-        throw new Error("No se pudieron cargar los vouchers.");
-    }
-}
-
-export async function getClientVouchers(): Promise<ClientVoucher[]> {
-    const session = await requireCurrentSession();
-
-    try {
-        const response = await api.get<VoucherFromApi[]>(
-            `/api/clientes/${session.idTipoUsuario}/vouchers`
-        );
-        return response.data.map(mapVoucherFromApi);
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const data = error.response?.data;
-            const message =
-                data?.error ?? data?.message ?? `Error al obtener vouchers (${error.response?.status})`;
-            throw new Error(message);
-        }
-        throw new Error("No se pudieron cargar los vouchers.");
-    }
-}
-
-export async function applyCartVoucher(
-    restaurantId: number,
-    voucherId: number
-): Promise<Cart> {
-    const session = await requireCurrentSession();
-
-    try {
-        const response = await api.patch<CartFromApi>(
-            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}/voucher`,
-            { voucherId }
-        );
-        return mapCartFromApi(response.data);
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const data = error.response?.data;
-            const message =
-                data?.error ?? data?.message ?? `Error al aplicar voucher (${error.response?.status})`;
-            throw new Error(message);
-        }
-        throw new Error("No se pudo aplicar el voucher.");
-    }
-}
-
-export async function removeCartVoucher(restaurantId: number): Promise<Cart> {
-    const session = await requireCurrentSession();
-
-    try {
-        const response = await api.delete<CartFromApi>(
-            `/api/clientes/${session.idTipoUsuario}/carritos/${restaurantId}/voucher`
-        );
-        return mapCartFromApi(response.data);
-    } catch (error) {
-        if (axios.isAxiosError(error)) {
-            const data = error.response?.data;
-            const message =
-                data?.error ?? data?.message ?? `Error al quitar voucher (${error.response?.status})`;
-            throw new Error(message);
-        }
-        throw new Error("No se pudo quitar el voucher.");
     }
 }
 

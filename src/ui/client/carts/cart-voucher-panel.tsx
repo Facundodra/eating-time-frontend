@@ -7,7 +7,7 @@ type CartVoucherPanelProps = {
   vouchers: ClientVoucher[];
   appliedVoucher: ClientVoucher | null;
   loading: boolean;
-  applyingVoucherId: number | null;
+  applyingVoucherId: string | null;
   removingVoucher: boolean;
   error: string | null;
   onApply: (voucher: ClientVoucher) => void;
@@ -40,7 +40,7 @@ function VoucherCard({
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-start justify-between gap-2">
           <p className="text-lg font-extrabold text-orange-700 leading-none">
-            {formatCartPrice(voucher.amount)}
+            {formatCartPrice(voucher.amount ?? 0)}
           </p>
           {isApplied && (
             <span className="shrink-0 rounded-full bg-orange-600 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white">
