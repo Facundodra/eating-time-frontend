@@ -14,7 +14,10 @@ export type LoginWebResponse = {
   nombre?: string | null;
   correo?: string | null;
   email?: string | null;
+  telefono?: string | null;
   urlFoto?: string | null;
+  urlPortada?: string | null;
+  urlFotoPortada?: string | null;
 };
 
 export type RegisterCredentials = {

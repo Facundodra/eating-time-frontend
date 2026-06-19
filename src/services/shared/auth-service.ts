@@ -406,7 +406,7 @@ export async function editUserData(nombre?: string, telefono?: string, foto?: Fi
   body.append("telefono", telefono ?? "");
 
   if (foto instanceof File && foto.size > 0) {
-    body.append("foto", foto);
+    body.append("foto", foto, foto.name);
   }
 
   try {
@@ -416,6 +416,16 @@ export async function editUserData(nombre?: string, telefono?: string, foto?: Fi
       const status = error.response?.status;
       if (status === 401) {
         throw new Error("Tu sesión expiró." );
+      }
+
+      if (status === 413) {
+        throw new Error("La foto supera el tamaño máximo permitido de 5 MB.");
+      }
+
+      const data = error.response?.data as LoginErrorResponse | string | undefined;
+      const message = typeof data === "string" ? data : getErrorMessage(data);
+      if (message) {
+        throw new Error(message);
       }
     }
     throw new Error(

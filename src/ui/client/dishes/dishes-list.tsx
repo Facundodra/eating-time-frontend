@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { MinusIcon, PlusIcon, TagIcon } from "@heroicons/react/24/outline";
 
 import { getDishes, getDiscountedDishIds, getDishDiscount, updateCartItem, type DishFilter } from "@/services/client/client-service";
@@ -17,11 +18,11 @@ function DishSkeleton() {
     <div className="flex flex-wrap">
       {Array.from({ length: PAGE_SIZE }).map((_, i) => (
         <div key={i} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
-          <div className="rounded-xl border border-gray-200 bg-white overflow-hidden animate-pulse">
-            <div className="bg-gray-100 h-[150px]" />
+          <div className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+            <div className="h-[150px] bg-gray-100 dark:bg-slate-800" />
             <div className="p-4 space-y-3">
-              <div className="h-4 bg-gray-200 rounded w-2/3" />
-              <div className="h-3 bg-gray-100 rounded w-1/4" />
+              <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
+              <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
             </div>
           </div>
         </div>
@@ -200,13 +201,13 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   return (
     <div className="max-w-[1440px] mx-auto">
       {/* Barra de filtros */}
-      <div className="flex flex-wrap items-center bg-white p-3 rounded-xl gap-x-6 gap-y-2 mb-6 border-b border-gray-100 text-sm text-gray-500">
+      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border-b border-gray-100 bg-white p-3 text-sm text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-600">Ordenar:</span>
+          <span className="font-medium text-gray-600 dark:text-slate-300">Ordenar:</span>
           <select
             value={ordenValue}
             onChange={(e) => handleOrden(e.target.value as OrdenValue)}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
           >
             <option value="">Por defecto</option>
             <option value="precio-asc">Precio: menor a mayor</option>
@@ -214,17 +215,17 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
           </select>
         </div>
 
-        <div className="h-4 w-px bg-gray-200 hidden sm:block" />
+        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
 
         <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-600">Filtrar:</span>
+          <span className="font-medium text-gray-600 dark:text-slate-300">Filtrar:</span>
           <button
             type="button"
             onClick={toggleDescuento}
             className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
               filters.conDescuento
                 ? "border-orange-600 bg-orange-600 text-white"
-                : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600"
+                : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/60 dark:hover:text-orange-300"
             }`}
           >
             <TagIcon className="h-3.5 w-3.5" />
@@ -232,10 +233,10 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
           </button>
         </div>
 
-        <div className="h-4 w-px bg-gray-200 hidden sm:block" />
+        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
 
         <div className="flex items-center gap-1.5">
-          <span className="font-medium text-gray-600">Precio:</span>
+          <span className="font-medium text-gray-600 dark:text-slate-300">Precio:</span>
           <input
             type="number"
             min={0}
@@ -244,9 +245,9 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
             onChange={(e) => setPrecioMin(e.target.value)}
             onBlur={applyPrecio}
             onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="w-20 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
           />
-          <span className="text-gray-400">—</span>
+          <span className="text-gray-400 dark:text-slate-500">—</span>
           <input
             type="number"
             min={0}
@@ -255,7 +256,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
             onChange={(e) => setPrecioMax(e.target.value)}
             onBlur={applyPrecio}
             onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="w-20 rounded-md border border-gray-200 px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100"
+            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
           />
         </div>
       </div>
@@ -264,7 +265,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
       {loading || (page === 1 && discountsPending) ? (
         <DishSkeleton />
       ) : error ? (
-        <p className="text-sm text-red-500">{error}</p>
+        <p className="text-sm text-red-500 dark:text-red-300">{error}</p>
       ) : dishes.length === 0 ? (
         <p className="text-sm text-slate-400">
           No se encontraron resultados para los filtros aplicados.
@@ -281,9 +282,9 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                 : null;
               return (
                 <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
-                  <div className="rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden flex flex-col">
+                  <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500">
                     <Link href={`/client/platos/${dish.id}`} className="block">
-                      <div className="relative flex items-center justify-center bg-orange-50 h-[150px]">
+                      <div className="relative flex h-[150px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
                         {discount && (
                           <span className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white shadow">
                             <TagIcon className="h-3 w-3" />
@@ -291,19 +292,21 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                           </span>
                         )}
                         {dish.imageUrl ? (
-                          <img
+                          <Image
                             alt={dish.name}
                             src={dish.imageUrl}
-                            className="object-cover w-full h-full"
+                            fill
+                            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                            className="object-cover"
                           />
                         ) : (
-                          <span className="text-4xl font-black text-orange-600">
+                          <span className="text-4xl font-black text-orange-600 dark:text-orange-300">
                             {dish.name.charAt(0).toUpperCase()}
                           </span>
                         )}
                       </div>
                       <div className="px-4 pt-4 pb-2">
-                        <span className="inline-block font-bold text-gray-800">
+                        <span className="inline-block font-bold text-gray-800 dark:text-slate-100">
                           {dish.name}
                         </span>
                         <div className="mt-1 flex items-center gap-2">
@@ -312,7 +315,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                               <span className="text-md text-orange-700 font-bold">
                                 ${discountedPrice}
                               </span>
-                              <span className="text-sm text-gray-400 line-through">
+                              <span className="text-sm text-gray-400 line-through dark:text-slate-500">
                                 ${dish.price}
                               </span>
                             </>
@@ -345,12 +348,12 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                             )}
                           </button>
                         ) : (
-                          <div className="flex items-center justify-between border border-orange-200 rounded-lg px-2 py-1">
+                          <div className="flex items-center justify-between rounded-lg border border-orange-200 px-2 py-1 dark:border-orange-500/30">
                             <button
                               type="button"
                               disabled={isUpdating}
                               onClick={() => handleCartUpdate(dish.id, -1)}
-                              className="p-1 rounded-md hover:bg-orange-50 transition-colors disabled:opacity-60"
+                              className="rounded-md p-1 transition-colors hover:bg-orange-50 disabled:opacity-60 dark:hover:bg-orange-500/10"
                             >
                               <MinusIcon className="w-4 h-4 text-orange-700" />
                             </button>
@@ -367,7 +370,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                               type="button"
                               disabled={isUpdating}
                               onClick={() => handleCartUpdate(dish.id, 1)}
-                              className="p-1 rounded-md hover:bg-orange-50 transition-colors disabled:opacity-60"
+                              className="rounded-md p-1 transition-colors hover:bg-orange-50 disabled:opacity-60 dark:hover:bg-orange-500/10"
                             >
                               <PlusIcon className="w-4 h-4 text-orange-700" />
                             </button>
@@ -388,7 +391,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                 type="button"
                 onClick={() => setPage((p) => p + 1)}
                 disabled={loadingMore}
-                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex items-center gap-2 rounded-lg border border-gray-200 px-6 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
               >
                 {loadingMore ? (
                   <>

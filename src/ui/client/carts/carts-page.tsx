@@ -4,7 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ArrowRightIcon, ShoppingCartIcon, TrashIcon } from "@heroicons/react/24/outline";
 
-import { getCarts, getRestaurantName, deleteCart } from "@/services/client/client-service";
+import {
+  deleteCart,
+  getCarts,
+  getDishName,
+  getRestaurantName,
+} from "@/services/client/client-service";
 import type { Cart } from "@/lib/client/types";
 
 function CartCardSkeleton() {
@@ -38,14 +43,35 @@ export default function CartsPage() {
     async function loadCarts() {
       try {
         const rawCarts = await getCarts();
+        const dishNameCache = new Map<number, Promise<string | null>>();
 
-        // Carga el nombre de cada restaurante en paralelo
+        function resolveDishName(platoId: number) {
+          const cachedName = dishNameCache.get(platoId);
+          if (cachedName) return cachedName;
+
+          const dishName = getDishName(platoId).catch(() => null);
+          dishNameCache.set(platoId, dishName);
+          return dishName;
+        }
+
+        // Carga el nombre de cada restaurante y plato en paralelo
         const cartsWithNames = await Promise.all(
           rawCarts.map(async (cart) => {
-            const restaurantName = await getRestaurantName(cart.restaurantId).catch(
-              () => `Restaurante #${cart.restaurantId}`
-            );
-            return { ...cart, restaurantName };
+            const [restaurantName, items] = await Promise.all([
+              getRestaurantName(cart.restaurantId).catch(
+                () => `Restaurante #${cart.restaurantId}`
+              ),
+              Promise.all(
+                cart.items.map(async (item) => {
+                  if (item.nombre?.trim()) return item;
+
+                  const dishName = await resolveDishName(item.platoId);
+                  return dishName ? { ...item, nombre: dishName } : item;
+                })
+              ),
+            ]);
+
+            return { ...cart, restaurantName, items };
           })
         );
 
@@ -141,7 +167,9 @@ export default function CartsPage() {
                     .filter((item) => item.eliminacion == null)
                     .map((item) => (
                       <li key={item.id} className="flex justify-between">
-                        <span>{item.cantidad}x plato #{item.platoId}</span>
+                        <span>
+                          {item.cantidad}x {item.nombre?.trim() || `Plato #${item.platoId}`}
+                        </span>
                         <span className="text-gray-500">${item.total.toFixed(2)}</span>
                       </li>
                     ))}

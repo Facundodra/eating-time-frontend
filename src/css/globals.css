@@ -96,7 +96,7 @@ button, a{
             @apply max-w-full overflow-hidden text-ellipsis whitespace-nowrap;
         }
         .logout-button{
-            @apply h-[44px] justify-start border-0 px-[22px] py-0 transition-all duration-200 ease-in-out;
+            @apply h-[44px] justify-center border-0 px-0 py-0 transition-all duration-200 ease-in-out;
             svg{
                 @apply block h-5 w-5 min-w-5 shrink-0 grow-0 transition-all duration-200 ease-in-out;
             }
@@ -128,7 +128,7 @@ button, a{
             @apply max-w-[170px] opacity-100;
         }
         .logout-button{
-            @apply border border-gray-300;
+            @apply justify-start border border-gray-300 px-[22px];
             .logout-button-label{
                 @apply max-w-[120px] opacity-100 text-xs;
             }

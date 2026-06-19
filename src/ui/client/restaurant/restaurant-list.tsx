@@ -67,17 +67,22 @@ export default function RestaurantList() {
   useEffect(() => {
     let cancelled = false;
 
-    setLoading(true);
-    setError(null);
-    getRestaurants({
-      ...sortMap[sort],
-      ...(filterOpen  && { servicio: 'ACTIVO' as const }),
-      ...(filterStars && { calificacionMin: 4 }),
-      page: page - 1,
-      size: PAGE_SIZE,
-    })
-      .then(({ restaurants, totalPages }) => {
-        if (cancelled) return;
+    Promise.resolve()
+      .then(() => {
+        if (cancelled) return null;
+        setLoading(true);
+        setError(null);
+        return getRestaurants({
+          ...sortMap[sort],
+          ...(filterOpen  && { servicio: 'ACTIVO' as const }),
+          ...(filterStars && { calificacionMin: 4 }),
+          page: page - 1,
+          size: PAGE_SIZE,
+        });
+      })
+      .then((result) => {
+        if (cancelled || !result) return;
+        const { restaurants, totalPages } = result;
         setRestaurants(restaurants);
         setTotalPages(totalPages);
       })
@@ -188,13 +193,13 @@ export default function RestaurantList() {
           >
             <Link href={`/client/restaurant/${restaurant.id}`} className="block local-wrapper rounded-xl border border-gray-200 hover:border-orange-700 transition-all duration-200 bg-white overflow-hidden">
               <div className="local-img bg-gray-50 h-[125px] relative">
-                {restaurant.url_photo ? (
+                {restaurant.coverPhotoUrl ? (
                   <Image
                     alt={restaurant.name}
-                    src={restaurant.url_photo}
-                    width="100"
-                    height="100"
-                    className="object-contain mx-auto p-3 w-[120px] h-full"
+                    src={restaurant.coverPhotoUrl}
+                    fill
+                    sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                    className="object-cover"
                   />
                 ) : (
                   <div className="w-[120px] h-full mx-auto flex items-center justify-center text-gray-300 text-4xl">
@@ -226,17 +231,17 @@ export default function RestaurantList() {
 
               <div className="local-info p-4">
                 <div className="local-nombre">
-                  <div className="img inline-block align-middle mr-2 border border-gray-200 p-2 rounded-full w-[45px] h-[45px]">
-                    {restaurant.url_photo ? (
+                  <div className="relative mr-2 inline-flex h-[45px] w-[45px] items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 align-middle text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+                    {restaurant.profilePhotoUrl ? (
                       <Image
-                        alt={restaurant.name}
-                        src={restaurant.url_photo}
-                        width="45"
-                        height="45"
-                        className="h-full object-contain"
+                        alt={`Perfil de ${restaurant.name}`}
+                        src={restaurant.profilePhotoUrl}
+                        fill
+                        sizes="45px"
+                        className="object-cover"
                       />
                     ) : (
-                      <div className="w-full h-full bg-gray-100 rounded-full" />
+                      restaurant.name.charAt(0).toUpperCase()
                     )}
                   </div>
                   <span className="inline-block align-middle font-bold text-gray-800">

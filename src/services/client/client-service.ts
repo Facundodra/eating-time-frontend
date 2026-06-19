@@ -503,6 +503,13 @@ interface RestaurantDtoFromApi {
     fotoUrl?: string | null;
     imagenUrl?: string | null;
     imageUrl?: string | null;
+    urlFotoPerfil?: string | null;
+    fotoPerfilUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    urlPortada?: string | null;
+    urlFotoPortada?: string | null;
+    fotoPortadaUrl?: string | null;
+    coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
     servicio?: boolean | string | number | null;
     estado?: boolean | string | number | null;
@@ -513,15 +520,28 @@ interface RestaurantDtoFromApi {
 
 function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): RestaurantList {
     const id = getNumericValue(r.id ?? r.localId ?? r.idLocal) ?? 0;
+    const legacyPhotoUrl = getFirstStringValue(
+        r.urlFoto,
+        r.fotoUrl,
+        r.imagenUrl,
+        r.imageUrl,
+    );
+    const explicitCoverPhotoUrl = getFirstStringValue(
+        r.urlPortada,
+        r.urlFotoPortada,
+        r.fotoPortadaUrl,
+        r.coverPhotoUrl,
+    );
 
     return {
         id,
         name: getFirstStringValue(r.nombre, r.name, r.razonSocial) ?? `Local #${id}`,
-        url_photo: getFirstStringValue(
-            r.urlFoto,
-            r.fotoUrl,
-            r.imagenUrl,
-            r.imageUrl,
+        coverPhotoUrl: explicitCoverPhotoUrl ?? "",
+        profilePhotoUrl: getFirstStringValue(
+            r.urlFotoPerfil,
+            r.fotoPerfilUrl,
+            r.profilePhotoUrl,
+            legacyPhotoUrl,
         ) ?? "",
         stars: getNumericValue(r.calificacion ?? r.rating ?? r.stars) ?? 0,
         state: getBooleanValue(r.estadoServicio ?? r.servicio ?? r.estado) ?? false,
@@ -565,6 +585,13 @@ interface RestaurantSingleDtoFromApi {
     fotoUrl?: string | null;
     imagenUrl?: string | null;
     imageUrl?: string | null;
+    urlFotoPerfil?: string | null;
+    fotoPerfilUrl?: string | null;
+    profilePhotoUrl?: string | null;
+    urlPortada?: string | null;
+    urlFotoPortada?: string | null;
+    fotoPortadaUrl?: string | null;
+    coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
     servicio?: boolean | string | number | null;
     estado?: boolean | string | number | null;
@@ -591,6 +618,11 @@ function mapRestaurantDtoApiToRestaurant(r: RestaurantSingleDtoFromApi): Restaur
 export async function getRestaurantName(id: number): Promise<string> {
     const restaurant = await getRestaurant(String(id));
     return restaurant.name;
+}
+
+export async function getDishName(id: number): Promise<string> {
+    const dish = await getDish(String(id));
+    return dish.name;
 }
 
 export async function getRestaurant(id: string): Promise<Restaurant> {
