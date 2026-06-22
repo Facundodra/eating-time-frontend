@@ -221,7 +221,7 @@ export default function ClientHomePage() {
                     <span
                       className={`absolute right-3 top-3 rounded-full px-3 py-1 text-sm ${
                         restaurant.state
-                          ? "bg-green-100 text-green-900 dark:bg-green-500/15 dark:text-green-300"
+                          ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-300"
                           : "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
                       }`}
                     >
