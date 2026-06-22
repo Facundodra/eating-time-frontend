@@ -10,6 +10,7 @@ import {
   MagnifyingGlassIcon,
   ShoppingCartIcon,
   StarIcon,
+  WalletIcon,
   UserCircleIcon,
 } from "@heroicons/react/24/outline";
 import Form from "next/form";
@@ -240,7 +241,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
                     className={menuLinkClass}
                   >
                     <UserCircleIcon className={menuIconClass} />
-                    Mi cuentita
+                    Mi cuenta
                   </Link>
                 </li>
                 <li>
@@ -326,7 +327,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             </li>
             <li>
               <Link
-                href="/client/mi-cuenta/virtual-money"
+                href="/client/mi-cuenta/dinero-virtual"
                 onClick={closeHeaderMenus}
                 className={menuLinkClass}
               >
