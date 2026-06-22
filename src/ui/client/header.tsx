@@ -11,7 +11,6 @@ import {
   ShoppingCartIcon,
   StarIcon,
   UserCircleIcon,
-  WalletIcon,
 } from "@heroicons/react/24/outline";
 import Form from "next/form";
 import Image from "next/image";
@@ -33,23 +32,6 @@ const menuLinkClass =
   "flex items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-800 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800";
 const menuIconClass = "h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400";
 
-function formatPendingCount(count: number) {
-  return count > 9 ? "9+" : count;
-}
-
-function PendingCountBadge({ count }: { count: number }) {
-  if (count <= 0) return null;
-
-  return (
-    <span
-      aria-label={`${count} pendientes`}
-      className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-orange-600 px-1.5 text-[11px] font-bold leading-none text-white dark:bg-orange-500"
-    >
-      {formatPendingCount(count)}
-    </span>
-  );
-}
-
 export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -59,9 +41,9 @@ export default function Header({ session }: { session: LoginWebResponse }) {
     isClientSearchPage ? searchParams.get("q") ?? "" : "";
   const [searchQuery, setSearchQuery] = useState(currentSearchQuery);
   const [navigationMenuOpen, setNavigationMenuOpen] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pendingRatingCount, setPendingRatingCount] = useState(0);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
-  const pendingMenuCount = pendingRatingCount + pendingOrdersCount;
 
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
   const cartHref = restaurantMatch
@@ -72,16 +54,23 @@ export default function Header({ session }: { session: LoginWebResponse }) {
     setSearchQuery(currentSearchQuery);
   }, [currentSearchQuery]);
 
-  function closeNavigationMenu() {
+  function closeHeaderMenus() {
     setNavigationMenuOpen(false);
+    setAccountMenuOpen(false);
   }
 
   function toggleNavigationMenu() {
     setNavigationMenuOpen((open) => !open);
+    setAccountMenuOpen(false);
+  }
+
+  function toggleAccountMenu() {
+    setAccountMenuOpen((open) => !open);
+    setNavigationMenuOpen(false);
   }
 
   useEffect(() => {
-    closeNavigationMenu();
+    closeHeaderMenus();
   }, [pathname]);
 
   function toggleSearchFilters() {
@@ -193,7 +182,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
         {isClientSearchPage ? (
           <button
             type="button"
-            aria-label="Mostrar u ocultar filtros de búsqueda"
+            aria-label="Mostrar u ocultar filtros de busqueda"
             onClick={toggleSearchFilters}
             className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
           >
@@ -212,27 +201,82 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           </Link>
         </div>
 
-        <div className="account shrink-0">
-          <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+        <div className="account relative shrink-0">
+          <button
+            type="button"
+            aria-expanded={accountMenuOpen}
+            aria-label="Abrir opciones de cuenta"
+            onClick={toggleAccountMenu}
+            className="relative block rounded-full focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
+          >
+            <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
+            {pendingOrdersCount > 0 ? (
+              <span
+                aria-label={`${pendingOrdersCount} pedidos en curso cancelables`}
+                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
+              >
+                {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
+              </span>
+            ) : null}
+            {pendingRatingCount > 0 ? (
+              <span
+                aria-label={`${pendingRatingCount} pedidos pendientes de calificacion`}
+                className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950 ${
+                  pendingOrdersCount > 0 ? "-left-1 -top-1" : "-right-1 -top-1"
+                }`}
+              >
+                {pendingRatingCount > 9 ? "9+" : pendingRatingCount}
+              </span>
+            ) : null}
+          </button>
+
+          {accountMenuOpen ? (
+            <nav className="absolute right-0 top-[calc(100%+12px)] z-50 w-56 rounded-md border border-gray-100 bg-white px-5 py-4 shadow-lg dark:border-slate-800 dark:bg-slate-900">
+              <ul className="space-y-1">
+                <li>
+                  <Link
+                    href="/client/mi-cuenta"
+                    onClick={closeHeaderMenus}
+                    className={menuLinkClass}
+                  >
+                    <UserCircleIcon className={menuIconClass} />
+                    Mi cuenta
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/client/order-history"
+                    onClick={closeHeaderMenus}
+                    className={menuLinkClass}
+                  >
+                    <ClipboardDocumentListIcon className={menuIconClass} />
+                    Historial de pedidos
+                  </Link>
+                </li>
+                <li>
+                  <Link
+                    href="/logout"
+                    onClick={closeHeaderMenus}
+                    className={menuLinkClass}
+                  >
+                    <ArrowRightOnRectangleIcon className={menuIconClass} />
+                    Salir
+                  </Link>
+                </li>
+              </ul>
+            </nav>
+          ) : null}
         </div>
 
         <div className="relative shrink-0">
           <button
             type="button"
             aria-expanded={navigationMenuOpen}
-            aria-label="Abrir menú de navegación"
+            aria-label="Abrir menu de navegacion"
             onClick={toggleNavigationMenu}
-            className="relative grid h-[37px] w-[37px] place-items-center rounded-md text-gray-800 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
+            className="grid h-[37px] w-[37px] place-items-center rounded-md text-gray-800 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
           >
             <Bars3Icon className="h-5 w-5" />
-            {pendingMenuCount > 0 ? (
-              <span
-                aria-label={`${pendingMenuCount} novedades pendientes`}
-                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:bg-orange-500 dark:ring-slate-950"
-              >
-                {formatPendingCount(pendingMenuCount)}
-              </span>
-            ) : null}
           </button>
         </div>
       </div>
@@ -243,7 +287,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             <li>
               <Link
                 href="/client/mi-cuenta"
-                onClick={closeNavigationMenu}
+                onClick={closeHeaderMenus}
                 className={menuLinkClass}
               >
                 <UserCircleIcon className={menuIconClass} />
@@ -253,33 +297,27 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             <li>
               <Link
                 href="/client/pending-orders"
-                onClick={closeNavigationMenu}
-                className={`${menuLinkClass} justify-between`}
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
               >
-                <span className="flex items-center gap-3">
-                  <ClockIcon className={menuIconClass} />
-                  Pedidos en curso
-                </span>
-                <PendingCountBadge count={pendingOrdersCount} />
+                <ClockIcon className={menuIconClass} />
+                Pedidos en curso
               </Link>
             </li>
             <li>
               <Link
                 href="/client/order-ratings"
-                onClick={closeNavigationMenu}
-                className={`${menuLinkClass} justify-between`}
+                onClick={closeHeaderMenus}
+                className={menuLinkClass}
               >
-                <span className="flex items-center gap-3">
-                  <StarIcon className={menuIconClass} />
-                  Calificación de pedidos
-                </span>
-                <PendingCountBadge count={pendingRatingCount} />
+                <StarIcon className={menuIconClass} />
+                Calificacion de pedidos
               </Link>
             </li>
             <li>
               <Link
                 href="/client/claims"
-                onClick={closeNavigationMenu}
+                onClick={closeHeaderMenus}
                 className={menuLinkClass}
               >
                 <ChatBubbleLeftRightIcon className={menuIconClass} />
@@ -288,18 +326,8 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             </li>
             <li>
               <Link
-                href="/client/mi-cuenta/dinero-virtual"
-                onClick={closeNavigationMenu}
-                className={menuLinkClass}
-              >
-                <WalletIcon className={menuIconClass} />
-                Mi billetera
-              </Link>
-            </li>
-            <li>
-              <Link
                 href="/client/order-history"
-                onClick={closeNavigationMenu}
+                onClick={closeHeaderMenus}
                 className={menuLinkClass}
               >
                 <ClipboardDocumentListIcon className={menuIconClass} />
@@ -312,7 +340,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             <li>
               <Link
                 href="/logout"
-                onClick={closeNavigationMenu}
+                onClick={closeHeaderMenus}
                 className={menuLinkClass}
               >
                 <ArrowRightOnRectangleIcon className={menuIconClass} />
