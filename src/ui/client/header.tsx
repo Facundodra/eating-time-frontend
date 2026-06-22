@@ -240,7 +240,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
                     className={menuLinkClass}
                   >
                     <UserCircleIcon className={menuIconClass} />
-                    Mi cuenta
+                    Mi cuentita
                   </Link>
                 </li>
                 <li>
