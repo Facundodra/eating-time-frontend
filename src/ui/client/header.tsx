@@ -326,7 +326,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             </li>
             <li>
               <Link
-                href="/client/mi-cuenta/dinero-virtual"
+                href="/client/mi-cuenta/virtual-money"
                 onClick={closeHeaderMenus}
                 className={menuLinkClass}
               >
