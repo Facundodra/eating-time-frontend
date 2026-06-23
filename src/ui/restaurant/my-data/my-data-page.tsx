@@ -1,11 +1,14 @@
 "use client";
 
 import {
+  ArrowUpTrayIcon,
   CameraIcon,
   CheckCircleIcon,
   CloudArrowUpIcon,
   KeyIcon,
+  PhotoIcon,
 } from "@heroicons/react/24/outline";
+import Image from "next/image";
 import Link from "next/link";
 import {
   type ChangeEvent,
@@ -31,6 +34,8 @@ type InitialFormData = {
 
 export default function RestaurantMyDataPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const mobileCoverInputRef = useRef<HTMLInputElement>(null);
+  const desktopCoverInputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
@@ -41,6 +46,8 @@ export default function RestaurantMyDataPage() {
   const [phone, setPhone] = useState("");
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
+  const [mobileCoverPhoto, setMobileCoverPhoto] = useState<File | null>(null);
+  const [desktopCoverPhoto, setDesktopCoverPhoto] = useState<File | null>(null);
   const [initialFormData, setInitialFormData] = useState<InitialFormData>({
     name: "",
     phone: "",
@@ -50,12 +57,22 @@ export default function RestaurantMyDataPage() {
     () => (profilePhoto ? URL.createObjectURL(profilePhoto) : null),
     [profilePhoto],
   );
+  const mobileCoverPreviewUrl = useMemo(
+    () => (mobileCoverPhoto ? URL.createObjectURL(mobileCoverPhoto) : ""),
+    [mobileCoverPhoto],
+  );
+  const desktopCoverPreviewUrl = useMemo(
+    () => (desktopCoverPhoto ? URL.createObjectURL(desktopCoverPhoto) : ""),
+    [desktopCoverPhoto],
+  );
   const displayPhotoUrl = profilePreviewUrl ?? currentPhotoUrl;
   const savedPhotoUrl = currentPhotoUrl;
   const hasFormChanges =
     name !== initialFormData.name ||
     phone !== initialFormData.phone ||
-    profilePhoto !== null;
+    profilePhoto !== null ||
+    mobileCoverPhoto !== null ||
+    desktopCoverPhoto !== null;
 
   useEffect(() => {
     return () => {
@@ -64,12 +81,25 @@ export default function RestaurantMyDataPage() {
   }, [profilePreviewUrl]);
 
   useEffect(() => {
+    return () => {
+      if (mobileCoverPreviewUrl) URL.revokeObjectURL(mobileCoverPreviewUrl);
+    };
+  }, [mobileCoverPreviewUrl]);
+
+  useEffect(() => {
+    return () => {
+      if (desktopCoverPreviewUrl) URL.revokeObjectURL(desktopCoverPreviewUrl);
+    };
+  }, [desktopCoverPreviewUrl]);
+
+  useEffect(() => {
     let cancelled = false;
 
     async function loadSession() {
       try {
         const session = await getCurrentSession();
-        if (cancelled || !session) return;
+        if (cancelled) return;
+        if (!session) return;
 
         const sessionName = session.nombre ?? "";
         const sessionPhone = session.telefono ?? "";
@@ -125,7 +155,7 @@ export default function RestaurantMyDataPage() {
     event.target.value = "";
   }
 
-  function handleDrop(event: DragEvent<HTMLDivElement>) {
+  function handleDrop(event: DragEvent<HTMLLabelElement>) {
     event.preventDefault();
     selectProfilePhoto(event.dataTransfer.files[0]);
   }
@@ -136,14 +166,68 @@ export default function RestaurantMyDataPage() {
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
+  function removeCoverPhoto(variant: "mobile" | "desktop") {
+    if (variant === "mobile") {
+      setMobileCoverPhoto(null);
+      if (mobileCoverInputRef.current) mobileCoverInputRef.current.value = "";
+    } else {
+      setDesktopCoverPhoto(null);
+      if (desktopCoverInputRef.current) desktopCoverInputRef.current.value = "";
+    }
+
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  function selectCoverPhoto(
+    file: File | undefined,
+    variant: "mobile" | "desktop",
+  ) {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setErrorMessage("Solo se permiten imagenes para las portadas.");
+      if (variant === "mobile" && mobileCoverInputRef.current) {
+        mobileCoverInputRef.current.value = "";
+      }
+      if (variant === "desktop" && desktopCoverInputRef.current) {
+        desktopCoverInputRef.current.value = "";
+      }
+      return;
+    }
+
+    if (file.size > MAX_FILE_SIZE) {
+      setErrorMessage("Las portadas no pueden superar los 5MB.");
+      if (variant === "mobile" && mobileCoverInputRef.current) {
+        mobileCoverInputRef.current.value = "";
+      }
+      if (variant === "desktop" && desktopCoverInputRef.current) {
+        desktopCoverInputRef.current.value = "";
+      }
+      return;
+    }
+
+    if (variant === "mobile") {
+      setMobileCoverPhoto(file);
+    } else {
+      setDesktopCoverPhoto(file);
+    }
+    setSuccessMessage("");
+    setErrorMessage("");
+  }
+
   function cancelChanges() {
     setName(initialFormData.name);
     setPhone(initialFormData.phone);
     setProfilePhoto(null);
+    setMobileCoverPhoto(null);
+    setDesktopCoverPhoto(null);
     setFileError("");
-    setErrorMessage("");
     setSuccessMessage("");
+    setErrorMessage("");
     if (fileInputRef.current) fileInputRef.current.value = "";
+    if (mobileCoverInputRef.current) mobileCoverInputRef.current.value = "";
+    if (desktopCoverInputRef.current) desktopCoverInputRef.current.value = "";
   }
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -155,12 +239,22 @@ export default function RestaurantMyDataPage() {
     try {
       const nextName = name.trim();
       const nextPhone = phone.trim();
+      if (
+        nextName !== initialFormData.name ||
+        nextPhone !== initialFormData.phone ||
+        profilePhoto !== null
+      ) {
+        await editUserData(nextName, nextPhone, profilePhoto);
+      }
 
-      await editUserData(nextName, nextPhone, profilePhoto);
       const updatedSession = await getCurrentSession();
       const nextPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
 
-      setSuccessMessage("Los datos del local se actualizaron correctamente.");
+      setSuccessMessage(
+        mobileCoverPhoto || desktopCoverPhoto
+          ? "Se guardaron los datos del local. Las portadas mobile y desktop quedaran disponibles cuando backend exponga los endpoints."
+          : "Los datos del local se actualizaron correctamente.",
+      );
       setCurrentPhotoUrl(nextPhotoUrl);
       setEmail(updatedSession?.correo ?? updatedSession?.email ?? email);
       setName(nextName);
@@ -170,6 +264,10 @@ export default function RestaurantMyDataPage() {
         phone: nextPhone,
       });
       setProfilePhoto(null);
+      setMobileCoverPhoto(null);
+      setDesktopCoverPhoto(null);
+      if (mobileCoverInputRef.current) mobileCoverInputRef.current.value = "";
+      if (desktopCoverInputRef.current) desktopCoverInputRef.current.value = "";
     } catch (error) {
       setErrorMessage(
         error instanceof Error
@@ -190,7 +288,8 @@ export default function RestaurantMyDataPage() {
         >
           <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Actualiza la informacion visible del local y su foto de perfil.
+              Actualiza la informacion visible del local, su foto de perfil y la
+              portada.
             </p>
           </div>
 
@@ -243,88 +342,191 @@ export default function RestaurantMyDataPage() {
                   />
                 </label>
 
-                <div>
-                  <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                    Foto de perfil
-                  </span>
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => fileInputRef.current?.click()}
-                    onDragOver={(event) => event.preventDefault()}
-                    onDrop={handleDrop}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter" || event.key === " ") {
-                        event.preventDefault();
-                        fileInputRef.current?.click();
-                      }
-                    }}
-                    className="flex min-h-[100px] cursor-pointer items-center justify-center rounded-xl border border-dashed border-orange-300 bg-orange-50/70 px-5 py-4 text-center transition hover:border-orange-500 hover:bg-orange-50 focus:border-orange-500 focus:outline-none focus:ring-4 focus:ring-orange-100 dark:border-orange-500/30 dark:bg-orange-500/10 dark:hover:bg-orange-500/15 dark:focus:ring-orange-500/20"
-                  >
-                    {displayPhotoUrl ? (
-                      <div className="flex w-full flex-col items-center gap-5 sm:flex-row sm:items-center sm:text-left">
-                        <div className="flex h-48 w-48 shrink-0 items-center justify-center overflow-hidden rounded-full bg-orange-600 shadow-sm ring-4 ring-orange-100 dark:ring-slate-900">
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={displayPhotoUrl}
-                            alt="Foto del local"
-                            className="h-full w-full object-cover"
-                          />
-                        </div>
+                <div className="rounded-2xl border border-slate-200 bg-slate-50/50 p-5 dark:border-slate-800 dark:bg-slate-950/40">
+                  <div className="flex items-start gap-3">
+                    <span className="rounded-xl bg-orange-50 p-2.5 text-orange-700 dark:bg-orange-500/10 dark:text-orange-300">
+                      <PhotoIcon className="h-5 w-5" />
+                    </span>
+                    <div>
+                      <h2 className="font-black text-slate-900 dark:text-white">
+                        Fotos del local
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                        Administra la foto de perfil y las portadas mobile y desktop
+                        del local.
+                      </p>
+                    </div>
+                  </div>
 
-                        <div className="flex min-w-0 flex-1 flex-col items-center gap-3 text-center sm:items-start sm:text-left">
-                          <div className="min-w-0">
-                            <p className="truncate text-sm font-black text-slate-800 dark:text-slate-100">
-                              {profilePhoto ? profilePhoto.name : "Foto actual"}
-                            </p>
-                            <p className="mt-1 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                              Arrastra una imagen o hace click para cambiarla.
-                            </p>
-                          </div>
+                  <div className="mt-5 grid items-start gap-5 xl:grid-cols-[minmax(16rem,1fr)_minmax(12rem,0.75fr)_minmax(20rem,1.4fr)]">
+                    <div className="w-full xl:mx-auto xl:max-w-64">
+                      <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                        Foto de perfil
+                      </span>
+                      <label
+                        onDragOver={(event) => event.preventDefault()}
+                        onDrop={handleDrop}
+                        className="group relative mx-auto flex h-56 w-56 max-w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 text-center transition focus-within:ring-2 focus-within:ring-orange-500 focus-within:ring-offset-2 hover:border-orange-400 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-600 dark:focus-within:ring-offset-slate-900 sm:h-64 sm:w-64 xl:h-64 xl:w-full"
+                      >
+                        <input
+                          ref={fileInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleFileChange}
+                          className="sr-only"
+                        />
+                        {displayPhotoUrl ? (
+                          <>
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={displayPhotoUrl}
+                              alt="Foto del local"
+                              className="h-full w-full object-cover"
+                            />
+                            <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                            <span className="absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] truncate rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
+                              {profilePhoto ? "Foto nueva" : "Foto actual"}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
+                            <CloudArrowUpIcon className="h-7 w-7 text-orange-600 dark:text-orange-300" />
+                            <span className="text-sm font-black">
+                              Subir foto de perfil
+                            </span>
+                            <span className="text-xs">
+                              Selecciona una imagen desde tu equipo
+                            </span>
+                          </span>
+                        )}
+                      </label>
+                      <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                        Recomendado: imagen cuadrada. Maximo 5MB.
+                      </p>
+                      {profilePhoto ? (
+                        <button
+                          type="button"
+                          onClick={removeProfilePhoto}
+                          className="mx-auto mt-2 flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-extrabold text-slate-500 shadow-sm ring-1 ring-slate-200 transition hover:bg-orange-600 hover:text-white dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800"
+                        >
+                          Quitar foto
+                        </button>
+                      ) : null}
+                      {fileError ? (
+                        <p className="mt-2 text-xs font-bold text-red-500">
+                          {fileError}
+                        </p>
+                      ) : null}
+                    </div>
 
-                          {profilePhoto ? (
+                    <div className="w-full xl:mx-auto xl:max-w-48">
+                          <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                            Portada mobile
+                          </span>
+                          <label className="group relative mx-auto flex h-56 w-[10.5rem] max-w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition focus-within:ring-2 focus-within:ring-orange-500 focus-within:ring-offset-2 hover:border-orange-400 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-600 dark:focus-within:ring-offset-slate-900 sm:h-64 sm:w-48 xl:h-64 xl:w-full">
+                            <input
+                              ref={mobileCoverInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              onChange={(event) =>
+                                selectCoverPhoto(event.target.files?.[0], "mobile")
+                              }
+                            />
+                            {mobileCoverPreviewUrl ? (
+                              <>
+                                <Image
+                                  src={mobileCoverPreviewUrl}
+                                  alt="Vista previa de la portada mobile"
+                                  fill
+                                  unoptimized
+                                  className="object-cover"
+                                />
+                                <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
+                                  Portada mobile
+                                </span>
+                              </>
+                            ) : (
+                              <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
+                                <ArrowUpTrayIcon className="h-7 w-7 text-orange-600 dark:text-orange-300" />
+                                <span className="text-sm font-black">
+                                  Subir portada mobile
+                                </span>
+                                <span className="text-xs">
+                                  Selecciona una imagen desde tu equipo
+                                </span>
+                              </span>
+                            )}
+                          </label>
+                          <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            Recomendado para telefono: 1080 x 1920 px.
+                          </p>
+                          {mobileCoverPhoto ? (
                             <button
                               type="button"
-                              onClick={(event) => {
-                                event.stopPropagation();
-                                removeProfilePhoto();
-                              }}
-                              className="inline-flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-extrabold text-slate-500 shadow-sm transition hover:bg-orange-600 hover:text-white dark:bg-slate-950 dark:text-slate-300"
-                              aria-label="Quitar foto seleccionada"
+                              onClick={() => removeCoverPhoto("mobile")}
+                              className="mx-auto mt-2 flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-extrabold text-slate-500 shadow-sm ring-1 ring-slate-200 transition hover:bg-orange-600 hover:text-white dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800"
                             >
                               Quitar foto
                             </button>
                           ) : null}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3 text-left">
-                        <span className="grid h-14 w-14 place-items-center rounded-full bg-white text-orange-500 shadow-sm dark:bg-slate-950">
-                          <CloudArrowUpIcon className="h-7 w-7" />
-                        </span>
-                        <div>
-                          <p className="text-sm font-black text-orange-700 dark:text-orange-300">
-                            Arrastrar imagen o seleccionar archivo
+                    </div>
+
+                    <div className="w-full">
+                          <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                            Portada computadora
+                          </span>
+                          <label className="group relative flex h-44 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition focus-within:ring-2 focus-within:ring-orange-500 focus-within:ring-offset-2 hover:border-orange-400 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-600 dark:focus-within:ring-offset-slate-900 sm:h-56 md:h-64 xl:h-64">
+                            <input
+                              ref={desktopCoverInputRef}
+                              type="file"
+                              accept="image/*"
+                              className="sr-only"
+                              onChange={(event) =>
+                                selectCoverPhoto(event.target.files?.[0], "desktop")
+                              }
+                            />
+                            {desktopCoverPreviewUrl ? (
+                              <>
+                                <Image
+                                  src={desktopCoverPreviewUrl}
+                                  alt="Vista previa de la portada computadora"
+                                  fill
+                                  unoptimized
+                                  className="object-cover"
+                                />
+                                <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                                <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
+                                  Portada desktop
+                                </span>
+                              </>
+                            ) : (
+                              <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
+                                <ArrowUpTrayIcon className="h-7 w-7 text-orange-600 dark:text-orange-300" />
+                                <span className="text-sm font-black">
+                                  Subir portada desktop
+                                </span>
+                                <span className="text-xs">
+                                  Selecciona una imagen desde tu equipo
+                                </span>
+                              </span>
+                            )}
+                          </label>
+                          <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            Recomendado: imagen horizontal de 1920 x 1080 px.
                           </p>
-                          <p className="mt-1 text-xs font-semibold text-orange-600/70 dark:text-orange-200/70">
-                            JPG, PNG o similar. Maximo 5MB.
-                          </p>
-                        </div>
-                      </div>
-                    )}
+                          {desktopCoverPhoto ? (
+                            <button
+                              type="button"
+                              onClick={() => removeCoverPhoto("desktop")}
+                              className="mx-auto mt-2 flex h-9 items-center justify-center rounded-xl bg-white px-3 text-xs font-extrabold text-slate-500 shadow-sm ring-1 ring-slate-200 transition hover:bg-orange-600 hover:text-white dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800"
+                            >
+                              Quitar foto
+                            </button>
+                          ) : null}
+                    </div>
                   </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    className="sr-only"
-                  />
-                  {fileError ? (
-                    <p className="mt-2 text-xs font-bold text-red-500">
-                      {fileError}
-                    </p>
-                  ) : null}
                 </div>
 
                 {successMessage ? (
