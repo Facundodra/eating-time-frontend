@@ -14,12 +14,17 @@ import {
   type ChangeEvent,
   type DragEvent,
   type FormEvent,
+  useCallback,
   useEffect,
   useMemo,
   useRef,
   useState,
 } from "react";
 
+import {
+  getRestaurantCoverPhotoUrl,
+  setRestaurantCoverPhoto,
+} from "@/services/restaurant/photo-service";
 import { editUserData, getCurrentSession } from "@/services/shared/auth-service";
 import LoadingButton from "@/ui/shared/buttons/loading-button";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
@@ -41,10 +46,12 @@ export default function RestaurantMyDataPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
   const [fileError, setFileError] = useState("");
+  const [restaurantId, setRestaurantId] = useState<number | null>(null);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null);
+  const [currentDesktopCoverUrl, setCurrentDesktopCoverUrl] = useState("");
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [mobileCoverPhoto, setMobileCoverPhoto] = useState<File | null>(null);
   const [desktopCoverPhoto, setDesktopCoverPhoto] = useState<File | null>(null);
@@ -66,6 +73,8 @@ export default function RestaurantMyDataPage() {
     [desktopCoverPhoto],
   );
   const displayPhotoUrl = profilePreviewUrl ?? currentPhotoUrl;
+  const displayDesktopCoverUrl =
+    desktopCoverPreviewUrl || currentDesktopCoverUrl;
   const savedPhotoUrl = currentPhotoUrl;
   const hasFormChanges =
     name !== initialFormData.name ||
@@ -92,26 +101,36 @@ export default function RestaurantMyDataPage() {
     };
   }, [desktopCoverPreviewUrl]);
 
+  const loadSession = useCallback(async (cancelled: () => boolean) => {
+    const session = await getCurrentSession();
+    if (cancelled()) return;
+    if (!session) return;
+
+    const sessionName = session.nombre ?? "";
+    const sessionPhone = session.telefono ?? "";
+
+    setName(sessionName);
+    setEmail(session.correo ?? session.email ?? "");
+    setPhone(sessionPhone);
+    setCurrentPhotoUrl(session.urlFoto ?? null);
+    setRestaurantId(session.idTipoUsuario ?? null);
+    setInitialFormData({
+      name: sessionName,
+      phone: sessionPhone,
+    });
+
+    if (!session.idTipoUsuario) return;
+
+    const coverUrl = await getRestaurantCoverPhotoUrl(session.idTipoUsuario);
+    if (!cancelled()) setCurrentDesktopCoverUrl(coverUrl);
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
 
-    async function loadSession() {
+    async function loadInitialData() {
       try {
-        const session = await getCurrentSession();
-        if (cancelled) return;
-        if (!session) return;
-
-        const sessionName = session.nombre ?? "";
-        const sessionPhone = session.telefono ?? "";
-
-        setName(sessionName);
-        setEmail(session.correo ?? session.email ?? "");
-        setPhone(sessionPhone);
-        setCurrentPhotoUrl(session.urlFoto ?? null);
-        setInitialFormData({
-          name: sessionName,
-          phone: sessionPhone,
-        });
+        await loadSession(() => cancelled);
       } catch (error) {
         if (!cancelled) {
           setErrorMessage(
@@ -125,12 +144,12 @@ export default function RestaurantMyDataPage() {
       }
     }
 
-    void loadSession();
+    void loadInitialData();
 
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [loadSession]);
 
   function selectProfilePhoto(file?: File) {
     if (!file) return;
@@ -239,6 +258,8 @@ export default function RestaurantMyDataPage() {
     try {
       const nextName = name.trim();
       const nextPhone = phone.trim();
+      let didSaveDesktopCover = false;
+
       if (
         nextName !== initialFormData.name ||
         nextPhone !== initialFormData.phone ||
@@ -247,15 +268,33 @@ export default function RestaurantMyDataPage() {
         await editUserData(nextName, nextPhone, profilePhoto);
       }
 
+      if (desktopCoverPhoto && !restaurantId) {
+        throw new Error("No se pudo obtener el ID del local.");
+      }
+
+      if (desktopCoverPhoto && restaurantId) {
+        await setRestaurantCoverPhoto(restaurantId, { file: desktopCoverPhoto });
+        didSaveDesktopCover = true;
+      }
+
       const updatedSession = await getCurrentSession();
       const nextPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
+      const nextDesktopCoverUrl =
+        didSaveDesktopCover && restaurantId
+          ? await getRestaurantCoverPhotoUrl(restaurantId)
+          : currentDesktopCoverUrl;
 
       setSuccessMessage(
-        mobileCoverPhoto || desktopCoverPhoto
-          ? "Se guardaron los datos del local. Las portadas mobile y desktop quedaran disponibles cuando backend exponga los endpoints."
+        mobileCoverPhoto
+          ? didSaveDesktopCover
+            ? "Se guardaron los datos del local y la portada desktop. La portada mobile quedara disponible cuando backend exponga el endpoint."
+            : "Se guardaron los datos del local. La portada mobile quedara disponible cuando backend exponga el endpoint."
+          : didSaveDesktopCover
+            ? "Se guardaron los datos del local y la portada desktop."
           : "Los datos del local se actualizaron correctamente.",
       );
       setCurrentPhotoUrl(nextPhotoUrl);
+      setCurrentDesktopCoverUrl(nextDesktopCoverUrl);
       setEmail(updatedSession?.correo ?? updatedSession?.email ?? email);
       setName(nextName);
       setPhone(nextPhone);
@@ -487,18 +526,24 @@ export default function RestaurantMyDataPage() {
                                 selectCoverPhoto(event.target.files?.[0], "desktop")
                               }
                             />
-                            {desktopCoverPreviewUrl ? (
+                            {displayDesktopCoverUrl ? (
                               <>
                                 <Image
-                                  src={desktopCoverPreviewUrl}
-                                  alt="Vista previa de la portada computadora"
+                                  src={displayDesktopCoverUrl}
+                                  alt={
+                                    desktopCoverPhoto
+                                      ? "Vista previa de la portada computadora"
+                                      : "Portada computadora actual"
+                                  }
                                   fill
-                                  unoptimized
+                                  unoptimized={Boolean(desktopCoverPreviewUrl)}
                                   className="object-cover"
                                 />
                                 <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                                 <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
-                                  Portada desktop
+                                  {desktopCoverPhoto
+                                    ? "Portada desktop nueva"
+                                    : "Portada desktop actual"}
                                 </span>
                               </>
                             ) : (

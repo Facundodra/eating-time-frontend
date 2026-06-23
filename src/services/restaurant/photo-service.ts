@@ -40,6 +40,10 @@ export async function getRestaurantCoverPhotoUrl(
       response.data.coverPhotoUrl,
     );
   } catch (error) {
+    if (axios.isAxiosError(error) && error.response?.status === 404) {
+      return "";
+    }
+
     throw new Error(
       getApiErrorMessage(error, "No se pudo cargar la foto de portada."),
     );
