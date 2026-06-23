@@ -1,5 +1,6 @@
 "use client";
 
+import useMediaQuery from "@mui/material/useMediaQuery";
 import { BarChart } from "@mui/x-charts/BarChart";
 import { LineChart } from "@mui/x-charts/LineChart";
 import { PieChart } from "@mui/x-charts/PieChart";
@@ -39,36 +40,139 @@ const ORDER_STATUS_COLORS: Record<string, string> = {
   REJECTED_OR_CANCELLED: "#ef4444",
 };
 
+const chartHeight = 340;
+const mobileChartHeight = 300;
+const horizontalBarRowHeight = 44;
+const mobileHorizontalBarRowHeight = 40;
+const compactLabelMaxLength = 22;
+const mobileLabelMaxLength = 14;
+
 const chartSx = {
   "& .MuiChartsAxis-tickLabel": {
+    fill: "rgb(100 116 139)",
     fontSize: 11,
+    fontWeight: 600,
   },
   "& .MuiChartsLegend-label": {
+    fill: "rgb(71 85 105)",
+    fontSize: 12,
+    fontWeight: 700,
+  },
+  "& .MuiChartsAxis-line, & .MuiChartsAxis-tick": {
+    stroke: "rgb(203 213 225)",
+  },
+  "& .MuiChartsGrid-line": {
+    stroke: "rgb(226 232 240)",
+    strokeDasharray: "4 4",
+  },
+  "& .MuiChartsTooltip-root": {
     fontSize: 12,
   },
 };
+
+const bottomLegend = {
+  legend: {
+    direction: "horizontal" as const,
+    position: { vertical: "bottom" as const, horizontal: "center" as const },
+  },
+};
+
+const rightLegend = {
+  legend: {
+    direction: "vertical" as const,
+    position: { vertical: "middle" as const, horizontal: "end" as const },
+  },
+};
+
+const mobileBottomLegend = {
+  legend: {
+    direction: "horizontal" as const,
+    position: { vertical: "bottom" as const, horizontal: "center" as const },
+  },
+};
+
+function useMobileCharts() {
+  return useMediaQuery("(max-width: 767px)", { noSsr: true });
+}
+
+function compactLabel(label: string, maxLength = compactLabelMaxLength) {
+  return label.length > maxLength ? `${label.slice(0, maxLength - 3)}...` : label;
+}
+
+function buildTickInterval(length: number, maxVisibleTicks = 10) {
+  if (length <= maxVisibleTicks) return undefined;
+
+  const step = Math.ceil(length / maxVisibleTicks);
+  return (_value: unknown, index: number) =>
+    index === 0 || index === length - 1 || index % step === 0;
+}
+
+function formatCompactNumber(value: unknown) {
+  const numericValue = Number(value ?? 0);
+
+  return new Intl.NumberFormat("es-UY", {
+    maximumFractionDigits: 1,
+    notation: "compact",
+  }).format(Number.isFinite(numericValue) ? numericValue : 0);
+}
+
+function formatCompactCurrency(value: unknown) {
+  const numericValue = Number(value ?? 0);
+
+  return new Intl.NumberFormat("es-UY", {
+    currency: "UYU",
+    maximumFractionDigits: 1,
+    notation: "compact",
+    style: "currency",
+  }).format(Number.isFinite(numericValue) ? numericValue : 0);
+}
 
 type TopSellingDishesChartProps = {
   report: TopSellingDishesReport;
 };
 
 export function TopSellingDishesChart({ report }: TopSellingDishesChartProps) {
+  const isMobile = useMobileCharts();
   const labels = report.items.map((item) => item.name);
   const quantities = report.items.map((item) => item.quantitySold);
 
   return (
     <BarChart
       layout="horizontal"
-      height={Math.max(280, report.items.length * 42)}
-      yAxis={[{ scaleType: "band", data: labels }]}
+      height={Math.max(
+        isMobile ? 260 : 300,
+        report.items.length *
+          (isMobile ? mobileHorizontalBarRowHeight : horizontalBarRowHeight),
+      )}
+      borderRadius={6}
+      grid={{ vertical: true }}
+      hideLegend
+      yAxis={[
+        {
+          data: labels,
+          scaleType: "band",
+          tickLabelPlacement: "middle",
+          valueFormatter: (value) =>
+            compactLabel(String(value), isMobile ? mobileLabelMaxLength : compactLabelMaxLength),
+          width: isMobile ? 96 : 144,
+        },
+      ]}
+      xAxis={[{ valueFormatter: (value: unknown) => formatCompactNumber(value) }]}
       series={[
         {
           data: quantities,
           label: "Cantidad vendida",
           color: SERIES_COLORS[0],
+          valueFormatter: (value) =>
+            `${value ?? 0} ${(value ?? 0) === 1 ? "venta" : "ventas"}`,
         },
       ]}
-      margin={{ left: 120, right: 24, top: 24, bottom: 24 }}
+      margin={{
+        left: isMobile ? 4 : 12,
+        right: isMobile ? 12 : 28,
+        top: 16,
+        bottom: isMobile ? 28 : 32,
+      }}
       sx={chartSx}
     />
   );
@@ -81,6 +185,7 @@ type DishSalesEvolutionChartProps = {
 export function DishSalesEvolutionChart({
   report,
 }: DishSalesEvolutionChartProps) {
+  const isMobile = useMobileCharts();
   const periods = getUniqueSortedPeriods(
     report.series.flatMap((series) => series.points.map((point) => point.period)),
   );
@@ -90,8 +195,23 @@ export function DishSalesEvolutionChart({
 
   return (
     <LineChart
-      height={340}
-      xAxis={[{ scaleType: "point", data: xLabels }]}
+      height={isMobile ? mobileChartHeight : chartHeight}
+      grid={{ horizontal: true, vertical: true }}
+      slotProps={bottomLegend}
+      xAxis={[
+        {
+          data: xLabels,
+          height: "auto",
+          scaleType: "point",
+          tickLabelInterval: buildTickInterval(xLabels.length, isMobile ? 5 : 10),
+        },
+      ]}
+      yAxis={[
+        {
+          valueFormatter: (value: unknown) => formatCompactNumber(value),
+          width: isMobile ? 36 : 48,
+        },
+      ]}
       series={report.series.map((series, index) => ({
         data: periods.map((period) => {
           const point = series.points.find((entry) => entry.period === period);
@@ -101,8 +221,15 @@ export function DishSalesEvolutionChart({
         color: SERIES_COLORS[index % SERIES_COLORS.length],
         curve: "linear",
         showMark: periods.length <= 20,
+        valueFormatter: (value) =>
+          `${value ?? 0} ${(value ?? 0) === 1 ? "venta" : "ventas"}`,
       }))}
-      margin={{ left: 56, right: 24, top: 24, bottom: 56 }}
+      margin={{
+        left: isMobile ? 4 : 12,
+        right: isMobile ? 12 : 28,
+        top: 20,
+        bottom: isMobile ? 88 : 72,
+      }}
       sx={chartSx}
     />
   );
@@ -113,6 +240,7 @@ type RevenueChartProps = {
 };
 
 export function RevenueChart({ report }: RevenueChartProps) {
+  const isMobile = useMobileCharts();
   const xLabels = report.points.map((point) =>
     formatPeriodLabel(point.period, report.granularity),
   );
@@ -127,8 +255,23 @@ export function RevenueChart({ report }: RevenueChartProps) {
         </span>
       </p>
       <LineChart
-        height={340}
-        xAxis={[{ scaleType: "point", data: xLabels }]}
+        height={isMobile ? mobileChartHeight : chartHeight}
+        grid={{ horizontal: true, vertical: true }}
+        hideLegend
+        xAxis={[
+          {
+            data: xLabels,
+            height: "auto",
+            scaleType: "point",
+            tickLabelInterval: buildTickInterval(xLabels.length, isMobile ? 5 : 10),
+          },
+        ]}
+        yAxis={[
+          {
+            valueFormatter: (value: unknown) => formatCompactCurrency(value),
+            width: isMobile ? 58 : 72,
+          },
+        ]}
         series={[
           {
             data: revenues,
@@ -137,9 +280,15 @@ export function RevenueChart({ report }: RevenueChartProps) {
             area: true,
             curve: "linear",
             showMark: report.points.length <= 20,
+            valueFormatter: (value) => formatCurrency(value ?? 0),
           },
         ]}
-        margin={{ left: 72, right: 24, top: 24, bottom: 56 }}
+        margin={{
+          left: isMobile ? 4 : 12,
+          right: isMobile ? 12 : 28,
+          top: 20,
+          bottom: isMobile ? 56 : 64,
+        }}
         sx={chartSx}
       />
     </div>
@@ -151,6 +300,7 @@ type OrderStatusChartProps = {
 };
 
 export function OrderStatusChart({ report }: OrderStatusChartProps) {
+  const isMobile = useMobileCharts();
   const pieData = buildWorkbenchAlignedOrderStatusSlices(report.slices).map(
     (slice) => ({
       id: slice.id,
@@ -169,17 +319,31 @@ export function OrderStatusChart({ report }: OrderStatusChartProps) {
         </span>
       </p>
       <PieChart
-        height={320}
+        height={isMobile ? 360 : 340}
+        slotProps={isMobile ? mobileBottomLegend : rightLegend}
         series={[
           {
+            arcLabel: (item) =>
+              report.total > 0 && item.value / report.total >= 0.08
+                ? `${Math.round((item.value / report.total) * 100)}%`
+                : "",
+            arcLabelMinAngle: 18,
+            cornerRadius: 5,
             data: pieData,
-            innerRadius: 40,
-            paddingAngle: 2,
-            cornerRadius: 4,
+            faded: { additionalRadius: -8, color: "rgb(203 213 225)" },
             highlightScope: { fade: "global", highlight: "item" },
+            innerRadius: isMobile ? 54 : 72,
+            outerRadius: isMobile ? 92 : 122,
+            paddingAngle: 2,
+            valueFormatter: (item) =>
+              `${item.value} ${item.value === 1 ? "pedido" : "pedidos"}`,
           },
         ]}
-        margin={{ top: 24, bottom: 24, left: 24, right: 120 }}
+        margin={
+          isMobile
+            ? { top: 8, bottom: 96, left: 8, right: 8 }
+            : { top: 12, bottom: 12, left: 24, right: 164 }
+        }
         sx={chartSx}
       />
     </div>
@@ -191,6 +355,7 @@ type PromotionsChartProps = {
 };
 
 export function PromotionsChart({ report }: PromotionsChartProps) {
+  const isMobile = useMobileCharts();
   const labels = report.items.map((item) => item.label);
   const uses = report.items.map((item) => item.uses);
   const maxLabelLength = labels.reduce(
@@ -202,21 +367,44 @@ export function PromotionsChart({ report }: PromotionsChartProps) {
     <div className="space-y-4">
       <BarChart
         layout="horizontal"
-        height={Math.max(220, report.items.length * 52)}
-        yAxis={[{ scaleType: "band", data: labels }]}
-        xAxis={[{ tickMinStep: 1 }]}
+        height={Math.max(
+          isMobile ? 240 : 260,
+          report.items.length * (isMobile ? 42 : 48),
+        )}
+        borderRadius={6}
+        grid={{ vertical: true }}
+        hideLegend
+        yAxis={[
+          {
+            data: labels,
+            scaleType: "band",
+            valueFormatter: (value) =>
+              compactLabel(String(value), isMobile ? 16 : 28),
+            width: isMobile
+              ? 104
+              : Math.min(220, Math.max(144, maxLabelLength * 6)),
+          },
+        ]}
+        xAxis={[
+          {
+            tickMinStep: 1,
+            valueFormatter: (value: unknown) => formatCompactNumber(value),
+          },
+        ]}
         series={[
           {
             data: uses,
             label: "Usos",
             color: SERIES_COLORS[1],
+            valueFormatter: (value) =>
+              `${value ?? 0} ${(value ?? 0) === 1 ? "uso" : "usos"}`,
           },
         ]}
         margin={{
-          left: Math.min(280, Math.max(140, maxLabelLength * 7)),
-          right: 24,
-          top: 24,
-          bottom: 24,
+          left: isMobile ? 4 : 12,
+          right: isMobile ? 12 : 28,
+          top: 12,
+          bottom: isMobile ? 28 : 32,
         }}
         sx={chartSx}
       />
@@ -245,10 +433,14 @@ type PopularityRatingChartProps = {
 };
 
 export function PopularityRatingChart({ report }: PopularityRatingChartProps) {
+  const isMobile = useMobileCharts();
   const labels = report.items.map((item) => item.name);
   const quantities = report.items.map((item) => item.quantitySold);
   const ratings = report.items.map((item) => item.averageRating);
-  const chartHeight = Math.max(220, report.items.length * 36);
+  const popularityChartHeight = Math.max(
+    isMobile ? 220 : 240,
+    report.items.length * (isMobile ? 36 : 40),
+  );
 
   return (
     <div className="space-y-6">
@@ -265,16 +457,35 @@ export function PopularityRatingChart({ report }: PopularityRatingChartProps) {
         </p>
         <BarChart
           layout="horizontal"
-          height={chartHeight}
-          yAxis={[{ scaleType: "band", data: labels }]}
+          height={popularityChartHeight}
+          borderRadius={6}
+          grid={{ vertical: true }}
+          hideLegend
+          yAxis={[
+            {
+              data: labels,
+              scaleType: "band",
+              valueFormatter: (value) =>
+                compactLabel(String(value), isMobile ? mobileLabelMaxLength : compactLabelMaxLength),
+              width: isMobile ? 96 : 144,
+            },
+          ]}
+          xAxis={[{ valueFormatter: (value: unknown) => formatCompactNumber(value) }]}
           series={[
             {
               data: quantities,
               label: "Ventas",
               color: SERIES_COLORS[0],
+              valueFormatter: (value) =>
+                `${value ?? 0} ${(value ?? 0) === 1 ? "venta" : "ventas"}`,
             },
           ]}
-          margin={{ left: 120, right: 24, top: 8, bottom: 8 }}
+          margin={{
+            left: isMobile ? 4 : 12,
+            right: isMobile ? 12 : 28,
+            top: 8,
+            bottom: 28,
+          }}
           sx={chartSx}
         />
       </div>
@@ -285,25 +496,38 @@ export function PopularityRatingChart({ report }: PopularityRatingChartProps) {
         </p>
         <BarChart
           layout="horizontal"
-          height={chartHeight}
-          yAxis={[{ scaleType: "band", data: labels }]}
-          xAxis={[{ min: 0, max: 5 }]}
+          height={popularityChartHeight}
+          borderRadius={6}
+          grid={{ vertical: true }}
+          hideLegend
+          yAxis={[
+            {
+              data: labels,
+              scaleType: "band",
+              valueFormatter: (value) =>
+                compactLabel(String(value), isMobile ? mobileLabelMaxLength : compactLabelMaxLength),
+              width: isMobile ? 96 : 144,
+            },
+          ]}
+          xAxis={[{ max: 5, min: 0, tickNumber: 6 }]}
           series={[
             {
               data: ratings,
               label: "Valoración",
               color: SERIES_COLORS[2],
+              valueFormatter: (value) => `${(value ?? 0).toFixed(2)} / 5`,
             },
           ]}
-          margin={{ left: 120, right: 24, top: 8, bottom: 8 }}
+          margin={{
+            left: isMobile ? 4 : 12,
+            right: isMobile ? 12 : 28,
+            top: 8,
+            bottom: 28,
+          }}
           sx={chartSx}
         />
       </div>
 
-      <p className="text-xs text-slate-400 dark:text-slate-500">
-        Compará platos muy vendidos con baja valoración o platos bien valorados
-        pero poco pedidos.
-      </p>
     </div>
   );
 }

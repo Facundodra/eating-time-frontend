@@ -25,7 +25,7 @@ export default function ChartPanel({
 }: ChartPanelProps) {
   return (
     <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <div className="border-b border-gray-100 px-5 py-5 dark:border-slate-800">
+      <div className="border-b border-gray-100 px-4 py-4 sm:px-5 sm:py-5 dark:border-slate-800">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
           <div>
             <h2 className="text-base font-extrabold text-slate-950 dark:text-white">
@@ -39,7 +39,7 @@ export default function ChartPanel({
         </div>
       </div>
 
-      <div className="p-5">
+      <div className="p-4 sm:p-5">
         {isLoading ? (
           <div className="py-10">
             <LoadingIndicator label="Cargando gráfico..." />
