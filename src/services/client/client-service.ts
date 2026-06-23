@@ -398,10 +398,8 @@ async function getDishesForCategoryRelations(): Promise<ClientDish[]> {
 }
 
 export async function getClientDishCategorySummaries(): Promise<ClientDishCategorySummary[]> {
-    const [categories, dishes] = await Promise.all([
-        getClientDishCategories(),
-        getDishesForCategoryRelations(),
-    ]);
+    const categories = await getClientDishCategories();
+    const dishes = await getDishesForCategoryRelations().catch(() => []);
     const dishCountByCategoryId = new Map<number, number>();
     const dishImageByCategoryId = new Map<number, string>();
 
@@ -417,11 +415,18 @@ export async function getClientDishCategorySummaries(): Promise<ClientDishCatego
         });
     });
 
-    return categories.map((category) => ({
-        ...category,
-        imageUrl: category.imageUrl ?? dishImageByCategoryId.get(category.id) ?? null,
-        dishCount: dishCountByCategoryId.get(category.id) ?? 0,
-    }));
+    return categories
+        .map((category) => ({
+            ...category,
+            imageUrl: category.imageUrl ?? dishImageByCategoryId.get(category.id) ?? null,
+            dishCount: dishCountByCategoryId.get(category.id) ?? 0,
+        }))
+        .sort((left, right) => {
+            const countComparison = right.dishCount - left.dishCount;
+            return countComparison !== 0
+                ? countComparison
+                : left.name.localeCompare(right.name, "es");
+        });
 }
 
 export async function getTopClientDishCategorySummaries(
@@ -429,14 +434,7 @@ export async function getTopClientDishCategorySummaries(
 ): Promise<ClientDishCategorySummary[]> {
     const categories = await getClientDishCategorySummaries();
 
-    return [...categories]
-        .sort((left, right) => {
-            const countComparison = right.dishCount - left.dishCount;
-            return countComparison !== 0
-                ? countComparison
-                : left.name.localeCompare(right.name, "es");
-        })
-        .slice(0, limit);
+    return categories.slice(0, limit);
 }
 
 export async function getDish(id: string): Promise<ClientDish> {

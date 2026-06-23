@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
@@ -405,7 +405,7 @@ export default function RestaurantCartPage({
   const voucherExceedsOrder =
     activeVoucher?.amount != null && activeVoucher.amount > subtotalAfterCoupon;
 
-  async function loadVoucherPanels(cartData: Cart) {
+  const loadVoucherPanels = useCallback(async (cartData: Cart) => {
     setLoadingVouchers(true);
     setVoucherError(null);
 
@@ -433,7 +433,7 @@ export default function RestaurantCartPage({
     } finally {
       setLoadingVouchers(false);
     }
-  }
+  }, [restaurantId]);
 
   useEffect(() => {
     async function load() {
@@ -464,7 +464,16 @@ export default function RestaurantCartPage({
       setVoucherError(null);
       setCouponError(null);
     }
-  }, [loading, cart?.id, cart?.voucherId, cart?.cuponId, activeItems.length, restaurantId]);
+  }, [
+    loading,
+    cart,
+    cart?.id,
+    cart?.voucherId,
+    cart?.cuponId,
+    activeItems.length,
+    restaurantId,
+    loadVoucherPanels,
+  ]);
 
   async function handleUpdateItem(platoId: number, delta: number) {
     if (cartUpdateInFlight.current) return;

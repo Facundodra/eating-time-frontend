@@ -3,7 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MinusIcon, PlusIcon, TagIcon } from "@heroicons/react/24/outline";
+import {
+  InformationCircleIcon,
+  MinusIcon,
+  PlusIcon,
+  TagIcon,
+} from "@heroicons/react/24/outline";
 
 import { getDishes, getDiscountedDishIds, getDishDiscount, updateCartItem, type DishFilter } from "@/services/client/client-service";
 import type { Cart, ClientDish, Discount } from "@/lib/client/types";
@@ -291,11 +296,19 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                             -{discount.porcentaje}%
                           </span>
                         )}
+                        <span
+                          title="Ver descripcion"
+                          className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 transition dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-700"
+                        >
+                          <InformationCircleIcon className="h-4 w-4" />
+                          <span className="sr-only">Ver descripcion</span>
+                        </span>
                         {dish.imageUrl ? (
                           <Image
                             alt={dish.name}
                             src={dish.imageUrl}
                             fill
+                            unoptimized
                             sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
                             className="object-cover"
                           />

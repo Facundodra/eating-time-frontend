@@ -207,8 +207,10 @@ export default function RestaurantList() {
                   </div>
                 )}
                 <span
+                  aria-label={restaurant.state ? "Abierto" : "Cerrado"}
+                  title={restaurant.state ? "Abierto" : "Cerrado"}
                   className={clsx(
-                    "local-estado absolute top-3 py-1 px-3 rounded-full right-3 text-sm",
+                    "local-estado absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm",
                     {
                       "bg-green-100 text-green-900 dark:bg-green-500/15 dark:text-green-200": restaurant.state,
                       "bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-300": !restaurant.state,
@@ -216,16 +218,11 @@ export default function RestaurantList() {
                   )}
                 >
                   {restaurant.state ? (
-                    <>
-                      <CheckCircleIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
-                      Abierto
-                    </>
+                    <CheckCircleIcon className="h-4 w-4" />
                   ) : (
-                    <>
-                      <MoonIcon className="inline relative bottom-[2px] w-4 h-4 mr-1" />
-                      Cerrado
-                    </>
+                    <MoonIcon className="h-4 w-4" />
                   )}
+                  {restaurant.state ? "Abierto" : "Cerrado"}
                 </span>
               </div>
 

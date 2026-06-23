@@ -10,6 +10,7 @@ import {
   ArrowLeftIcon,
   BuildingStorefrontIcon,
   CheckCircleIcon,
+  InformationCircleIcon,
   MagnifyingGlassIcon,
   MoonIcon,
   ShoppingBagIcon,
@@ -86,6 +87,14 @@ function formatDishCount(count: number) {
   return `${count} platos`;
 }
 
+function getResultErrorMessage(result: PromiseSettledResult<unknown>) {
+  if (result.status === "fulfilled") return null;
+
+  return result.reason instanceof Error
+    ? result.reason.message
+    : "No se pudo cargar la busqueda.";
+}
+
 function doesDishMatchQuery(
   dish: ClientDish,
   query: string,
@@ -103,14 +112,14 @@ function doesDishMatchQuery(
 
 function SearchCardSkeleton() {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4 xl:grid-cols-5">
       {Array.from({ length: 8 }).map((_, index) => (
         <div
           key={index}
-          className="overflow-hidden rounded-xl border border-gray-200 bg-white animate-pulse dark:border-slate-800 dark:bg-slate-900"
+          className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900"
         >
-          <div className="h-36 bg-gray-100 dark:bg-slate-800" />
-          <div className="space-y-3 p-4">
+          <div className="h-24 bg-gray-100 dark:bg-slate-800 sm:h-28 lg:h-36 xl:h-40" />
+          <div className="space-y-2 p-2.5 sm:p-3 lg:p-4">
             <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
             <div className="h-3 w-1/3 rounded bg-gray-100 dark:bg-slate-800" />
           </div>
@@ -135,14 +144,15 @@ function RestaurantCard({ restaurant }: { restaurant: RestaurantList }) {
   return (
     <Link
       href={`/client/restaurant/${restaurant.id}`}
-      className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+      className="group block overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
     >
-      <div className="relative flex h-36 items-center justify-center bg-gray-50 dark:bg-slate-950">
+      <div className="relative flex h-28 items-center justify-center bg-gray-50 dark:bg-slate-950">
         {restaurant.coverPhotoUrl ? (
           <Image
             alt={restaurant.name}
             src={restaurant.coverPhotoUrl}
             fill
+            unoptimized
             sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
             className="object-cover"
           />
@@ -150,35 +160,33 @@ function RestaurantCard({ restaurant }: { restaurant: RestaurantList }) {
           <BuildingStorefrontIcon className="h-12 w-12 text-gray-300 dark:text-slate-700" />
         )}
         <span
+          aria-label={restaurant.state ? "Abierto" : "Cerrado"}
+          title={restaurant.state ? "Abierto" : "Cerrado"}
           className={clsx(
-            "absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-3 py-1 text-xs font-semibold",
+            "absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm",
             restaurant.state
               ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300"
               : "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400",
           )}
         >
           {restaurant.state ? (
-            <>
-              <CheckCircleIcon className="h-4 w-4" />
-              Abierto
-            </>
+            <CheckCircleIcon className="h-4 w-4" />
           ) : (
-            <>
-              <MoonIcon className="h-4 w-4" />
-              Cerrado
-            </>
+            <MoonIcon className="h-4 w-4" />
           )}
+          {restaurant.state ? "Abierto" : "Cerrado"}
         </span>
       </div>
-      <div className="p-4">
-        <div className="flex items-center gap-3">
-          <div className="relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+      <div className="p-3">
+        <div className="flex items-center gap-2">
+          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
             {restaurant.profilePhotoUrl ? (
               <Image
                 alt={`Perfil de ${restaurant.name}`}
                 src={restaurant.profilePhotoUrl}
                 fill
-                sizes="40px"
+                unoptimized
+                sizes="36px"
                 className="object-cover"
               />
             ) : (
@@ -217,33 +225,43 @@ function DishCard({
   return (
     <Link
       href={`/client/platos/${dish.id}`}
-      className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+      className="group block overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
     >
-      <div className="relative flex h-36 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+      <div className="relative flex h-24 items-center justify-center bg-orange-50 dark:bg-orange-500/10 sm:h-28 lg:h-36 xl:h-40">
         {discount ? (
-          <span className="absolute left-3 top-3 inline-flex items-center gap-1 rounded-full bg-orange-600 px-2.5 py-1 text-xs font-bold text-white shadow-sm">
-            <TagIcon className="h-3.5 w-3.5" />
+          <span className="absolute left-2 top-2 inline-flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-[11px] font-bold text-white shadow-sm sm:left-3 sm:top-3 sm:text-xs lg:px-2.5 lg:py-1">
+            <TagIcon className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
             -{discount.porcentaje}%
           </span>
         ) : null}
+        <span
+          title="Ver descripcion"
+          className="absolute right-2 top-2 z-10 inline-flex h-6 w-6 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 transition group-hover:text-orange-700 dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-700 dark:group-hover:text-orange-300 sm:right-3 sm:top-3 sm:h-7 sm:w-7 lg:h-8 lg:w-8"
+        >
+          <InformationCircleIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+          <span className="sr-only">Ver descripcion</span>
+        </span>
         {dish.imageUrl ? (
-          <img
+          <Image
             alt={dish.name}
             src={dish.imageUrl}
+            fill
+            unoptimized
+            sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
             className="h-full w-full object-cover"
           />
         ) : (
-          <ShoppingBagIcon className="h-12 w-12 text-orange-300 dark:text-orange-500/50" />
+          <ShoppingBagIcon className="h-10 w-10 text-orange-300 dark:text-orange-500/50 sm:h-12 sm:w-12" />
         )}
       </div>
-      <div className="p-4">
-        <h3 className="line-clamp-2 text-sm font-bold text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
+      <div className="p-2.5 sm:p-3 lg:p-4">
+        <h3 className="line-clamp-1 text-xs font-bold text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400 sm:text-sm lg:line-clamp-2 lg:text-base">
           {dish.name}
         </h3>
-        <div className="mt-2 flex items-center gap-2">
+        <div className="mt-1.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 lg:mt-2">
           {discountedPrice != null ? (
             <>
-              <span className="text-sm font-bold text-orange-700 dark:text-orange-400">
+              <span className="text-xs font-bold text-orange-700 dark:text-orange-400 sm:text-sm lg:text-base">
                 {formatPrice(discountedPrice)}
               </span>
               <span className="text-xs text-slate-400 line-through">
@@ -251,17 +269,17 @@ function DishCard({
               </span>
             </>
           ) : (
-            <span className="text-sm font-bold text-orange-700 dark:text-orange-400">
+            <span className="text-xs font-bold text-orange-700 dark:text-orange-400 sm:text-sm lg:text-base">
               {formatPrice(dish.price)}
             </span>
           )}
         </div>
         {categoryNames.length > 0 ? (
-          <div className="mt-3 flex flex-wrap gap-1.5">
-            {categoryNames.slice(0, 2).map((categoryName) => (
+          <div className="mt-2 flex flex-wrap gap-1.5 lg:mt-3">
+            {categoryNames.slice(0, 1).map((categoryName) => (
               <span
                 key={`${dish.id}-${categoryName}`}
-                className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
+                className="rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-medium text-slate-500 dark:bg-slate-800 dark:text-slate-400"
               >
                 {categoryName}
               </span>
@@ -277,26 +295,27 @@ function CategoryCard({ category }: { category: ClientDishCategorySummary }) {
   return (
     <Link
       href={`/client/search?q=${encodeURIComponent(category.name)}&tab=dishes`}
-      className="group block overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+      className="group block text-center"
     >
-      <div className="relative flex h-36 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+      <div className="relative mx-auto flex h-[64px] w-[88px] items-center justify-center overflow-hidden rounded-2xl bg-slate-100 dark:bg-slate-800 sm:h-[72px] sm:w-[96px]">
         {category.imageUrl ? (
           <Image
             alt={category.name}
             src={category.imageUrl}
             fill
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover transition duration-200 group-hover:scale-105"
+            unoptimized
+            sizes="(min-width: 640px) 96px, 88px"
+            className="scale-110 object-cover transition duration-200 group-hover:scale-125"
           />
         ) : (
-          <Squares2X2Icon className="h-12 w-12 text-orange-300 dark:text-orange-500/50" />
+          <Squares2X2Icon className="h-8 w-8 text-orange-300 dark:text-orange-500/50" />
         )}
       </div>
-      <div className="p-4">
-        <h3 className="line-clamp-2 text-sm font-bold text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
+      <div className="mt-2">
+        <h3 className="line-clamp-2 text-xs font-bold leading-snug text-slate-950 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
           {category.name}
         </h3>
-        <p className="mt-2 text-xs font-medium text-slate-500 dark:text-slate-400">
+        <p className="mt-0.5 text-[11px] font-medium text-slate-500 dark:text-slate-400">
           {formatDishCount(category.dishCount)}
         </p>
       </div>
@@ -318,13 +337,26 @@ function CategoryButton({
       type="button"
       onClick={onClick}
       className={clsx(
-        "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
+        "inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-sm font-semibold transition",
         selected
           ? "border-orange-600 bg-orange-600 text-white shadow-sm"
           : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-500 dark:hover:bg-orange-500/10 dark:hover:text-orange-400",
       )}
     >
-      <Squares2X2Icon className="h-4 w-4" />
+      {category.imageUrl ? (
+        <span className="relative h-8 w-8 shrink-0 overflow-hidden rounded-full bg-slate-100 dark:bg-slate-800">
+          <Image
+            alt=""
+            src={category.imageUrl}
+            fill
+            unoptimized
+            sizes="32px"
+            className="object-cover"
+          />
+        </span>
+      ) : (
+        <Squares2X2Icon className="h-4 w-4" />
+      )}
       {category.name}
     </button>
   );
@@ -378,26 +410,42 @@ export default function SearchPage({
       setError(null);
 
       try {
-        const [categories, restaurantResult, dishes, discountedIds] =
-          await Promise.all([
-            getClientDishCategorySummaries(),
-            getRestaurants({
-              nombre: appliedQuery.trim() || undefined,
-              servicio: onlyOpen ? "ACTIVO" : undefined,
-              ordenarPor: "calificacion",
-              direccion: "desc",
-              page: 0,
-              size: RESTAURANT_PAGE_SIZE,
-            }),
-            getDishes({
-              conDescuento: onlyDiscounted ? true : undefined,
-              tamano: DISH_FETCH_SIZE,
-            }),
-            getDiscountedDishIds(),
-          ]);
+        const [
+          categoriesResult,
+          restaurantResult,
+          dishesResult,
+          discountedIdsResult,
+        ] = await Promise.allSettled([
+          getClientDishCategorySummaries(),
+          getRestaurants({
+            nombre: appliedQuery.trim() || undefined,
+            servicio: onlyOpen ? "ACTIVO" : undefined,
+            ordenarPor: "calificacion",
+            direccion: "desc",
+            page: 0,
+            size: RESTAURANT_PAGE_SIZE,
+          }),
+          getDishes({
+            conDescuento: onlyDiscounted ? true : undefined,
+            tamano: DISH_FETCH_SIZE,
+          }),
+          getDiscountedDishIds(),
+        ]);
 
         if (cancelled) return;
 
+        const categories =
+          categoriesResult.status === "fulfilled" ? categoriesResult.value : [];
+        const restaurants =
+          restaurantResult.status === "fulfilled"
+            ? restaurantResult.value.restaurants
+            : [];
+        const dishes =
+          dishesResult.status === "fulfilled" ? dishesResult.value : [];
+        const discountedIds =
+          discountedIdsResult.status === "fulfilled"
+            ? discountedIdsResult.value
+            : new Set<number>();
         const categoriesById = new Map(
           categories.map((category) => [category.id, category.name]),
         );
@@ -428,11 +476,18 @@ export default function SearchPage({
         });
 
         setSearchData({
-          restaurants: restaurantResult.restaurants,
+          restaurants,
           dishes: filteredDishes,
           categories,
           discounts,
         });
+        setError(
+          categoriesResult.status === "rejected" &&
+            restaurantResult.status === "rejected" &&
+            dishesResult.status === "rejected"
+            ? getResultErrorMessage(categoriesResult)
+            : null,
+        );
       } catch (err) {
         if (cancelled) return;
         setSearchData(emptySearchData);
@@ -469,24 +524,54 @@ export default function SearchPage({
       ),
     [normalizedQuery, searchData.categories],
   );
-  const selectedCategory = selectedCategoryId
+  const exactQueryCategory = useMemo(
+    () =>
+      normalizedQuery
+        ? searchData.categories.find(
+            (category) => normalizeSearchText(category.name) === normalizedQuery,
+          ) ?? null
+        : null,
+    [normalizedQuery, searchData.categories],
+  );
+  const selectedCategory = selectedCategoryId != null
     ? categoriesById.get(selectedCategoryId)
     : null;
+  const selectedCategoryName = selectedCategory ?? exactQueryCategory?.name ?? null;
+  const isCategorySearch = selectedCategoryId != null || exactQueryCategory != null;
+  const resultCategories = isCategorySearch ? [] : matchedCategories;
   const totalResults =
     searchData.restaurants.length +
     searchData.dishes.length +
-    matchedCategories.length;
+    resultCategories.length;
   const tabs: Array<{ id: SearchTab; label: string; count: number }> = [
     { id: "all", label: "Todo", count: totalResults },
     { id: "restaurants", label: "Locales", count: searchData.restaurants.length },
     { id: "dishes", label: "Platos", count: searchData.dishes.length },
-    { id: "categories", label: "Categorías", count: matchedCategories.length },
+    { id: "categories", label: "Categorías", count: resultCategories.length },
   ];
+  const visibleTabs = isCategorySearch
+    ? tabs.filter((tab) => tab.id !== "categories")
+    : tabs;
+  const shouldShowRestaurantsSection =
+    activeTab === "restaurants" ||
+    (activeTab === "all" &&
+      (!isCategorySearch || searchData.restaurants.length > 0));
+  const visibleCategories =
+    activeTab === "categories" ? matchedCategories : resultCategories;
+  const shouldShowCategoriesSection =
+    activeTab === "categories" ||
+    (activeTab === "all" && visibleCategories.length > 0);
 
-  function updateUrl(nextQuery: string) {
+  function updateUrl(nextQuery: string, nextTab: SearchTab = activeTab) {
     const params = new URLSearchParams();
     if (nextQuery) params.set("q", nextQuery);
+    if (nextTab !== "all") params.set("tab", nextTab);
     router.push(`/client/search${params.toString() ? `?${params}` : ""}`);
+  }
+
+  function changeTab(tab: SearchTab) {
+    setActiveTab(tab);
+    updateUrl(appliedQuery, tab);
   }
 
   function clearSearch() {
@@ -495,7 +580,25 @@ export default function SearchPage({
     setOnlyOpen(false);
     setOnlyDiscounted(false);
     setActiveTab("all");
-    updateUrl("");
+    updateUrl("", "all");
+  }
+
+  function clearSelectedCategory() {
+    setSelectedCategoryId(null);
+
+    if (exactQueryCategory) {
+      setAppliedQuery("");
+      updateUrl("", activeTab);
+    }
+  }
+
+  function resetCategoriesView() {
+    setAppliedQuery("");
+    setSelectedCategoryId(null);
+    setOnlyOpen(false);
+    setOnlyDiscounted(false);
+    setActiveTab("categories");
+    updateUrl("", "categories");
   }
 
   function selectCategory(categoryId: number) {
@@ -503,116 +606,126 @@ export default function SearchPage({
       current === categoryId ? null : categoryId,
     );
     setActiveTab("dishes");
+    updateUrl(appliedQuery, "dishes");
   }
 
   function backToAllResults() {
     setActiveTab("all");
+    updateUrl(appliedQuery, "all");
   }
 
   return (
     <div className="mx-auto max-w-[1440px] space-y-8">
-      <section className="space-y-4">
-        <button
-          type="button"
-          aria-expanded={filtersPanelOpen}
-          onClick={() => setFiltersPanelOpen((value) => !value)}
-          className="mx-auto flex items-center gap-3 rounded-full px-4 py-1 text-xs font-bold text-slate-500 transition hover:text-orange-700 dark:text-slate-400 dark:hover:text-orange-400 md:hidden"
-        >
-          Filtros de búsqueda
-          <AdjustmentsHorizontalIcon className="h-6 w-6" />
-        </button>
+      {activeTab !== "categories" ? (
+        <section className="space-y-4">
+          <button
+            type="button"
+            aria-expanded={filtersPanelOpen}
+            onClick={() => setFiltersPanelOpen((value) => !value)}
+            className="mx-auto flex items-center gap-3 rounded-full px-4 py-1 text-xs font-bold text-slate-500 transition hover:text-orange-700 dark:text-slate-400 dark:hover:text-orange-400 md:hidden"
+          >
+            Filtros de búsqueda
+            <AdjustmentsHorizontalIcon className="h-6 w-6" />
+          </button>
 
-        <div
-          className={clsx(
-            "overflow-hidden rounded-xl border border-orange-100 bg-orange-50/40 transition-all duration-200 dark:border-slate-800 dark:bg-slate-900/80",
-            filtersPanelOpen
-              ? "max-h-[420px] opacity-100"
-              : "max-h-0 border-transparent opacity-0",
-          )}
-        >
-          <div className="space-y-5 p-4 sm:p-5">
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setOnlyOpen((value) => !value)}
-                className={clsx(
-                  "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
-                  onlyOpen
-                    ? "border-green-600 bg-green-600 text-white shadow-sm"
-                    : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-green-300 hover:bg-green-50 hover:text-green-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-green-500/10",
-                )}
-              >
-                <CheckCircleIcon className="h-4 w-4" />
-                Abiertos
-              </button>
-              <button
-                type="button"
-                onClick={() => setOnlyDiscounted((value) => !value)}
-                className={clsx(
-                  "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
-                  onlyDiscounted
-                    ? "border-orange-600 bg-orange-600 text-white shadow-sm"
-                    : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-orange-500/10",
-                )}
-              >
-                <TagIcon className="h-4 w-4" />
-                Con descuento
-              </button>
-              {selectedCategory ? (
+          <div
+            className={clsx(
+              "overflow-hidden rounded-xl border border-orange-100 bg-orange-50/40 transition-all duration-200 dark:border-slate-800 dark:bg-slate-900/80",
+              filtersPanelOpen
+                ? "max-h-[420px] opacity-100"
+                : "max-h-0 border-transparent opacity-0",
+            )}
+          >
+            <div className="space-y-5 p-4 sm:p-5">
+              <div className="flex flex-wrap items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => setSelectedCategoryId(null)}
-                  className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:border-orange-400 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300"
-                >
-                  {selectedCategory}
-                  <XMarkIcon className="h-4 w-4" />
-                </button>
-              ) : null}
-              {appliedQuery || selectedCategoryId || onlyOpen || onlyDiscounted ? (
-                <button
-                  type="button"
-                  onClick={clearSearch}
-                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                >
-                  <XMarkIcon className="h-4 w-4" />
-                  Limpiar
-                </button>
-              ) : null}
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-1">
-              {tabs.map((tab) => (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => setOnlyOpen((value) => !value)}
                   className={clsx(
-                    "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition",
-                    activeTab === tab.id
-                      ? "border-orange-600 bg-orange-600 text-white shadow-sm"
-                      : "border-gray-200 bg-white text-slate-600 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-orange-500/10",
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
+                    onlyOpen
+                      ? "border-green-600 bg-green-600 text-white shadow-sm"
+                      : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-green-300 hover:bg-green-50 hover:text-green-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-green-500/10",
                   )}
                 >
-                  {tab.label} ({tab.count})
+                  <CheckCircleIcon className="h-4 w-4" />
+                  Abiertos
                 </button>
-              ))}
-            </div>
+                <button
+                  type="button"
+                  onClick={() => setOnlyDiscounted((value) => !value)}
+                  className={clsx(
+                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
+                    onlyDiscounted
+                      ? "border-orange-600 bg-orange-600 text-white shadow-sm"
+                      : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-orange-500/10",
+                  )}
+                >
+                  <TagIcon className="h-4 w-4" />
+                  Con descuento
+                </button>
+                {selectedCategoryName ? (
+                  <button
+                    type="button"
+                    onClick={clearSelectedCategory}
+                    className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:border-orange-400 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300"
+                  >
+                    {selectedCategoryName}
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                ) : null}
+                {appliedQuery ||
+                selectedCategoryId != null ||
+                onlyOpen ||
+                onlyDiscounted ? (
+                  <button
+                    type="button"
+                    onClick={clearSearch}
+                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                    Limpiar
+                  </button>
+                ) : null}
+              </div>
 
-            {matchedCategories.length > 0 ? (
               <div className="flex gap-2 overflow-x-auto pb-1">
-                {matchedCategories.map((category) => (
-                  <CategoryButton
-                    key={category.id}
-                    category={category}
-                    selected={selectedCategoryId === category.id}
-                    onClick={() => selectCategory(category.id)}
-                  />
+                {visibleTabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => changeTab(tab.id)}
+                    className={clsx(
+                      "whitespace-nowrap rounded-full border px-4 py-2 text-sm font-bold transition",
+                      activeTab === tab.id
+                        ? "border-orange-600 bg-orange-600 text-white shadow-sm"
+                        : "border-gray-200 bg-white text-slate-600 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-300 dark:hover:bg-orange-500/10",
+                    )}
+                  >
+                    {tab.label} ({tab.count})
+                  </button>
                 ))}
               </div>
-            ) : null}
+
+              {matchedCategories.length > 0 ? (
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {matchedCategories.map((category) => (
+                    <CategoryButton
+                      key={category.id}
+                      category={category}
+                      selected={
+                        selectedCategoryId === category.id ||
+                        exactQueryCategory?.id === category.id
+                      }
+                      onClick={() => selectCategory(category.id)}
+                    />
+                  ))}
+                </div>
+              ) : null}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      ) : null}
 
       {error ? (
         <EmptyState message={error} />
@@ -622,7 +735,7 @@ export default function SearchPage({
         <EmptyState message="No hay resultados para esta búsqueda." />
       ) : (
         <div className="space-y-10">
-          {activeTab !== "all" ? (
+          {activeTab !== "all" && activeTab !== "categories" ? (
             <button
               type="button"
               onClick={backToAllResults}
@@ -633,16 +746,16 @@ export default function SearchPage({
             </button>
           ) : null}
 
-          {(activeTab === "all" || activeTab === "restaurants") && (
+          {shouldShowRestaurantsSection && (
             <section className="space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-lg font-black text-slate-950 dark:text-white">
                   Locales
                 </h2>
-                {activeTab === "all" && searchData.restaurants.length > 0 ? (
+                {activeTab === "all" && searchData.restaurants.length > 8 ? (
                   <button
                     type="button"
-                    onClick={() => setActiveTab("restaurants")}
+                    onClick={() => changeTab("restaurants")}
                     className="rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-orange-700 shadow-sm transition hover:bg-orange-50 dark:border-orange-500/30 dark:bg-slate-900 dark:text-orange-400 dark:hover:bg-orange-500/10"
                   >
                     Ver todos
@@ -650,7 +763,7 @@ export default function SearchPage({
                 ) : null}
               </div>
               {searchData.restaurants.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
                   {searchData.restaurants
                     .slice(0, activeTab === "all" ? 8 : RESTAURANT_PAGE_SIZE)
                     .map((restaurant) => (
@@ -672,10 +785,10 @@ export default function SearchPage({
                 <h2 className="text-lg font-black text-slate-950 dark:text-white">
                   Platos
                 </h2>
-                {activeTab === "all" && searchData.dishes.length > 0 ? (
+                {activeTab === "all" && searchData.dishes.length > 8 ? (
                   <button
                     type="button"
-                    onClick={() => setActiveTab("dishes")}
+                    onClick={() => changeTab("dishes")}
                     className="rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-bold text-orange-700 shadow-sm transition hover:bg-orange-50 dark:border-orange-500/30 dark:bg-slate-900 dark:text-orange-400 dark:hover:bg-orange-500/10"
                   >
                     Ver todos
@@ -683,7 +796,7 @@ export default function SearchPage({
                 ) : null}
               </div>
               {searchData.dishes.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 lg:grid-cols-4 lg:gap-4 xl:grid-cols-5">
                   {searchData.dishes
                     .slice(0, activeTab === "all" ? 8 : DISH_RESULT_LIMIT)
                     .map((dish) => (
@@ -701,14 +814,39 @@ export default function SearchPage({
             </section>
           )}
 
-          {(activeTab === "all" || activeTab === "categories") && (
-            <section className="space-y-4">
-              <h2 className="text-lg font-black text-slate-950 dark:text-white">
-                Categorías
-              </h2>
-              {matchedCategories.length > 0 ? (
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                  {matchedCategories.map((category) => (
+          {shouldShowCategoriesSection && (
+            <section
+              className={clsx(
+                "space-y-5",
+                activeTab === "categories" && "-mt-2",
+              )}
+            >
+              <div className="flex items-center justify-between gap-3">
+                <h2
+                  className={clsx(
+                    "font-black text-slate-950 dark:text-white",
+                    activeTab === "categories" ? "text-2xl" : "text-lg",
+                  )}
+                >
+                  {activeTab === "categories" ? "Comidas" : "Categorías"}
+                </h2>
+                {activeTab === "categories" &&
+                (appliedQuery ||
+                  selectedCategoryId != null ||
+                  onlyOpen ||
+                  onlyDiscounted) ? (
+                  <button
+                    type="button"
+                    onClick={resetCategoriesView}
+                    className="rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-900 transition hover:bg-orange-100 hover:text-orange-700 dark:bg-slate-800 dark:text-slate-100 dark:hover:bg-orange-500/10 dark:hover:text-orange-300"
+                  >
+                    Restablecer
+                  </button>
+                ) : null}
+              </div>
+              {visibleCategories.length > 0 ? (
+                <div className="grid grid-cols-3 gap-x-3 gap-y-5 min-[420px]:grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10">
+                  {visibleCategories.map((category) => (
                     <CategoryCard
                       key={category.id}
                       category={category}
