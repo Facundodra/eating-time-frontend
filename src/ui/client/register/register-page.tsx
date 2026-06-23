@@ -25,7 +25,7 @@ export default function RegisterPage() {
               className="h-[42px] w-[42px] rounded-xl shadow-sm"
               priority
             />
-            <span className="text-2xl font-extrabold tracking-tight text-slate-950 dark:text-slate-50">
+            <span className="text-2xl client-brand-font font-bold tracking-tight text-slate-950 dark:text-slate-50">
               Eating<span className="text-red-600 dark:text-red-500">Time</span>
             </span>
           </Link>

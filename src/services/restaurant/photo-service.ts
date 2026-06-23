@@ -1,15 +1,13 @@
 import axios from "axios";
 
-import type {
-  RestaurantCoverPhotoInput,
-  RestaurantReferencePhoto,
-} from "@/lib/restaurant/photo/types";
+import type { RestaurantCoverPhotoInput } from "@/lib/restaurant/photo/types";
 import { clientApi as api } from "@/services/shared/api-client";
 
-type RestaurantReferencePhotoApiResponse = {
-  id: number;
-  solicitudId: number;
-  urlFoto: string;
+type RestaurantLocalApiResponse = {
+  urlPortada?: string | null;
+  urlFotoPortada?: string | null;
+  fotoPortadaUrl?: string | null;
+  coverPhotoUrl?: string | null;
 };
 
 function getApiErrorMessage(error: unknown, fallback: string) {
@@ -19,25 +17,31 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   return data?.error ?? data?.message ?? fallback;
 }
 
-export async function getRestaurantReferencePhotos(
+function getFirstStringValue(...values: Array<string | null | undefined>) {
+  return (
+    values
+      .find((value) => typeof value === "string" && value.trim())
+      ?.trim() ?? ""
+  );
+}
+
+export async function getRestaurantCoverPhotoUrl(
   restaurantId: number,
-): Promise<RestaurantReferencePhoto[]> {
+): Promise<string> {
   try {
-    const response = await api.get<RestaurantReferencePhotoApiResponse[]>(
-      `/api/local/${encodeURIComponent(restaurantId)}/fotos-solicitud`,
+    const response = await api.get<RestaurantLocalApiResponse>(
+      `/api/local/${encodeURIComponent(restaurantId)}`,
     );
 
-    return response.data.map((photo) => ({
-      id: photo.id,
-      requestId: photo.solicitudId,
-      url: photo.urlFoto,
-    }));
+    return getFirstStringValue(
+      response.data.urlPortada,
+      response.data.urlFotoPortada,
+      response.data.fotoPortadaUrl,
+      response.data.coverPhotoUrl,
+    );
   } catch (error) {
     throw new Error(
-      getApiErrorMessage(
-        error,
-        "No se pudieron cargar las fotos de referencia del local.",
-      ),
+      getApiErrorMessage(error, "No se pudo cargar la foto de portada."),
     );
   }
 }
@@ -47,12 +51,7 @@ export async function setRestaurantCoverPhoto(
   input: RestaurantCoverPhotoInput,
 ): Promise<void> {
   const body = new FormData();
-
-  if (input.file) {
-    body.append("foto", input.file);
-  } else {
-    body.append("idFoto", String(input.photoId));
-  }
+  body.append("foto", input.file, input.file.name);
 
   try {
     await api.post(
