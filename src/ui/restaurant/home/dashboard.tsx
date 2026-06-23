@@ -6,7 +6,6 @@ import { useAsyncData } from "@/hooks/shared/use-async-data";
 import { getRestaurantDashboardData } from "@/services/restaurant/dashboard-service";
 import { getCurrentSession } from "@/services/shared/auth-service";
 
-import RestaurantCoverPhotoSection from "./cover-photo-section";
 import RestaurantQuickActions from "./quick-actions";
 import RestaurantRecentOrders from "./recent-orders";
 import RestaurantStats from "./stats";
@@ -37,7 +36,6 @@ export default function RestaurantDashboard() {
         </div>
       ) : null}
 
-      <RestaurantCoverPhotoSection />
       <RestaurantStats
         error={data?.statsError}
         isLoading={isLoading}
