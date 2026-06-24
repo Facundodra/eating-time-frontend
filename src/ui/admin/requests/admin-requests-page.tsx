@@ -78,6 +78,7 @@ export default function AdminRequestsPage() {
         onFilterDateChange={setFilterDate}
         sortBy={sortBy}
         onSortByChange={setSortBy}
+        onRefresh={() => void loadRequests()}
       />
 
       {loading ? (

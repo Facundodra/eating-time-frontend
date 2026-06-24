@@ -1,5 +1,5 @@
-import ChangePasswordPage from "@/ui/shared/auth/change-password-page";
+import AdminChangePasswordScreen from "@/ui/admin/change-password/admin-change-password-page";
 
 export default function AdminChangePasswordPage() {
-  return <ChangePasswordPage backHref="/admin/my-data" />;
+  return <AdminChangePasswordScreen />;
 }

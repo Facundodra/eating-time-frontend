@@ -16,7 +16,7 @@ export default function Sidenav({ session }: { session: LoginWebResponse }) {
   return (
     <aside
       className={clsx(
-        "sidenav admin-sidenav sticky top-0 flex h-screen w-[80px] flex-col overflow-hidden border-r border-gray-200 bg-white px-2 py-5 transition-all duration-300 ease-in-out hover:w-[260px] dark:border-slate-800 dark:bg-slate-950",
+        "sidenav admin-sidenav sticky top-0 hidden h-screen w-[80px] flex-col overflow-hidden border-r border-gray-200 bg-white px-2 py-5 transition-all duration-300 ease-in-out hover:w-[260px] lg:flex dark:border-slate-800 dark:bg-slate-950",
         {
           mini: pathname !== "/admin",
         },

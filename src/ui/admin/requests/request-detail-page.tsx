@@ -1,5 +1,6 @@
 "use client";
 
+import { ArrowLeftIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
@@ -86,7 +87,7 @@ export default function RequestDetailPage({ id }: Props) {
       setDetailError(
         err instanceof Error
           ? err.message
-          : "No se pudo cargar la solicitud. Intentalo nuevamente.",
+          : "No se pudo cargar la solicitud. Inténtalo nuevamente.",
       );
     } finally {
       setLoadingRequest(false);
@@ -117,7 +118,7 @@ export default function RequestDetailPage({ id }: Props) {
       setActionError(
         err instanceof Error
           ? err.message
-          : "No se pudo aprobar la solicitud. Intentalo nuevamente.",
+          : "No se pudo aprobar la solicitud. Inténtalo nuevamente.",
       );
       await loadRequest();
     } finally {
@@ -140,7 +141,7 @@ export default function RequestDetailPage({ id }: Props) {
       setActionError(
         err instanceof Error
           ? err.message
-          : "No se pudo rechazar la solicitud. Intentalo nuevamente.",
+          : "No se pudo rechazar la solicitud. Inténtalo nuevamente.",
       );
       await loadRequest();
     } finally {
@@ -196,39 +197,35 @@ export default function RequestDetailPage({ id }: Props) {
     <section className="space-y-5">
       <BackLink />
 
-      <header>
-        <p className="text-sm text-slate-500 dark:text-slate-400">
-          Administracion / Solicitudes / Detalle
-        </p>
-
-        <h1 className="mt-2 text-3xl font-bold text-slate-950 dark:text-white">
-          {request.restaurant}
-        </h1>
-
-        <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
-          {statusDescription}
-        </p>
-      </header>
-
       <div className="grid gap-5 lg:grid-cols-[1fr_300px]">
         <div className="space-y-5">
           <article className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-            <div className="border-b border-gray-100 px-6 py-4 dark:border-slate-800">
-              <h2 className="font-bold text-slate-950 dark:text-white">
-                Informacion general
-              </h2>
+            <div className="flex flex-col gap-3 border-b border-gray-100 px-6 py-4 sm:flex-row sm:items-start sm:justify-between dark:border-slate-800">
+              <div>
+                <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                  {request.restaurant}
+                </h2>
 
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                Datos principales de la solicitud registrada.
-              </p>
+                <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  {statusDescription}
+                </p>
+              </div>
+
+              <span
+                className={`w-fit rounded-full px-3 py-1 text-xs font-bold ${getRequestStatusStyle(
+                  request.status,
+                )}`}
+              >
+                {getRequestStatusLabel(request.status)}
+              </span>
             </div>
 
             <div className="grid gap-6 px-6 py-5 md:grid-cols-2">
               <InfoItem label="Nombre del local" value={request.restaurant} />
               <InfoItem label="Email" value={request.email} />
-              <InfoItem label="Telefono" value={request.phone} />
+              <InfoItem label="Teléfono" value={request.phone} />
               <InfoItem label="Fecha de solicitud" value={request.date} />
-              <InfoItem label="Direccion" value={request.address} />
+              <InfoItem label="Dirección" value={request.address} />
               <InfoItem label="Tipo de comida" value={request.foodType} />
             </div>
           </article>
@@ -236,11 +233,11 @@ export default function RequestDetailPage({ id }: Props) {
           <article className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-100 px-6 py-4 dark:border-slate-800">
               <h2 className="font-bold text-slate-950 dark:text-white">
-                Descripcion del local
+                Descripción del local
               </h2>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Informacion proporcionada por el solicitante.
+                Información proporcionada por el solicitante.
               </p>
             </div>
 
@@ -252,7 +249,7 @@ export default function RequestDetailPage({ id }: Props) {
           <article className="rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-100 px-6 py-4 dark:border-slate-800">
               <h2 className="font-bold text-slate-950 dark:text-white">
-                Imagenes adjuntas
+                Imágenes adjuntas
               </h2>
 
               <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -274,7 +271,7 @@ export default function RequestDetailPage({ id }: Props) {
                 ))
               ) : (
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  Esta solicitud no tiene imagenes adjuntas.
+                  Esta solicitud no tiene imágenes adjuntas.
                 </p>
               )}
             </div>
@@ -282,20 +279,12 @@ export default function RequestDetailPage({ id }: Props) {
         </div>
 
         <aside className="h-fit rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
-          <span
-            className={`rounded-full px-3 py-1 text-xs font-bold ${getRequestStatusStyle(
-              request.status,
-            )}`}
-          >
-            {getRequestStatusLabel(request.status)}
-          </span>
-
-          <h2 className="mt-5 font-bold text-slate-950 dark:text-white">
+          <h2 className="font-bold text-slate-950 dark:text-white">
             Acciones administrativas
           </h2>
 
           <p className="mt-2 text-sm leading-5 text-slate-500 dark:text-slate-400">
-            Revisa la informacion proporcionada por el local antes de aprobar o
+            Revisa la información proporcionada por el local antes de aprobar o
             rechazar la solicitud.
           </p>
 
@@ -346,9 +335,10 @@ function BackLink() {
   return (
     <Link
       href="/admin/requests"
-      className="inline-flex text-sm font-bold text-orange-500 transition hover:text-orange-400"
+      className="inline-flex h-10 items-center gap-2 rounded-xl bg-slate-100 px-4 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
     >
-      {"<- Volver a solicitudes"}
+      <ArrowLeftIcon className="h-4 w-4" />
+      Volver a solicitudes
     </Link>
   );
 }
