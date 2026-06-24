@@ -53,6 +53,15 @@ type SearchData = {
   discounts: Map<number, Discount>;
 };
 
+type RestaurantSort = "calificacion-desc" | "calificacion-asc";
+type RestaurantStatusFilter = "all" | "open" | "closed";
+type DishSort =
+  | ""
+  | "precio-asc"
+  | "precio-desc"
+  | "ventas-desc"
+  | "ventas-asc";
+
 const emptySearchData: SearchData = {
   restaurants: [],
   dishes: [],
@@ -66,6 +75,11 @@ function normalizeSearchText(value: string) {
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
+}
+
+function parseOptionalNumber(value: string) {
+  const parsed = Number(value);
+  return value !== "" && !isNaN(parsed) ? parsed : undefined;
 }
 
 function formatPrice(value: number) {
@@ -370,7 +384,15 @@ export default function SearchPage({
   const [appliedQuery, setAppliedQuery] = useState(initialQuery);
   const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<SearchTab>(initialTab);
-  const [onlyOpen, setOnlyOpen] = useState(false);
+  const [restaurantSort, setRestaurantSort] =
+    useState<RestaurantSort>("calificacion-desc");
+  const [restaurantStatus, setRestaurantStatus] =
+    useState<RestaurantStatusFilter>("all");
+  const [restaurantRatingMin, setRestaurantRatingMin] = useState("");
+  const [restaurantRatingMax, setRestaurantRatingMax] = useState("");
+  const [dishSort, setDishSort] = useState<DishSort>("");
+  const [dishPriceMin, setDishPriceMin] = useState("");
+  const [dishPriceMax, setDishPriceMax] = useState("");
   const [onlyDiscounted, setOnlyDiscounted] = useState(false);
   const [filtersPanelOpen, setFiltersPanelOpen] = useState(true);
   const [searchData, setSearchData] = useState<SearchData>(emptySearchData);
@@ -410,6 +432,18 @@ export default function SearchPage({
       setError(null);
 
       try {
+        const restaurantDirection = restaurantSort.endsWith("asc")
+          ? "asc"
+          : "desc";
+        const restaurantService =
+          restaurantStatus === "open"
+            ? "ACTIVO"
+            : restaurantStatus === "closed"
+              ? "INACTIVO"
+              : undefined;
+        const [dishOrder, dishDirection] = dishSort
+          ? (dishSort.split("-") as ["precio" | "ventas", "asc" | "desc"])
+          : [undefined, undefined];
         const [
           categoriesResult,
           restaurantResult,
@@ -419,14 +453,21 @@ export default function SearchPage({
           getClientDishCategorySummaries(),
           getRestaurants({
             nombre: appliedQuery.trim() || undefined,
-            servicio: onlyOpen ? "ACTIVO" : undefined,
+            servicio: restaurantService,
+            calificacionMin: parseOptionalNumber(restaurantRatingMin),
+            calificacionMax: parseOptionalNumber(restaurantRatingMax),
             ordenarPor: "calificacion",
-            direccion: "desc",
+            direccion: restaurantDirection,
             page: 0,
             size: RESTAURANT_PAGE_SIZE,
           }),
           getDishes({
+            categoriaId: selectedCategoryId ?? undefined,
+            precioMin: parseOptionalNumber(dishPriceMin),
+            precioMax: parseOptionalNumber(dishPriceMax),
             conDescuento: onlyDiscounted ? true : undefined,
+            orden: dishOrder,
+            sentido: dishDirection,
             tamano: DISH_FETCH_SIZE,
           }),
           getDiscountedDishIds(),
@@ -506,7 +547,19 @@ export default function SearchPage({
     return () => {
       cancelled = true;
     };
-  }, [appliedQuery, normalizedQuery, onlyDiscounted, onlyOpen, selectedCategoryId]);
+  }, [
+    appliedQuery,
+    dishPriceMax,
+    dishPriceMin,
+    dishSort,
+    normalizedQuery,
+    onlyDiscounted,
+    restaurantRatingMax,
+    restaurantRatingMin,
+    restaurantSort,
+    restaurantStatus,
+    selectedCategoryId,
+  ]);
 
   const categoriesById = useMemo(
     () =>
@@ -561,6 +614,17 @@ export default function SearchPage({
   const shouldShowCategoriesSection =
     activeTab === "categories" ||
     (activeTab === "all" && visibleCategories.length > 0);
+  const hasActiveFilters =
+    Boolean(appliedQuery) ||
+    selectedCategoryId != null ||
+    restaurantSort !== "calificacion-desc" ||
+    restaurantStatus !== "all" ||
+    restaurantRatingMin !== "" ||
+    restaurantRatingMax !== "" ||
+    dishSort !== "" ||
+    dishPriceMin !== "" ||
+    dishPriceMax !== "" ||
+    onlyDiscounted;
 
   function updateUrl(nextQuery: string, nextTab: SearchTab = activeTab) {
     const params = new URLSearchParams();
@@ -577,7 +641,13 @@ export default function SearchPage({
   function clearSearch() {
     setAppliedQuery("");
     setSelectedCategoryId(null);
-    setOnlyOpen(false);
+    setRestaurantSort("calificacion-desc");
+    setRestaurantStatus("all");
+    setRestaurantRatingMin("");
+    setRestaurantRatingMax("");
+    setDishSort("");
+    setDishPriceMin("");
+    setDishPriceMax("");
     setOnlyDiscounted(false);
     setActiveTab("all");
     updateUrl("", "all");
@@ -595,7 +665,13 @@ export default function SearchPage({
   function resetCategoriesView() {
     setAppliedQuery("");
     setSelectedCategoryId(null);
-    setOnlyOpen(false);
+    setRestaurantSort("calificacion-desc");
+    setRestaurantStatus("all");
+    setRestaurantRatingMin("");
+    setRestaurantRatingMax("");
+    setDishSort("");
+    setDishPriceMin("");
+    setDishPriceMax("");
     setOnlyDiscounted(false);
     setActiveTab("categories");
     updateUrl("", "categories");
@@ -632,62 +708,147 @@ export default function SearchPage({
             className={clsx(
               "overflow-hidden rounded-xl border border-orange-100 bg-orange-50/40 transition-all duration-200 dark:border-slate-800 dark:bg-slate-900/80",
               filtersPanelOpen
-                ? "max-h-[420px] opacity-100"
+                ? "max-h-[760px] opacity-100"
                 : "max-h-0 border-transparent opacity-0",
             )}
           >
             <div className="space-y-5 p-4 sm:p-5">
-              <div className="flex flex-wrap items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setOnlyOpen((value) => !value)}
-                  className={clsx(
-                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
-                    onlyOpen
-                      ? "border-green-600 bg-green-600 text-white shadow-sm"
-                      : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-green-300 hover:bg-green-50 hover:text-green-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-green-500/10",
-                  )}
-                >
-                  <CheckCircleIcon className="h-4 w-4" />
-                  Abiertos
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setOnlyDiscounted((value) => !value)}
-                  className={clsx(
-                    "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
-                    onlyDiscounted
-                      ? "border-orange-600 bg-orange-600 text-white shadow-sm"
-                      : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-orange-500/10",
-                  )}
-                >
-                  <TagIcon className="h-4 w-4" />
-                  Con descuento
-                </button>
-                {selectedCategoryName ? (
-                  <button
-                    type="button"
-                    onClick={clearSelectedCategory}
-                    className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:border-orange-400 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300"
-                  >
-                    {selectedCategoryName}
-                    <XMarkIcon className="h-4 w-4" />
-                  </button>
-                ) : null}
-                {appliedQuery ||
-                selectedCategoryId != null ||
-                onlyOpen ||
-                onlyDiscounted ? (
-                  <button
-                    type="button"
-                    onClick={clearSearch}
-                    className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
-                  >
-                    <XMarkIcon className="h-4 w-4" />
-                    Limpiar
-                  </button>
-                ) : null}
+              <div className="grid gap-4 lg:grid-cols-2">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 dark:text-slate-400">
+                    <BuildingStorefrontIcon className="h-4 w-4" />
+                    Locales
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={restaurantSort}
+                      onChange={(event) =>
+                        setRestaurantSort(event.target.value as RestaurantSort)
+                      }
+                      className="rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-orange-300 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="calificacion-desc">Mejor calificacion</option>
+                      <option value="calificacion-asc">Menor calificacion</option>
+                    </select>
+                    <select
+                      value={restaurantStatus}
+                      onChange={(event) =>
+                        setRestaurantStatus(
+                          event.target.value as RestaurantStatusFilter,
+                        )
+                      }
+                      className="rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-orange-300 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="all">Todos</option>
+                      <option value="open">Abiertos</option>
+                      <option value="closed">Cerrados</option>
+                    </select>
+                    <div className="flex items-center gap-1.5">
+                      <StarIcon className="h-4 w-4 text-orange-500" />
+                      <input
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        value={restaurantRatingMin}
+                        onChange={(event) =>
+                          setRestaurantRatingMin(event.target.value)
+                        }
+                        placeholder="min"
+                        className="w-20 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-orange-300 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                      />
+                      <span className="text-slate-400">-</span>
+                      <input
+                        type="number"
+                        min={0}
+                        max={5}
+                        step={0.1}
+                        value={restaurantRatingMax}
+                        onChange={(event) =>
+                          setRestaurantRatingMax(event.target.value)
+                        }
+                        placeholder="max"
+                        className="w-20 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-orange-300 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-black uppercase text-slate-500 dark:text-slate-400">
+                    <ShoppingBagIcon className="h-4 w-4" />
+                    Platos
+                  </div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={dishSort}
+                      onChange={(event) =>
+                        setDishSort(event.target.value as DishSort)
+                      }
+                      className="rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-orange-300 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                    >
+                      <option value="">Por defecto</option>
+                      <option value="precio-asc">Precio menor</option>
+                      <option value="precio-desc">Precio mayor</option>
+                      <option value="ventas-desc">Mas vendidos</option>
+                      <option value="ventas-asc">Menos vendidos</option>
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setOnlyDiscounted((value) => !value)}
+                      className={clsx(
+                        "inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition",
+                        onlyDiscounted
+                          ? "border-orange-600 bg-orange-600 text-white shadow-sm"
+                          : "border-gray-200 bg-white text-slate-700 shadow-sm hover:border-orange-300 hover:bg-orange-50 hover:text-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200 dark:hover:bg-orange-500/10",
+                      )}
+                    >
+                      <TagIcon className="h-4 w-4" />
+                      Con descuento
+                    </button>
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="number"
+                        min={0}
+                        value={dishPriceMin}
+                        onChange={(event) => setDishPriceMin(event.target.value)}
+                        placeholder="min"
+                        className="w-20 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-orange-300 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                      />
+                      <span className="text-slate-400">-</span>
+                      <input
+                        type="number"
+                        min={0}
+                        value={dishPriceMax}
+                        onChange={(event) => setDishPriceMax(event.target.value)}
+                        placeholder="max"
+                        className="w-20 rounded-full border border-gray-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 shadow-sm transition focus:border-orange-300 focus:outline-none dark:border-slate-800 dark:bg-slate-900 dark:text-slate-200"
+                      />
+                    </div>
+                    {selectedCategoryName ? (
+                      <button
+                        type="button"
+                        onClick={clearSelectedCategory}
+                        className="inline-flex items-center gap-2 rounded-full border border-orange-200 bg-orange-50 px-4 py-2 text-sm font-semibold text-orange-700 shadow-sm transition hover:border-orange-400 dark:border-orange-500/30 dark:bg-orange-500/10 dark:text-orange-300"
+                      >
+                        {selectedCategoryName}
+                        <XMarkIcon className="h-4 w-4" />
+                      </button>
+                    ) : null}
+                  </div>
+                </div>
               </div>
+
+              {hasActiveFilters ? (
+                <button
+                  type="button"
+                  onClick={clearSearch}
+                  className="inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold text-slate-500 transition hover:bg-white hover:text-slate-900 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-white"
+                >
+                  <XMarkIcon className="h-4 w-4" />
+                  Limpiar
+                </button>
+              ) : null}
 
               <div className="flex gap-2 overflow-x-auto pb-1">
                 {visibleTabs.map((tab) => (
@@ -830,11 +991,7 @@ export default function SearchPage({
                 >
                   {activeTab === "categories" ? "Comidas" : "Categorías"}
                 </h2>
-                {activeTab === "categories" &&
-                (appliedQuery ||
-                  selectedCategoryId != null ||
-                  onlyOpen ||
-                  onlyDiscounted) ? (
+                {activeTab === "categories" && hasActiveFilters ? (
                   <button
                     type="button"
                     onClick={resetCategoriesView}

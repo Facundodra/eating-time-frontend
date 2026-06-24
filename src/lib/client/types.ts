@@ -24,6 +24,7 @@ export type ClientDish = {
   name: string;
   description: string;
   price: number;
+  salesCount: number;
   imageUrl: string | null;
   status: DishStatus;
   createdAt: string;

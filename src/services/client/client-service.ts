@@ -184,6 +184,14 @@ interface PlatoDtoFromApi {
     imageUrl?: string | null;
     precio?: number | string;
     price?: number | string;
+    cantidadVentas?: number | string | null;
+    cantidadVendida?: number | string | null;
+    totalVentas?: number | string | null;
+    ventas?: number | string | null;
+    sales?: number | string | null;
+    salesCount?: number | string | null;
+    orderCount?: number | string | null;
+    cantidadPedidos?: number | string | null;
     disponible?: boolean | string | number | null;
     estado?: boolean | string | number | null;
     status?: boolean | string | number | null;
@@ -240,6 +248,16 @@ function mapPlatoToClientDish(plato: PlatoDtoFromApi): ClientDish {
         name: getFirstStringValue(plato.nombre, plato.name) ?? `Plato #${id}`,
         description: getFirstStringValue(plato.descripcion, plato.description) ?? "",
         price: getNumericValue(plato.precio ?? plato.price) ?? 0,
+        salesCount: getNumericValue(
+            plato.cantidadVentas ??
+            plato.cantidadVendida ??
+            plato.totalVentas ??
+            plato.ventas ??
+            plato.sales ??
+            plato.salesCount ??
+            plato.orderCount ??
+            plato.cantidadPedidos,
+        ) ?? 0,
         imageUrl: getFirstStringValue(
             plato.fotoUrl,
             plato.urlFoto,
@@ -271,10 +289,11 @@ function mapCategoriaToClientDishCategory(categoria: CategoriaDtoFromApi): Clien
 
 export type DishFilter = {
     idLocal?: number;
+    categoriaId?: number;
     precioMin?: number;
     precioMax?: number;
     conDescuento?: boolean;
-    orden?: "precio";
+    orden?: "precio" | "ventas";
     sentido?: "asc" | "desc";
     pagina?: number;
     tamano?: number;
@@ -283,6 +302,10 @@ export type DishFilter = {
 function buildDishQuery(filter?: DishFilter) {
     const params = new URLSearchParams();
     if (filter?.idLocal != null) params.set("idLocal", String(filter.idLocal));
+    if (filter?.categoriaId != null) {
+        params.set("categoriaId", String(filter.categoriaId));
+        params.set("idCategoria", String(filter.categoriaId));
+    }
     if (filter?.precioMin != null) params.set("precioMin", String(filter.precioMin));
     if (filter?.precioMax != null) params.set("precioMax", String(filter.precioMax));
     if (filter?.conDescuento) params.set("conDescuento", "true");
@@ -292,6 +315,53 @@ function buildDishQuery(filter?: DishFilter) {
     if (filter?.tamano != null) params.set("tamano", String(filter.tamano));
 
     return params;
+}
+
+function buildCompatibleDishQuery(filter?: DishFilter) {
+    return buildDishQuery({
+        idLocal: filter?.idLocal,
+        precioMin: filter?.precioMin,
+        precioMax: filter?.precioMax,
+        conDescuento: filter?.conDescuento,
+        orden: filter?.orden === "precio" ? "precio" : undefined,
+        sentido: filter?.orden === "precio" ? filter.sentido : undefined,
+        pagina: filter?.pagina,
+        tamano: filter?.tamano,
+    });
+}
+
+function applyDishClientFilters(
+    dishes: ClientDish[],
+    filter?: DishFilter,
+): ClientDish[] {
+    const filteredDishes = dishes.filter((dish) => {
+        if (filter?.idLocal != null && dish.localId !== filter.idLocal) return false;
+        if (
+            filter?.categoriaId != null &&
+            !dish.categories.includes(filter.categoriaId)
+        ) {
+            return false;
+        }
+        if (filter?.precioMin != null && dish.price < filter.precioMin) return false;
+        if (filter?.precioMax != null && dish.price > filter.precioMax) return false;
+
+        return true;
+    });
+
+    if (!filter?.orden) return filteredDishes;
+
+    const direction = filter.sentido === "desc" ? -1 : 1;
+
+    return [...filteredDishes].sort((left, right) => {
+        const leftValue =
+            filter.orden === "ventas" ? left.salesCount : left.price;
+        const rightValue =
+            filter.orden === "ventas" ? right.salesCount : right.price;
+        const comparison = leftValue - rightValue;
+
+        if (comparison !== 0) return comparison * direction;
+        return left.name.localeCompare(right.name, "es");
+    });
 }
 
 async function fetchDishesFromEndpoint(
@@ -313,15 +383,43 @@ function shouldTryRestaurantDishFallback(error: unknown, filter?: DishFilter) {
     return status === 400 || status === 401 || status === 403 || status === 404 || status === 405;
 }
 
+function shouldTryCompatibleDishQuery(error: unknown) {
+    if (!axios.isAxiosError(error)) return false;
+    const status = error.response?.status;
+
+    return status === 400 || status === 404 || status === 405;
+}
+
 export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
     const params = buildDishQuery(filter);
+    const compatibleParams = buildCompatibleDishQuery(filter);
 
     try{
-        return await fetchDishesFromEndpoint("/api/locales/platos", params);
+        const dishes = await fetchDishesFromEndpoint("/api/locales/platos", params);
+        return applyDishClientFilters(dishes, filter);
     } catch (error) {
+        if (
+            shouldTryCompatibleDishQuery(error) &&
+            compatibleParams.toString() !== params.toString()
+        ) {
+            try {
+                const dishes = await fetchDishesFromEndpoint(
+                    "/api/locales/platos",
+                    compatibleParams,
+                );
+                return applyDishClientFilters(dishes, filter);
+            } catch {
+                // Continue with the legacy endpoint fallback below.
+            }
+        }
+
         if (shouldTryRestaurantDishFallback(error, filter)) {
             try {
-                return await fetchDishesFromEndpoint("/api/platos", params);
+                const dishes = await fetchDishesFromEndpoint(
+                    "/api/platos",
+                    compatibleParams,
+                );
+                return applyDishClientFilters(dishes, filter);
             } catch {
                 // Keep the original catalog error because it is the preferred client endpoint.
             }
@@ -547,15 +645,71 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
     };
 }
 
+function normalizeComparableText(value: string) {
+    return value
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+}
 
+function applyRestaurantClientFilters(
+    restaurants: RestaurantList[],
+    filter: RestaurantFilter,
+): RestaurantList[] {
+    const normalizedName = filter.nombre
+        ? normalizeComparableText(filter.nombre)
+        : "";
+    const filteredRestaurants = restaurants.filter((restaurant) => {
+        if (
+            normalizedName &&
+            !normalizeComparableText(restaurant.name).includes(normalizedName)
+        ) {
+            return false;
+        }
+        if (filter.servicio === "ACTIVO" && !restaurant.state) return false;
+        if (filter.servicio === "INACTIVO" && restaurant.state) return false;
+        if (
+            filter.calificacionMin != null &&
+            restaurant.stars < filter.calificacionMin
+        ) {
+            return false;
+        }
+        if (
+            filter.calificacionMax != null &&
+            restaurant.stars > filter.calificacionMax
+        ) {
+            return false;
+        }
+
+        return true;
+    });
+
+    if (!filter.ordenarPor) return filteredRestaurants;
+
+    const direction = filter.direccion === "desc" ? -1 : 1;
+
+    return [...filteredRestaurants].sort((left, right) => {
+        const comparison =
+            filter.ordenarPor === "calificacion"
+                ? left.stars - right.stars
+                : left.name.localeCompare(right.name, "es");
+
+        if (comparison !== 0) return comparison * direction;
+        return left.name.localeCompare(right.name, "es");
+    });
+}
 
 export async function getRestaurants(
     filter: RestaurantFilter = {}
 ): Promise<{ restaurants: RestaurantList[]; totalPages: number }> {
     try {
         const response = await api.get<ApiCollectionResponse<RestaurantDtoFromApi>>(`/api/locales`, { params: filter });
-        const restaurants = getCollectionFromResponse<RestaurantDtoFromApi>(response.data)
-            .map(mapRestaurantDtoApiToRestaurantType);
+        const restaurants = applyRestaurantClientFilters(
+            getCollectionFromResponse<RestaurantDtoFromApi>(response.data)
+                .map(mapRestaurantDtoApiToRestaurantType),
+            filter,
+        );
 
         return {
             restaurants,
