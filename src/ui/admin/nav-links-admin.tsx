@@ -1,8 +1,5 @@
 "use client";
 
-import clsx from "clsx";
-import Link from "next/link";
-import { usePathname } from "next/navigation";
 import {
   BuildingStorefrontIcon,
   HomeIcon,
@@ -10,6 +7,9 @@ import {
   UserIcon,
   UsersIcon,
 } from "@heroicons/react/24/outline";
+import clsx from "clsx";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 
 const mainNavLinks = [
   { name: "Inicio", href: "/admin", icon: HomeIcon },
@@ -26,94 +26,64 @@ const accountNavLinks = [
   { name: "Cambiar contraseña", href: "/admin/change-password", icon: KeyIcon },
 ];
 
+export const adminNavGroups = [
+  { label: "Principal", className: "admin-main", links: mainNavLinks },
+  { label: "Cuenta", className: "admin-account", links: accountNavLinks },
+];
+
 export default function NavLinksAdmin() {
   const pathname = usePathname();
 
   return (
     <div className="admin-menu space-y-1">
-      <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400">
-        Principal
-      </p>
-      <ul className="nav-links admin-main space-y-0">
-        {mainNavLinks.map((link) => {
-          const Icon = link.icon;
-          const isActive = pathname === link.href;
+      {adminNavGroups.map((group) => (
+        <div key={group.label}>
+          <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400 dark:text-slate-500">
+            {group.label}
+          </p>
+          <ul className={clsx("nav-links space-y-0", group.className)}>
+            {group.links.map((link) => {
+              const Icon = link.icon;
+              const isActive = pathname === link.href;
 
-          return (
-            <li
-              className={clsx(
-                "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li",
-                {
-                  "bg-orange-700/10": isActive,
-                },
-              )}
-              key={link.name}
-            >
-              <Link className="flex items-center gap-2" href={link.href}>
-                <Icon
-                  className={clsx("h-[18px] w-[18px] shrink-0", {
-                    "text-orange-700": isActive,
-                    "text-gray-700 dark:text-slate-300": !isActive,
-                  })}
-                />
-                <span
+              return (
+                <li
                   className={clsx(
-                    "relative top-[1px] whitespace-nowrap text-sm transition-all duration-300 group-hover/li:text-orange-700",
+                    "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li dark:hover:bg-orange-500/10",
                     {
-                      "text-orange-700": isActive,
-                      "text-gray-700 dark:text-slate-300": !isActive,
+                      "bg-orange-700/10 dark:bg-orange-500/10": isActive,
                     },
                   )}
+                  key={link.name}
                 >
-                  {link.name}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-
-      <p className="nav-links-name mb-1.5 text-[11px] uppercase text-gray-400">
-        Cuenta
-      </p>
-      <ul className="nav-links admin-account space-y-0">
-        {accountNavLinks.map((link) => {
-          const Icon = link.icon;
-          const isActive = pathname === link.href;
-
-          return (
-            <li
-              className={clsx(
-                "nav-link rounded-xl px-3 py-2.5 transition-all duration-300 hover:bg-orange-700/10 group/li",
-                {
-                  "bg-orange-700/10": isActive,
-                },
-              )}
-              key={link.name}
-            >
-              <Link className="flex items-center gap-2" href={link.href}>
-                <Icon
-                  className={clsx("h-[18px] w-[18px] shrink-0", {
-                    "text-orange-700": isActive,
-                    "text-gray-700 dark:text-slate-300": !isActive,
-                  })}
-                />
-                <span
-                  className={clsx(
-                    "relative top-[1px] whitespace-nowrap text-sm transition-all duration-300 group-hover/li:text-orange-700",
-                    {
-                      "text-orange-700": isActive,
-                      "text-gray-700 dark:text-slate-300": !isActive,
-                    },
-                  )}
-                >
-                  {link.name}
-                </span>
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
+                  <Link className="flex items-center gap-2" href={link.href}>
+                    <Icon
+                      className={clsx(
+                        "h-[18px] w-[18px] shrink-0 transition-all duration-300",
+                        {
+                          "text-orange-700 dark:text-orange-400": isActive,
+                          "text-gray-700 group-hover/li:text-orange-700 dark:text-slate-300 dark:group-hover/li:text-orange-300": !isActive,
+                        },
+                      )}
+                    />
+                    <span
+                      className={clsx(
+                        "relative top-[1px] overflow-hidden whitespace-nowrap text-sm transition-all duration-300 group-hover/li:text-orange-700 dark:group-hover/li:text-orange-300",
+                        {
+                          "text-orange-700 dark:text-orange-400": isActive,
+                          "text-gray-700 dark:text-slate-200": !isActive,
+                        },
+                      )}
+                    >
+                      {link.name}
+                    </span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      ))}
     </div>
   );
 }
