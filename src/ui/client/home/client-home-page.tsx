@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   BuildingStorefrontIcon,
   CheckCircleIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
+  InformationCircleIcon,
   MoonIcon,
   ShoppingBagIcon,
   Squares2X2Icon,
@@ -18,7 +21,7 @@ import {
   getDishes,
   getDiscountedDishIds,
   getRestaurants,
-  getTopClientDishCategorySummaries,
+  getClientDishCategorySummaries,
 } from "@/services/client/client-service";
 import type {
   ClientDish,
@@ -27,15 +30,18 @@ import type {
   RestaurantList,
 } from "@/lib/client/types";
 
-const HOME_CATEGORY_LIMIT = 8;
+const CATEGORY_SKELETON_COUNT = 8;
+const CATEGORY_SLIDE_STEP = 260;
+const CATEGORY_HOLD_DELAY_MS = 100;
+const CATEGORY_HOLD_SCROLL_SPEED = 760;
 
 function RestaurantCardSkeleton() {
   return (
     <div className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="h-[125px] bg-gray-100 dark:bg-slate-800" />
-      <div className="space-y-3 p-4">
+      <div className="h-[92px] bg-gray-100 dark:bg-slate-800" />
+      <div className="space-y-2 p-2.5">
         <div className="flex items-center gap-2">
-          <div className="h-[45px] w-[45px] shrink-0 rounded-full bg-gray-200 dark:bg-slate-700" />
+          <div className="h-9 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-slate-700" />
           <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
         </div>
         <div className="flex items-center gap-2">
@@ -50,8 +56,8 @@ function RestaurantCardSkeleton() {
 function DishCardSkeleton() {
   return (
     <div className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="h-[150px] bg-gray-100 dark:bg-slate-800" />
-      <div className="space-y-3 p-4">
+      <div className="h-[108px] bg-gray-100 dark:bg-slate-800" />
+      <div className="space-y-2 p-2.5">
         <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
         <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
       </div>
@@ -61,10 +67,12 @@ function DishCardSkeleton() {
 
 function CategoryCardSkeleton() {
   return (
-    <div className="animate-pulse rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <div className="h-10 w-10 rounded-lg bg-gray-100 dark:bg-slate-800" />
-      <div className="mt-4 h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
-      <div className="mt-3 h-3 w-1/3 rounded bg-gray-100 dark:bg-slate-800" />
+    <div className="w-24 shrink-0 snap-start animate-pulse sm:w-28">
+      <div className="h-[72px] rounded-3xl bg-gray-100 dark:bg-slate-800 sm:h-20" />
+      <div className="mt-2 space-y-2">
+        <div className="mx-auto h-4 w-20 rounded bg-gray-200 dark:bg-slate-700" />
+        <div className="mx-auto h-3 w-12 rounded bg-gray-100 dark:bg-slate-800" />
+      </div>
     </div>
   );
 }
@@ -83,6 +91,11 @@ export default function ClientHomePage() {
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingDishes, setLoadingDishes] = useState(true);
+  const categoriesSliderRef = useRef<HTMLDivElement | null>(null);
+  const categoryHoldDelayRef = useRef<number | null>(null);
+  const categoryHoldFrameRef = useRef<number | null>(null);
+  const categoryHoldLastFrameRef = useRef<number | null>(null);
+  const categoryHoldScrolledRef = useRef(false);
 
   useEffect(() => {
     getRestaurants({ ordenarPor: "calificacion", direccion: "desc", size: 8 })
@@ -92,7 +105,7 @@ export default function ClientHomePage() {
   }, []);
 
   useEffect(() => {
-    getTopClientDishCategorySummaries(HOME_CATEGORY_LIMIT)
+    getClientDishCategorySummaries()
       .then(setCategories)
       .catch(() => setCategories([]))
       .finally(() => setLoadingCategories(false));
@@ -136,12 +149,103 @@ export default function ClientHomePage() {
     };
   }, []);
 
+  useEffect(() => {
+    return () => {
+      if (categoryHoldDelayRef.current != null) {
+        window.clearTimeout(categoryHoldDelayRef.current);
+      }
+      if (categoryHoldFrameRef.current != null) {
+        window.cancelAnimationFrame(categoryHoldFrameRef.current);
+      }
+    };
+  }, []);
+
+  function scrollCategories(
+    direction: -1 | 1,
+    behavior: ScrollBehavior = "smooth",
+    distance = CATEGORY_SLIDE_STEP,
+  ) {
+    categoriesSliderRef.current?.scrollBy({
+      left: direction * distance,
+      behavior,
+    });
+  }
+
+  function stopCategoryHoldScroll() {
+    if (categoryHoldDelayRef.current != null) {
+      window.clearTimeout(categoryHoldDelayRef.current);
+      categoryHoldDelayRef.current = null;
+    }
+    if (categoryHoldFrameRef.current != null) {
+      window.cancelAnimationFrame(categoryHoldFrameRef.current);
+      categoryHoldFrameRef.current = null;
+    }
+    categoryHoldLastFrameRef.current = null;
+  }
+
+  function animateCategoryHoldScroll(direction: -1 | 1, timestamp: number) {
+    const slider = categoriesSliderRef.current;
+    if (!slider) {
+      stopCategoryHoldScroll();
+      return;
+    }
+
+    const lastFrame = categoryHoldLastFrameRef.current ?? timestamp;
+    const elapsedSeconds = (timestamp - lastFrame) / 1000;
+    const maxScrollLeft = Math.max(slider.scrollWidth - slider.clientWidth, 0);
+    const nextScrollLeft =
+      slider.scrollLeft + direction * CATEGORY_HOLD_SCROLL_SPEED * elapsedSeconds;
+
+    categoryHoldLastFrameRef.current = timestamp;
+    categoryHoldScrolledRef.current = true;
+    slider.scrollLeft = Math.min(Math.max(nextScrollLeft, 0), maxScrollLeft);
+
+    const reachedStart = direction < 0 && slider.scrollLeft <= 0;
+    const reachedEnd = direction > 0 && slider.scrollLeft >= maxScrollLeft;
+    if (reachedStart || reachedEnd) {
+      stopCategoryHoldScroll();
+      return;
+    }
+
+    categoryHoldFrameRef.current = window.requestAnimationFrame((nextTimestamp) =>
+      animateCategoryHoldScroll(direction, nextTimestamp),
+    );
+  }
+
+  function startCategoryHoldScroll(direction: -1 | 1) {
+    stopCategoryHoldScroll();
+    categoryHoldScrolledRef.current = false;
+    categoryHoldDelayRef.current = window.setTimeout(() => {
+      categoryHoldLastFrameRef.current = null;
+      categoryHoldFrameRef.current = window.requestAnimationFrame((timestamp) =>
+        animateCategoryHoldScroll(direction, timestamp),
+      );
+    }, CATEGORY_HOLD_DELAY_MS);
+  }
+
+  function handleCategoryArrowPressStart(direction: -1 | 1) {
+    startCategoryHoldScroll(direction);
+  }
+
+  function handleCategoryArrowPressEnd() {
+    stopCategoryHoldScroll();
+  }
+
+  function handleCategoryArrowClick(direction: -1 | 1) {
+    if (categoryHoldScrolledRef.current) {
+      categoryHoldScrolledRef.current = false;
+      return;
+    }
+
+    scrollCategories(direction);
+  }
+
   return (
-    <div className="mx-auto max-w-[1440px] space-y-10 px-4 py-6">
-      <section>
+    <div className="mx-auto max-w-[1440px] space-y-7 px-0 py-4 sm:px-4 sm:py-5">
+      <section className="min-w-0">
         <div className="mb-4 flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-            Categorías destacadas
+            Categorías
           </h2>
           <Link
             href="/client/search?tab=categories"
@@ -150,41 +254,82 @@ export default function ClientHomePage() {
             Ver todas
           </Link>
         </div>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-          {loadingCategories
-            ? Array.from({ length: HOME_CATEGORY_LIMIT }).map((_, index) => (
-                <CategoryCardSkeleton key={index} />
-              ))
-            : categories.map((category) => (
-                <Link
-                  key={category.id}
-                  href={`/client/search?q=${encodeURIComponent(category.name)}`}
-                  className="group overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
-                >
-                  <div className="relative flex h-24 items-center justify-center bg-orange-50 dark:bg-orange-500/10">
-                    {category.imageUrl ? (
-                      <Image
-                        alt={category.name}
-                        src={category.imageUrl}
-                        fill
-                        unoptimized
-                        sizes="(min-width: 768px) 25vw, 50vw"
-                        className="object-cover transition duration-200 group-hover:scale-105"
-                      />
-                    ) : (
-                      <Squares2X2Icon className="h-9 w-9 text-orange-300 dark:text-orange-500/60" />
-                    )}
-                  </div>
-                  <div className="p-4">
-                    <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
-                      {category.name}
-                    </span>
-                    <span className="mt-1 block text-xs font-medium text-gray-400 dark:text-slate-500">
-                      {formatDishCount(category.dishCount)}
-                    </span>
-                  </div>
-                </Link>
-              ))}
+        <div className="relative">
+          <button
+            type="button"
+            aria-label="Ver categorias anteriores"
+            onMouseDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              handleCategoryArrowPressStart(-1);
+            }}
+            onMouseUp={handleCategoryArrowPressEnd}
+            onMouseLeave={handleCategoryArrowPressEnd}
+            onTouchStart={() => handleCategoryArrowPressStart(-1)}
+            onTouchEnd={handleCategoryArrowPressEnd}
+            onTouchCancel={handleCategoryArrowPressEnd}
+            onClick={() => handleCategoryArrowClick(-1)}
+            className="absolute left-0 top-10 z-10 hidden h-9 w-9 -translate-y-1/2 select-none items-center justify-center rounded-full border border-slate-700/70 bg-slate-950/80 text-slate-100 shadow-lg transition hover:border-orange-400 hover:text-orange-300 lg:flex"
+          >
+            <ChevronLeftIcon className="h-4 w-4" />
+          </button>
+          <div
+            ref={categoriesSliderRef}
+            className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 lg:px-11"
+          >
+            {loadingCategories
+              ? Array.from({ length: CATEGORY_SKELETON_COUNT }).map(
+                  (_, index) => <CategoryCardSkeleton key={index} />,
+                )
+              : categories.map((category) => (
+                  <Link
+                    key={category.id}
+                    href={`/client/search?q=${encodeURIComponent(category.name)}`}
+                    className="group w-24 shrink-0 snap-start sm:w-28"
+                  >
+                    <div className="relative flex h-[72px] items-center justify-center overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-800 sm:h-20">
+                      {category.imageUrl ? (
+                        <Image
+                          alt={category.name}
+                          src={category.imageUrl}
+                          fill
+                          unoptimized
+                          sizes="(min-width: 640px) 112px, 96px"
+                          className="scale-110 object-cover transition duration-200 group-hover:scale-125"
+                        />
+                      ) : (
+                        <Squares2X2Icon className="h-9 w-9 text-orange-300 dark:text-orange-500/60" />
+                      )}
+                    </div>
+                    <div className="mt-2 min-w-0 text-center">
+                      <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
+                        {category.name}
+                      </span>
+                      <span className="mt-0.5 block text-xs font-medium text-gray-400 dark:text-slate-500">
+                        {formatDishCount(category.dishCount)}
+                      </span>
+                    </div>
+                  </Link>
+                ))}
+          </div>
+          <button
+            type="button"
+            aria-label="Ver mas categorias"
+            onMouseDown={(event) => {
+              if (event.button !== 0) return;
+              event.preventDefault();
+              handleCategoryArrowPressStart(1);
+            }}
+            onMouseUp={handleCategoryArrowPressEnd}
+            onMouseLeave={handleCategoryArrowPressEnd}
+            onTouchStart={() => handleCategoryArrowPressStart(1)}
+            onTouchEnd={handleCategoryArrowPressEnd}
+            onTouchCancel={handleCategoryArrowPressEnd}
+            onClick={() => handleCategoryArrowClick(1)}
+            className="absolute right-0 top-10 z-10 hidden h-9 w-9 -translate-y-1/2 select-none items-center justify-center rounded-full border border-slate-700/70 bg-slate-950/80 text-slate-100 shadow-lg transition hover:border-orange-400 hover:text-orange-300 lg:flex"
+          >
+            <ChevronRightIcon className="h-4 w-4" />
+          </button>
         </div>
       </section>
 
@@ -192,7 +337,7 @@ export default function ClientHomePage() {
         <h2 className="mb-4 text-lg font-bold text-gray-800 dark:text-white">
           Mejores locales
         </h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
           {loadingRestaurants
             ? Array.from({ length: 8 }).map((_, index) => (
                 <RestaurantCardSkeleton key={index} />
@@ -203,14 +348,14 @@ export default function ClientHomePage() {
                   href={`/client/restaurant/${restaurant.id}`}
                   className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
                 >
-                  <div className="relative h-[125px] bg-gray-50 dark:bg-slate-950">
+                  <div className="relative h-[92px] bg-gray-50 dark:bg-slate-950">
                     {restaurant.coverPhotoUrl ? (
                       <Image
                         alt={restaurant.name}
                         src={restaurant.coverPhotoUrl}
                         fill
                         unoptimized
-                        sizes="(min-width: 768px) 25vw, 50vw"
+                        sizes="(min-width: 1536px) 18vw, (min-width: 1280px) 24vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
                         className="object-cover"
                       />
                     ) : (
@@ -219,42 +364,39 @@ export default function ClientHomePage() {
                       </div>
                     )}
                     <span
-                      className={`absolute right-3 top-3 rounded-full px-3 py-1 text-sm ${
+                      aria-label={restaurant.state ? "Abierto" : "Cerrado"}
+                      title={restaurant.state ? "Abierto" : "Cerrado"}
+                      className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm ${
                         restaurant.state
                           ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-300"
                           : "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
                       }`}
                     >
                       {restaurant.state ? (
-                        <>
-                          <CheckCircleIcon className="relative bottom-[2px] mr-1 inline h-4 w-4" />
-                          Abierto
-                        </>
+                        <CheckCircleIcon className="h-4 w-4" />
                       ) : (
-                        <>
-                          <MoonIcon className="relative bottom-[2px] mr-1 inline h-4 w-4" />
-                          Cerrado
-                        </>
+                        <MoonIcon className="h-4 w-4" />
                       )}
+                      {restaurant.state ? "Abierto" : "Cerrado"}
                     </span>
                   </div>
-                  <div className="p-4">
+                  <div className="p-2.5">
                     <div className="flex items-center gap-2">
-                      <div className="relative flex h-[45px] w-[45px] shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
                         {restaurant.profilePhotoUrl ? (
                           <Image
                             alt={`Perfil de ${restaurant.name}`}
                             src={restaurant.profilePhotoUrl}
                             fill
                             unoptimized
-                            sizes="45px"
+                            sizes="36px"
                             className="object-cover"
                           />
                         ) : (
                           restaurant.name.charAt(0).toUpperCase()
                         )}
                       </div>
-                      <span className="text-sm font-bold text-gray-800 dark:text-slate-100">
+                      <span className="truncate text-sm font-bold text-gray-800 dark:text-slate-100">
                         {restaurant.name}
                       </span>
                     </div>
@@ -274,7 +416,7 @@ export default function ClientHomePage() {
         <h2 className="mb-4 text-lg font-bold text-gray-800 dark:text-white">
           Platos destacados
         </h2>
-        <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
           {loadingDishes
             ? Array.from({ length: 8 }).map((_, index) => (
                 <DishCardSkeleton key={index} />
@@ -293,13 +435,20 @@ export default function ClientHomePage() {
                     href={`/client/platos/${dish.id}`}
                     className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
                   >
-                    <div className="relative flex h-[150px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+                    <div className="relative flex h-[108px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
                       {discount ? (
                         <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white shadow">
                           <TagIcon className="h-3 w-3" />
                           -{discount.porcentaje}%
                         </span>
                       ) : null}
+                      <span
+                        title="Ver descripcion"
+                        className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 transition dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-700"
+                      >
+                        <InformationCircleIcon className="h-4 w-4" />
+                        <span className="sr-only">Ver descripcion</span>
+                      </span>
                       {dish.imageUrl ? (
                         <Image
                           alt={dish.name}
@@ -315,8 +464,8 @@ export default function ClientHomePage() {
                         </span>
                       )}
                     </div>
-                    <div className="p-4">
-                      <span className="block font-bold text-gray-800 dark:text-slate-100">
+                    <div className="p-2.5">
+                      <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
                         {dish.name}
                       </span>
                       <div className="mt-1 flex items-center gap-2">

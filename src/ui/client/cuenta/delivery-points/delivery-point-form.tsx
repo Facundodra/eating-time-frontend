@@ -1,11 +1,8 @@
 "use client";
 
-import Link from "next/link";
 import { useState, useTransition } from "react";
 
 import { addDeliveryPoint } from "@/services/client/client-service";
-import DeliveryPointList from "./delivery-point-list";
-
 
 export default function DeliveryPointForm() {
   const [success, setSuccess] = useState(false);

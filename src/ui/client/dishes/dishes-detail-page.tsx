@@ -9,6 +9,7 @@ import {
   TagIcon,
   XMarkIcon,
 } from "@heroicons/react/24/outline";
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
@@ -132,10 +133,13 @@ export default function DishesDetailPage({ id }: { id: string }) {
               </span>
             )}
             {dish.imageUrl ? (
-              <img
+              <Image
                 src={dish.imageUrl}
                 alt={dish.name}
-                className="object-cover w-full h-full"
+                fill
+                unoptimized
+                sizes="(min-width: 768px) 560px, 100vw"
+                className="object-cover"
               />
             ) : (
               <span className="text-7xl font-black text-orange-600">

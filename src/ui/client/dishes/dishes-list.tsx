@@ -3,14 +3,37 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { MinusIcon, PlusIcon, TagIcon } from "@heroicons/react/24/outline";
+import {
+  InformationCircleIcon,
+  MinusIcon,
+  PlusIcon,
+  ShoppingBagIcon,
+  TagIcon,
+} from "@heroicons/react/24/outline";
 
-import { getDishes, getDiscountedDishIds, getDishDiscount, updateCartItem, type DishFilter } from "@/services/client/client-service";
-import type { Cart, ClientDish, Discount } from "@/lib/client/types";
+import {
+  getClientDishCategories,
+  getDishes,
+  getDiscountedDishIds,
+  getDishDiscount,
+  updateCartItem,
+  type DishFilter,
+} from "@/services/client/client-service";
+import type {
+  Cart,
+  ClientDish,
+  ClientDishCategory,
+  Discount,
+} from "@/lib/client/types";
 
 const PAGE_SIZE = 20;
 
-type OrdenValue = "" | "precio-asc" | "precio-desc";
+type OrdenValue =
+  | ""
+  | "precio-asc"
+  | "precio-desc"
+  | "ventas-desc"
+  | "ventas-asc";
 type Filters = Omit<DishFilter, "pagina" | "tamano">;
 
 function DishSkeleton() {
@@ -43,6 +66,8 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({});
+  const [categories, setCategories] = useState<ClientDishCategory[]>([]);
+  const [loadingCategories, setLoadingCategories] = useState(true);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
@@ -61,6 +86,25 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   const [updatingDishId, setUpdatingDishId] = useState<number | null>(null);
   // Mutex síncrono: evita que requests concurrentes al mismo endpoint creen carritos duplicados
   const cartUpdateInFlight = useRef(false);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    getClientDishCategories()
+      .then((data) => {
+        if (!cancelled) setCategories(data);
+      })
+      .catch(() => {
+        if (!cancelled) setCategories([]);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingCategories(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // IDs con descuento activo: se recalculan solo cuando cambia el local, y limpian el cache de detalles
   useEffect(() => {
@@ -140,9 +184,20 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
     if (val === "") {
       updateFilters({ orden: undefined, sentido: undefined });
     } else {
-      const [orden, sentido] = val.split("-") as ["precio", "asc" | "desc"];
+      const [orden, sentido] = val.split("-") as [
+        "precio" | "ventas",
+        "asc" | "desc",
+      ];
       updateFilters({ orden, sentido });
     }
+  }
+
+  function handleCategory(value: string) {
+    const categoryId = Number(value);
+
+    updateFilters({
+      categoriaId: value && !isNaN(categoryId) ? categoryId : undefined,
+    });
   }
 
   function toggleDescuento() {
@@ -212,6 +267,8 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
             <option value="">Por defecto</option>
             <option value="precio-asc">Precio: menor a mayor</option>
             <option value="precio-desc">Precio: mayor a menor</option>
+            <option value="ventas-desc">Mas vendidos</option>
+            <option value="ventas-asc">Menos vendidos</option>
           </select>
         </div>
 
@@ -231,6 +288,25 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
             <TagIcon className="h-3.5 w-3.5" />
             Con descuento
           </button>
+        </div>
+
+        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
+
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-gray-600 dark:text-slate-300">Categoría:</span>
+          <select
+            value={filters.categoriaId ?? ""}
+            onChange={(e) => handleCategory(e.target.value)}
+            disabled={loadingCategories || categories.length === 0}
+            className="max-w-[180px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+          >
+            <option value="">Todas</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
@@ -291,11 +367,19 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                             -{discount.porcentaje}%
                           </span>
                         )}
+                        <span
+                          title="Ver descripcion"
+                          className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 transition dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-700"
+                        >
+                          <InformationCircleIcon className="h-4 w-4" />
+                          <span className="sr-only">Ver descripcion</span>
+                        </span>
                         {dish.imageUrl ? (
                           <Image
                             alt={dish.name}
                             src={dish.imageUrl}
                             fill
+                            unoptimized
                             sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
                             className="object-cover"
                           />
@@ -325,6 +409,12 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
                             </span>
                           )}
                         </div>
+                        {dish.salesCount > 0 ? (
+                          <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
+                            <ShoppingBagIcon className="h-3.5 w-3.5" />
+                            {dish.salesCount} ventas
+                          </div>
+                        ) : null}
                       </div>
                     </Link>
 
