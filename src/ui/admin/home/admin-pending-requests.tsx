@@ -29,7 +29,7 @@ export default function AdminPendingRequests() {
         </div>
 
         <Link
-          className="w-fit rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10"
+          className="w-fit text-sm font-bold text-orange-600 transition hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
           href="/admin/requests"
         >
           Ver todas
@@ -90,7 +90,7 @@ export default function AdminPendingRequests() {
 
                   <td className="px-5 py-4">
                     <Link
-                      className="rounded-xl bg-orange-50 px-4 py-2 text-sm font-bold text-orange-600 transition hover:bg-orange-100 dark:bg-orange-500/10"
+                      className="text-sm font-bold text-orange-600 transition hover:text-orange-700 dark:text-orange-400 dark:hover:text-orange-300"
                       href={`/admin/requests/${encodeURIComponent(
                         request.id.toString(),
                       )}`}
