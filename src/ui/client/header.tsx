@@ -141,7 +141,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
 
       <Form
         action="/client/search"
-        className="flex min-w-0 flex-1 items-center rounded-full border border-transparent bg-slate-100 px-3 py-2 shadow-sm transition focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:focus-within:border-slate-700 md:hidden"
+        className="flex min-w-0 flex-1 items-center rounded-full border border-transparent bg-slate-100 px-3 py-2 shadow-sm transition focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:focus-within:border-slate-700 dark:focus-within:bg-slate-900 md:hidden"
       >
         <input
           name="q"
@@ -163,7 +163,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
       <div className="search hidden min-w-0 flex-1 items-center justify-center px-8 md:flex">
         <Form
           action="/client/search"
-          className="flex w-[min(42vw,520px)] items-center rounded-full border border-transparent bg-slate-100 px-4 py-2 shadow-sm transition hover:bg-white focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:hover:bg-slate-900 dark:focus-within:border-slate-700"
+          className="flex w-[min(42vw,520px)] items-center rounded-full border border-transparent bg-slate-100 px-4 py-2 shadow-sm transition hover:bg-white focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:hover:bg-slate-900 dark:focus-within:border-slate-700 dark:focus-within:bg-slate-900"
         >
           <input
             name="q"

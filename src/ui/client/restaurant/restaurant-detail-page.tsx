@@ -8,7 +8,9 @@ import type { Cart, Restaurant } from "@/lib/client/types";
 import {
   CalendarDaysIcon,
   ChevronLeftIcon,
+  CheckCircleIcon,
   ClockIcon,
+  MoonIcon,
   ShoppingCartIcon,
   StarIcon,
   MapPinIcon,
@@ -308,8 +310,17 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
               </span>
             )}
             <span
-              className={`absolute bottom-4 right-4 rounded-full px-3 py-1.5 text-xs font-black shadow-sm ${statusBadge.className}`}
+              aria-label={statusBadge.label}
+              title={statusBadge.label}
+              className={`absolute bottom-4 right-4 inline-flex min-h-8 items-center justify-center gap-1 rounded-full px-3 py-2 text-xs font-black shadow-sm ${statusBadge.className}`}
             >
+              {statusBadge.label === "Abierto" ? (
+                <CheckCircleIcon className="h-4 w-4" />
+              ) : statusBadge.label === "Cerrado" ? (
+                <MoonIcon className="h-4 w-4" />
+              ) : (
+                null
+              )}
               {statusBadge.label}
             </span>
           </div>
