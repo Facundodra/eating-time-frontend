@@ -1,5 +1,5 @@
-import EditUserPage from "@/ui/shared/auth/edit-user-page";
+import AdminMyDataScreen from "@/ui/admin/my-data/admin-my-data-page";
 
 export default function AdminMyDataPage() {
-  return <EditUserPage backHref="/admin" showPhoto={false} />;
+  return <AdminMyDataScreen />;
 }
