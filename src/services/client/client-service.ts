@@ -27,6 +27,7 @@ import type {
 export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDish, ClientDishCategory, ClientDishCategorySummary, Cart, ClientVoucher, Order, OrderHistoryStatus, OrderRating, OrderRatingValue, OrderRequest, PaymentResponse };
 
 const CATEGORY_RELATION_PAGE_SIZE = 100;
+const RESTAURANT_FETCH_PAGE_SIZE = 100;
 
 type ApiCollectionResponse<T> =
     | T[]
@@ -434,6 +435,42 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
     }
 }
 
+export async function getAllDishes(
+    filter: DishFilter = {},
+    pageSize = CATEGORY_RELATION_PAGE_SIZE,
+): Promise<ClientDish[]> {
+    const safePageSize = Math.max(pageSize, 1);
+    const baseFilter: DishFilter = { ...filter };
+    delete baseFilter.pagina;
+    delete baseFilter.tamano;
+
+    const dishes: ClientDish[] = [];
+    const seenDishIds = new Set<number>();
+    let page = 1;
+
+    while (true) {
+        const pageDishes = await getDishes({
+            ...baseFilter,
+            pagina: page,
+            tamano: safePageSize,
+        });
+        const newDishes = pageDishes.filter((dish) => !seenDishIds.has(dish.id));
+
+        newDishes.forEach((dish) => {
+            seenDishIds.add(dish.id);
+            dishes.push(dish);
+        });
+
+        if (pageDishes.length < safePageSize || newDishes.length === 0) {
+            break;
+        }
+
+        page += 1;
+    }
+
+    return applyDishClientFilters(dishes, baseFilter);
+}
+
 export async function getClientDishCategories(): Promise<ClientDishCategory[]> {
     try {
         const response = await api.get<ApiCollectionResponse<CategoriaDtoFromApi>>("/api/categorias");
@@ -449,50 +486,7 @@ export async function getClientDishCategories(): Promise<ClientDishCategory[]> {
 }
 
 async function getDishesForCategoryRelations(): Promise<ClientDish[]> {
-    const dishes: ClientDish[] = [];
-    const seenDishIds = new Set<number>();
-
-    function addPage(pageDishes: ClientDish[]) {
-        const newDishes = pageDishes.filter((dish) => !seenDishIds.has(dish.id));
-
-        newDishes.forEach((dish) => {
-            seenDishIds.add(dish.id);
-            dishes.push(dish);
-        });
-
-        return newDishes.length;
-    }
-
-    const firstPage = await getDishes({ tamano: CATEGORY_RELATION_PAGE_SIZE });
-    const firstNewDishes = addPage(firstPage);
-
-    if (
-        firstPage.length < CATEGORY_RELATION_PAGE_SIZE ||
-        firstNewDishes === 0
-    ) {
-        return dishes;
-    }
-
-    let page = 2;
-
-    while (true) {
-        const pageDishes = await getDishes({
-            pagina: page,
-            tamano: CATEGORY_RELATION_PAGE_SIZE,
-        });
-        const newDishes = addPage(pageDishes);
-
-        if (
-            pageDishes.length < CATEGORY_RELATION_PAGE_SIZE ||
-            newDishes === 0
-        ) {
-            break;
-        }
-
-        page += 1;
-    }
-
-    return dishes;
+    return getAllDishes({}, CATEGORY_RELATION_PAGE_SIZE);
 }
 
 export async function getClientDishCategorySummaries(): Promise<ClientDishCategorySummary[]> {
@@ -569,7 +563,7 @@ export async function getDishDiscount(dishId: number): Promise<Discount | null> 
 // Devuelve los IDs de los platos con descuento activo, reutilizando el filtro conDescuento ya soportado por /api/locales/platos
 export async function getDiscountedDishIds(idLocal?: number): Promise<Set<number>> {
     try {
-        const dishes = await getDishes({ idLocal, conDescuento: true, tamano: 100 });
+        const dishes = await getAllDishes({ idLocal, conDescuento: true });
         return new Set(dishes.map((dish) => dish.id));
     } catch {
         return new Set<number>();
@@ -723,6 +717,53 @@ export async function getRestaurants(
         }
         throw new Error("No se pudieron cargar los locales.");
     }
+}
+
+export async function getAllRestaurants(
+    filter: RestaurantFilter = {},
+    pageSize = RESTAURANT_FETCH_PAGE_SIZE,
+): Promise<RestaurantList[]> {
+    const safePageSize = Math.max(pageSize, 1);
+    const baseFilter: RestaurantFilter = { ...filter };
+    delete baseFilter.page;
+    delete baseFilter.size;
+
+    const restaurants: RestaurantList[] = [];
+    const seenRestaurantIds = new Set<number>();
+    let page = 0;
+
+    while (true) {
+        const {
+            restaurants: pageRestaurants,
+            totalPages,
+        } = await getRestaurants({
+            ...baseFilter,
+            page,
+            size: safePageSize,
+        });
+        const newRestaurants = pageRestaurants.filter(
+            (restaurant) => !seenRestaurantIds.has(restaurant.id),
+        );
+
+        newRestaurants.forEach((restaurant) => {
+            seenRestaurantIds.add(restaurant.id);
+            restaurants.push(restaurant);
+        });
+
+        const hasNextMetadataPage = page + 1 < totalPages;
+        const maybeHasNextPage = pageRestaurants.length >= safePageSize;
+
+        if (
+            (!hasNextMetadataPage && !maybeHasNextPage) ||
+            newRestaurants.length === 0
+        ) {
+            break;
+        }
+
+        page += 1;
+    }
+
+    return applyRestaurantClientFilters(restaurants, baseFilter);
 }
 
 

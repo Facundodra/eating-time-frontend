@@ -66,6 +66,42 @@
     display: none;
 }
 
+.desktop-slider-scrollbar{
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.desktop-slider-scrollbar::-webkit-scrollbar{
+    height: 0;
+    width: 0;
+}
+
+@media (min-width: 1024px){
+    .desktop-slider-scrollbar{
+        scrollbar-width: thin;
+        scrollbar-color: rgba(234, 88, 12, 0.55) rgba(148, 163, 184, 0.16);
+    }
+
+    .desktop-slider-scrollbar::-webkit-scrollbar{
+        height: 8px;
+        width: 8px;
+    }
+
+    .desktop-slider-scrollbar::-webkit-scrollbar-track{
+        background: rgba(148, 163, 184, 0.16);
+        border-radius: 999px;
+    }
+
+    .desktop-slider-scrollbar::-webkit-scrollbar-thumb{
+        background-color: rgba(234, 88, 12, 0.55);
+        border-radius: 999px;
+    }
+
+    .desktop-slider-scrollbar::-webkit-scrollbar-thumb:hover{
+        background-color: rgba(234, 88, 12, 0.8);
+    }
+}
+
 button, a{
     @apply cursor-pointer;
 }
