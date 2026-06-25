@@ -1,13 +1,11 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
   BuildingStorefrontIcon,
   CheckCircleIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
   InformationCircleIcon,
   MoonIcon,
   ShoppingBagIcon,
@@ -31,9 +29,8 @@ import type {
 } from "@/lib/client/types";
 
 const CATEGORY_SKELETON_COUNT = 8;
-const CATEGORY_SLIDE_STEP = 260;
-const CATEGORY_HOLD_DELAY_MS = 100;
-const CATEGORY_HOLD_SCROLL_SPEED = 760;
+const HOME_SECTION_ITEM_COUNT = 8;
+const HOME_MOBILE_ITEM_COUNT = 4;
 
 function RestaurantCardSkeleton() {
   return (
@@ -83,6 +80,10 @@ function formatDishCount(count: number) {
   return `${count} platos`;
 }
 
+function getHomeCardClassName(index: number) {
+  return index >= HOME_MOBILE_ITEM_COUNT ? "hidden lg:block" : "block";
+}
+
 export default function ClientHomePage() {
   const [restaurants, setRestaurants] = useState<RestaurantList[]>([]);
   const [categories, setCategories] = useState<ClientDishCategorySummary[]>([]);
@@ -91,14 +92,12 @@ export default function ClientHomePage() {
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [loadingDishes, setLoadingDishes] = useState(true);
-  const categoriesSliderRef = useRef<HTMLDivElement | null>(null);
-  const categoryHoldDelayRef = useRef<number | null>(null);
-  const categoryHoldFrameRef = useRef<number | null>(null);
-  const categoryHoldLastFrameRef = useRef<number | null>(null);
-  const categoryHoldScrolledRef = useRef(false);
-
   useEffect(() => {
-    getRestaurants({ ordenarPor: "calificacion", direccion: "desc", size: 8 })
+    getRestaurants({
+      ordenarPor: "calificacion",
+      direccion: "desc",
+      size: HOME_SECTION_ITEM_COUNT,
+    })
       .then(({ restaurants }) => setRestaurants(restaurants))
       .catch(() => setRestaurants([]))
       .finally(() => setLoadingRestaurants(false));
@@ -114,7 +113,14 @@ export default function ClientHomePage() {
   useEffect(() => {
     let cancelled = false;
 
-    Promise.all([getDishes({ tamano: 8 }), getDiscountedDishIds()])
+    Promise.all([
+      getDishes({
+        orden: "ventas",
+        sentido: "desc",
+        tamano: HOME_SECTION_ITEM_COUNT,
+      }),
+      getDiscountedDishIds(),
+    ])
       .then(async ([dishesData, discountedIds]) => {
         if (cancelled) return;
         setDishes(dishesData);
@@ -149,97 +155,6 @@ export default function ClientHomePage() {
     };
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (categoryHoldDelayRef.current != null) {
-        window.clearTimeout(categoryHoldDelayRef.current);
-      }
-      if (categoryHoldFrameRef.current != null) {
-        window.cancelAnimationFrame(categoryHoldFrameRef.current);
-      }
-    };
-  }, []);
-
-  function scrollCategories(
-    direction: -1 | 1,
-    behavior: ScrollBehavior = "smooth",
-    distance = CATEGORY_SLIDE_STEP,
-  ) {
-    categoriesSliderRef.current?.scrollBy({
-      left: direction * distance,
-      behavior,
-    });
-  }
-
-  function stopCategoryHoldScroll() {
-    if (categoryHoldDelayRef.current != null) {
-      window.clearTimeout(categoryHoldDelayRef.current);
-      categoryHoldDelayRef.current = null;
-    }
-    if (categoryHoldFrameRef.current != null) {
-      window.cancelAnimationFrame(categoryHoldFrameRef.current);
-      categoryHoldFrameRef.current = null;
-    }
-    categoryHoldLastFrameRef.current = null;
-  }
-
-  function animateCategoryHoldScroll(direction: -1 | 1, timestamp: number) {
-    const slider = categoriesSliderRef.current;
-    if (!slider) {
-      stopCategoryHoldScroll();
-      return;
-    }
-
-    const lastFrame = categoryHoldLastFrameRef.current ?? timestamp;
-    const elapsedSeconds = (timestamp - lastFrame) / 1000;
-    const maxScrollLeft = Math.max(slider.scrollWidth - slider.clientWidth, 0);
-    const nextScrollLeft =
-      slider.scrollLeft + direction * CATEGORY_HOLD_SCROLL_SPEED * elapsedSeconds;
-
-    categoryHoldLastFrameRef.current = timestamp;
-    categoryHoldScrolledRef.current = true;
-    slider.scrollLeft = Math.min(Math.max(nextScrollLeft, 0), maxScrollLeft);
-
-    const reachedStart = direction < 0 && slider.scrollLeft <= 0;
-    const reachedEnd = direction > 0 && slider.scrollLeft >= maxScrollLeft;
-    if (reachedStart || reachedEnd) {
-      stopCategoryHoldScroll();
-      return;
-    }
-
-    categoryHoldFrameRef.current = window.requestAnimationFrame((nextTimestamp) =>
-      animateCategoryHoldScroll(direction, nextTimestamp),
-    );
-  }
-
-  function startCategoryHoldScroll(direction: -1 | 1) {
-    stopCategoryHoldScroll();
-    categoryHoldScrolledRef.current = false;
-    categoryHoldDelayRef.current = window.setTimeout(() => {
-      categoryHoldLastFrameRef.current = null;
-      categoryHoldFrameRef.current = window.requestAnimationFrame((timestamp) =>
-        animateCategoryHoldScroll(direction, timestamp),
-      );
-    }, CATEGORY_HOLD_DELAY_MS);
-  }
-
-  function handleCategoryArrowPressStart(direction: -1 | 1) {
-    startCategoryHoldScroll(direction);
-  }
-
-  function handleCategoryArrowPressEnd() {
-    stopCategoryHoldScroll();
-  }
-
-  function handleCategoryArrowClick(direction: -1 | 1) {
-    if (categoryHoldScrolledRef.current) {
-      categoryHoldScrolledRef.current = false;
-      return;
-    }
-
-    scrollCategories(direction);
-  }
-
   return (
     <div className="mx-auto max-w-[1440px] space-y-7 px-0 py-4 sm:px-4 sm:py-5">
       <section className="min-w-0">
@@ -254,29 +169,7 @@ export default function ClientHomePage() {
             Ver todas
           </Link>
         </div>
-        <div className="relative">
-          <button
-            type="button"
-            aria-label="Ver categorias anteriores"
-            onMouseDown={(event) => {
-              if (event.button !== 0) return;
-              event.preventDefault();
-              handleCategoryArrowPressStart(-1);
-            }}
-            onMouseUp={handleCategoryArrowPressEnd}
-            onMouseLeave={handleCategoryArrowPressEnd}
-            onTouchStart={() => handleCategoryArrowPressStart(-1)}
-            onTouchEnd={handleCategoryArrowPressEnd}
-            onTouchCancel={handleCategoryArrowPressEnd}
-            onClick={() => handleCategoryArrowClick(-1)}
-            className="absolute left-0 top-10 z-10 hidden h-9 w-9 -translate-y-1/2 select-none items-center justify-center rounded-full border border-slate-700/70 bg-slate-950/80 text-slate-100 shadow-lg transition hover:border-orange-400 hover:text-orange-300 lg:flex"
-          >
-            <ChevronLeftIcon className="h-4 w-4" />
-          </button>
-          <div
-            ref={categoriesSliderRef}
-            className="hide-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto scroll-smooth pb-1 lg:px-11"
-          >
+        <div className="desktop-slider-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 touch-pan-x lg:pb-3">
             {loadingCategories
               ? Array.from({ length: CATEGORY_SKELETON_COUNT }).map(
                   (_, index) => <CategoryCardSkeleton key={index} />,
@@ -285,7 +178,7 @@ export default function ClientHomePage() {
                   <Link
                     key={category.id}
                     href={`/client/search?q=${encodeURIComponent(category.name)}`}
-                    className="group w-24 shrink-0 snap-start sm:w-28"
+                    className="group w-24 shrink-0 snap-center sm:w-28"
                   >
                     <div className="relative flex h-[72px] items-center justify-center overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-800 sm:h-20">
                       {category.imageUrl ? (
@@ -311,117 +204,122 @@ export default function ClientHomePage() {
                     </div>
                   </Link>
                 ))}
-          </div>
-          <button
-            type="button"
-            aria-label="Ver mas categorias"
-            onMouseDown={(event) => {
-              if (event.button !== 0) return;
-              event.preventDefault();
-              handleCategoryArrowPressStart(1);
-            }}
-            onMouseUp={handleCategoryArrowPressEnd}
-            onMouseLeave={handleCategoryArrowPressEnd}
-            onTouchStart={() => handleCategoryArrowPressStart(1)}
-            onTouchEnd={handleCategoryArrowPressEnd}
-            onTouchCancel={handleCategoryArrowPressEnd}
-            onClick={() => handleCategoryArrowClick(1)}
-            className="absolute right-0 top-10 z-10 hidden h-9 w-9 -translate-y-1/2 select-none items-center justify-center rounded-full border border-slate-700/70 bg-slate-950/80 text-slate-100 shadow-lg transition hover:border-orange-400 hover:text-orange-300 lg:flex"
-          >
-            <ChevronRightIcon className="h-4 w-4" />
-          </button>
         </div>
       </section>
 
       <section>
-        <h2 className="mb-4 text-lg font-bold text-gray-800 dark:text-white">
-          Mejores locales
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+            Mejores locales
+          </h2>
+          <Link
+            href="/client/search?tab=restaurants"
+            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
+          >
+            Ver todos
+          </Link>
+        </div>
         <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
           {loadingRestaurants
-            ? Array.from({ length: 8 }).map((_, index) => (
-                <RestaurantCardSkeleton key={index} />
-              ))
-            : restaurants.map((restaurant) => (
+            ? Array.from({ length: HOME_SECTION_ITEM_COUNT }).map(
+                (_, index) => (
+                  <div key={index} className={getHomeCardClassName(index)}>
+                    <RestaurantCardSkeleton />
+                  </div>
+                ),
+              )
+            : restaurants.map((restaurant, index) => (
                 <Link
                   key={restaurant.id}
                   href={`/client/restaurant/${restaurant.id}`}
-                  className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+                  className={`${getHomeCardClassName(index)} overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500`}
                 >
-                  <div className="relative h-[92px] bg-gray-50 dark:bg-slate-950">
-                    {restaurant.coverPhotoUrl ? (
-                      <Image
-                        alt={restaurant.name}
-                        src={restaurant.coverPhotoUrl}
-                        fill
-                        unoptimized
-                        sizes="(min-width: 1536px) 18vw, (min-width: 1280px) 24vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="mx-auto flex h-full w-[120px] items-center justify-center text-gray-300 dark:text-slate-700">
-                        <BuildingStorefrontIcon className="h-12 w-12" />
-                      </div>
-                    )}
-                    <span
-                      aria-label={restaurant.state ? "Abierto" : "Cerrado"}
-                      title={restaurant.state ? "Abierto" : "Cerrado"}
-                      className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm ${
-                        restaurant.state
-                          ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-300"
-                          : "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
-                      }`}
-                    >
-                      {restaurant.state ? (
-                        <CheckCircleIcon className="h-4 w-4" />
+                    <div className="relative h-[92px] bg-gray-50 dark:bg-slate-950">
+                      {restaurant.coverPhotoUrl ? (
+                        <Image
+                          alt={restaurant.name}
+                          src={restaurant.coverPhotoUrl}
+                          fill
+                          unoptimized
+                          sizes="(min-width: 1536px) 18vw, (min-width: 1280px) 24vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                          className="object-cover"
+                        />
                       ) : (
-                        <MoonIcon className="h-4 w-4" />
+                        <div className="mx-auto flex h-full w-[120px] items-center justify-center text-gray-300 dark:text-slate-700">
+                          <BuildingStorefrontIcon className="h-12 w-12" />
+                        </div>
                       )}
-                      {restaurant.state ? "Abierto" : "Cerrado"}
-                    </span>
-                  </div>
-                  <div className="p-2.5">
-                    <div className="flex items-center gap-2">
-                      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
-                        {restaurant.profilePhotoUrl ? (
-                          <Image
-                            alt={`Perfil de ${restaurant.name}`}
-                            src={restaurant.profilePhotoUrl}
-                            fill
-                            unoptimized
-                            sizes="36px"
-                            className="object-cover"
-                          />
+                      <span
+                        aria-label={restaurant.state ? "Abierto" : "Cerrado"}
+                        title={restaurant.state ? "Abierto" : "Cerrado"}
+                        className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm ${
+                          restaurant.state
+                            ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-300"
+                            : "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
+                        }`}
+                      >
+                        {restaurant.state ? (
+                          <CheckCircleIcon className="h-4 w-4" />
                         ) : (
-                          restaurant.name.charAt(0).toUpperCase()
+                          <MoonIcon className="h-4 w-4" />
                         )}
+                        {restaurant.state ? "Abierto" : "Cerrado"}
+                      </span>
+                    </div>
+                    <div className="p-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+                          {restaurant.profilePhotoUrl ? (
+                            <Image
+                              alt={`Perfil de ${restaurant.name}`}
+                              src={restaurant.profilePhotoUrl}
+                              fill
+                              unoptimized
+                              sizes="36px"
+                              className="object-cover"
+                            />
+                          ) : (
+                            restaurant.name.charAt(0).toUpperCase()
+                          )}
+                        </div>
+                        <span className="truncate text-sm font-bold text-gray-800 dark:text-slate-100">
+                          {restaurant.name}
+                        </span>
                       </div>
-                      <span className="truncate text-sm font-bold text-gray-800 dark:text-slate-100">
-                        {restaurant.name}
-                      </span>
+                      <div className="mt-2 flex items-center gap-2">
+                        <StarIcon className="h-4 w-4 text-orange-400" />
+                        <span className="text-xs text-gray-400 dark:text-slate-500">
+                          {restaurant.stars}
+                        </span>
+                      </div>
                     </div>
-                    <div className="mt-2 flex items-center gap-2">
-                      <StarIcon className="h-4 w-4 text-orange-400" />
-                      <span className="text-xs text-gray-400 dark:text-slate-500">
-                        {restaurant.stars}
-                      </span>
-                    </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))}
         </div>
       </section>
 
       <section>
-        <h2 className="mb-4 text-lg font-bold text-gray-800 dark:text-white">
-          Platos destacados
-        </h2>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+            Platos más vendidos
+          </h2>
+          <Link
+            href="/client/search?tab=dishes"
+            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
+          >
+            Ver todos
+          </Link>
+        </div>
         <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
           {loadingDishes
-            ? Array.from({ length: 8 }).map((_, index) => (
-                <DishCardSkeleton key={index} />
-              ))
-            : dishes.map((dish) => {
+            ? Array.from({ length: HOME_SECTION_ITEM_COUNT }).map(
+                (_, index) => (
+                  <div key={index} className={getHomeCardClassName(index)}>
+                    <DishCardSkeleton />
+                  </div>
+                ),
+              )
+            : dishes.map((dish, index) => {
                 const discount = discounts.get(dish.id);
                 const discountedPrice = discount
                   ? Math.round(
@@ -433,7 +331,7 @@ export default function ClientHomePage() {
                   <Link
                     key={dish.id}
                     href={`/client/platos/${dish.id}`}
-                    className="block overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+                    className={`${getHomeCardClassName(index)} overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500`}
                   >
                     <div className="relative flex h-[108px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
                       {discount ? (

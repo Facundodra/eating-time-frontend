@@ -256,13 +256,14 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   return (
     <div className="max-w-[1440px] mx-auto">
       {/* Barra de filtros */}
-      <div className="mb-6 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-xl border-b border-gray-100 bg-white p-3 text-sm text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400">
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-600 dark:text-slate-300">Ordenar:</span>
+      <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl border border-gray-100 bg-white p-2.5 text-sm text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 sm:mb-6 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 sm:border-b sm:p-3">
+        <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
+          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Ordenar:</span>
           <select
+            aria-label="Ordenar platos"
             value={ordenValue}
             onChange={(e) => handleOrden(e.target.value as OrdenValue)}
-            className="rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="w-full min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:w-auto sm:text-sm sm:font-normal"
           >
             <option value="">Por defecto</option>
             <option value="precio-asc">Precio: menor a mayor</option>
@@ -274,12 +275,13 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
 
         <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
 
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-600 dark:text-slate-300">Filtrar:</span>
+        <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
+          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Filtrar:</span>
           <button
             type="button"
+            aria-label="Filtrar platos con descuento"
             onClick={toggleDescuento}
-            className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm font-medium transition-colors ${
+            className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 py-1.5 text-xs font-semibold transition-colors sm:w-auto sm:px-3 sm:py-1 sm:text-sm sm:font-medium ${
               filters.conDescuento
                 ? "border-orange-600 bg-orange-600 text-white"
                 : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/60 dark:hover:text-orange-300"
@@ -292,13 +294,14 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
 
         <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
 
-        <div className="flex items-center gap-2">
-          <span className="font-medium text-gray-600 dark:text-slate-300">Categoría:</span>
+        <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
+          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Categoría:</span>
           <select
+            aria-label="Filtrar platos por categoria"
             value={filters.categoriaId ?? ""}
             onChange={(e) => handleCategory(e.target.value)}
             disabled={loadingCategories || categories.length === 0}
-            className="max-w-[180px] rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="w-full min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:max-w-[180px] sm:text-sm sm:font-normal"
           >
             <option value="">Todas</option>
             {categories.map((category) => (
@@ -311,9 +314,10 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
 
         <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
 
-        <div className="flex items-center gap-1.5">
-          <span className="font-medium text-gray-600 dark:text-slate-300">Precio:</span>
+        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:flex">
+          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Precio:</span>
           <input
+            aria-label="Precio minimo"
             type="number"
             min={0}
             placeholder="mín"
@@ -321,10 +325,11 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
             onChange={(e) => setPrecioMin(e.target.value)}
             onBlur={applyPrecio}
             onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:w-20 sm:text-sm sm:font-normal"
           />
           <span className="text-gray-400 dark:text-slate-500">—</span>
           <input
+            aria-label="Precio maximo"
             type="number"
             min={0}
             placeholder="máx"
@@ -332,7 +337,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
             onChange={(e) => setPrecioMax(e.target.value)}
             onBlur={applyPrecio}
             onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="w-20 rounded-md border border-gray-200 bg-white px-2 py-1 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            className="min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:w-20 sm:text-sm sm:font-normal"
           />
         </div>
       </div>
