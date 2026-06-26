@@ -45,13 +45,13 @@ export default function LoginPage({ reason }: LoginPageProps) {
             desde cualquier dispositivo.
           </p>
 
-          <div className="mt-8 w-full max-w-[520px] overflow-hidden rounded-[20px] shadow-[0_18px_45px_rgba(15,23,42,0.14)] sm:mt-10 lg:rounded-[24px] lg:shadow-[0_26px_70px_rgba(15,23,42,0.16)]">
+          <div className="relative mt-8 h-[120px] w-full max-w-[520px] overflow-hidden rounded-[20px] shadow-[0_18px_45px_rgba(15,23,42,0.14)] sm:mt-10 sm:h-[160px] lg:aspect-[3/2] lg:h-auto lg:rounded-[24px] lg:shadow-[0_26px_70px_rgba(15,23,42,0.16)]">
             <Image
               src={LoginFoodImage}
               alt="Platos servidos sobre una mesa"
-              width={520}
-              height={346}
-              className="h-[120px] w-full object-cover sm:h-[160px] lg:h-auto lg:aspect-[3/2]"
+              fill
+              sizes="(min-width: 1024px) 520px, calc(100vw - 48px)"
+              className="object-cover"
               priority
             />
           </div>

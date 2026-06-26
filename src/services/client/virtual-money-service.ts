@@ -107,6 +107,20 @@ export async function getClientVirtualMoney(): Promise<ClientVirtualMoney> {
   }
 }
 
+export async function getAvailableClientVouchersCount(): Promise<number> {
+  const session = await requireCurrentSession();
+
+  try {
+    const response = await api.get<VoucherApiResponse[]>(
+      `/api/clientes/${session.idTipoUsuario}/vouchers`,
+    );
+
+    return response.data.filter((voucher) => voucher.pedidoId == null).length;
+  } catch {
+    return 0;
+  }
+}
+
 export async function getAvailableClientVouchers(
   restaurantId: number,
 ): Promise<ClientVoucher[]> {

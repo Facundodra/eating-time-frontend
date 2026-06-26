@@ -179,6 +179,20 @@ export async function getClientClaims(
   }
 }
 
+export async function getPendingClientClaimsCount(): Promise<number> {
+  try {
+    const result = await getClientClaims({
+      estado: "PENDIENTE",
+      page: 0,
+      size: 1,
+    });
+
+    return result.totalElements;
+  } catch {
+    return 0;
+  }
+}
+
 export async function getClientClaimRestaurants(): Promise<ClientClaimRestaurant[]> {
   const session = await requireCurrentSession();
 

@@ -136,6 +136,7 @@ export default function ComplaintPage({ pedidoId }: { pedidoId: number }) {
 
     try {
       await submitOrderClaim(pedidoId, trimmed);
+      window.dispatchEvent(new Event("client-claims-updated"));
       router.push("/client/order-history?reclamoEnviado=1");
     } catch (error) {
       setSubmitError(

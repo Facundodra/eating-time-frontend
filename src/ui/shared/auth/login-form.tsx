@@ -88,7 +88,7 @@ export default function LoginForm({ reason }: LoginFormProps) {
     event.preventDefault();
 
     const formData = new FormData(event.currentTarget);
-    const submittedEmail = String(formData.get("email") ?? "");
+    const submittedEmail = String(formData.get("email") ?? "").trim().toLowerCase();
     const password = String(formData.get("password") ?? "");
 
     setErrorMessage("");

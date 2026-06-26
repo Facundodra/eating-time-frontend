@@ -22,8 +22,7 @@ import {
 } from "react";
 
 import {
-  getRestaurantCoverPhotoUrl,
-  setRestaurantCoverPhoto,
+  setRestaurantCoverPhotos,
 } from "@/services/restaurant/photo-service";
 import { editUserData, getCurrentSession } from "@/services/shared/auth-service";
 import LoadingButton from "@/ui/shared/buttons/loading-button";
@@ -51,6 +50,7 @@ export default function RestaurantMyDataPage() {
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [currentPhotoUrl, setCurrentPhotoUrl] = useState<string | null>(null);
+  const [currentMobileCoverUrl, setCurrentMobileCoverUrl] = useState("");
   const [currentDesktopCoverUrl, setCurrentDesktopCoverUrl] = useState("");
   const [profilePhoto, setProfilePhoto] = useState<File | null>(null);
   const [mobileCoverPhoto, setMobileCoverPhoto] = useState<File | null>(null);
@@ -73,6 +73,7 @@ export default function RestaurantMyDataPage() {
     [desktopCoverPhoto],
   );
   const displayPhotoUrl = profilePreviewUrl ?? currentPhotoUrl;
+  const displayMobileCoverUrl = mobileCoverPreviewUrl || currentMobileCoverUrl;
   const displayDesktopCoverUrl =
     desktopCoverPreviewUrl || currentDesktopCoverUrl;
   const savedPhotoUrl = currentPhotoUrl;
@@ -113,16 +114,18 @@ export default function RestaurantMyDataPage() {
     setEmail(session.correo ?? session.email ?? "");
     setPhone(sessionPhone);
     setCurrentPhotoUrl(session.urlFoto ?? null);
+    setCurrentMobileCoverUrl(session.urlPortadaMobile ?? "");
+    setCurrentDesktopCoverUrl(
+      session.urlPortadaDesktop ??
+        session.urlPortada ??
+        session.urlFotoPortada ??
+        "",
+    );
     setRestaurantId(session.idTipoUsuario ?? null);
     setInitialFormData({
       name: sessionName,
       phone: sessionPhone,
     });
-
-    if (!session.idTipoUsuario) return;
-
-    const coverUrl = await getRestaurantCoverPhotoUrl(session.idTipoUsuario);
-    if (!cancelled()) setCurrentDesktopCoverUrl(coverUrl);
   }, []);
 
   useEffect(() => {
@@ -258,7 +261,7 @@ export default function RestaurantMyDataPage() {
     try {
       const nextName = name.trim();
       const nextPhone = phone.trim();
-      let didSaveDesktopCover = false;
+      let didSaveCoverPhotos = false;
 
       if (
         nextName !== initialFormData.name ||
@@ -268,32 +271,35 @@ export default function RestaurantMyDataPage() {
         await editUserData(nextName, nextPhone, profilePhoto);
       }
 
-      if (desktopCoverPhoto && !restaurantId) {
+      if ((mobileCoverPhoto || desktopCoverPhoto) && !restaurantId) {
         throw new Error("No se pudo obtener el ID del local.");
       }
 
-      if (desktopCoverPhoto && restaurantId) {
-        await setRestaurantCoverPhoto(restaurantId, { file: desktopCoverPhoto });
-        didSaveDesktopCover = true;
+      if ((mobileCoverPhoto || desktopCoverPhoto) && restaurantId) {
+        await setRestaurantCoverPhotos(restaurantId, {
+          desktopFile: desktopCoverPhoto,
+          mobileFile: mobileCoverPhoto,
+        });
+        didSaveCoverPhotos = true;
       }
 
       const updatedSession = await getCurrentSession();
       const nextPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
+      const nextMobileCoverUrl =
+        updatedSession?.urlPortadaMobile ?? currentMobileCoverUrl;
       const nextDesktopCoverUrl =
-        didSaveDesktopCover && restaurantId
-          ? await getRestaurantCoverPhotoUrl(restaurantId)
-          : currentDesktopCoverUrl;
+        updatedSession?.urlPortadaDesktop ??
+        updatedSession?.urlPortada ??
+        updatedSession?.urlFotoPortada ??
+        currentDesktopCoverUrl;
 
       setSuccessMessage(
-        mobileCoverPhoto
-          ? didSaveDesktopCover
-            ? "Se guardaron los datos del local y la portada desktop. La portada mobile quedara disponible cuando backend exponga el endpoint."
-            : "Se guardaron los datos del local. La portada mobile quedara disponible cuando backend exponga el endpoint."
-          : didSaveDesktopCover
-            ? "Se guardaron los datos del local y la portada desktop."
+        didSaveCoverPhotos
+          ? "Se guardaron los datos del local y las portadas."
           : "Los datos del local se actualizaron correctamente.",
       );
       setCurrentPhotoUrl(nextPhotoUrl);
+      setCurrentMobileCoverUrl(nextMobileCoverUrl);
       setCurrentDesktopCoverUrl(nextDesktopCoverUrl);
       setEmail(updatedSession?.correo ?? updatedSession?.email ?? email);
       setName(nextName);
@@ -472,18 +478,24 @@ export default function RestaurantMyDataPage() {
                                 selectCoverPhoto(event.target.files?.[0], "mobile")
                               }
                             />
-                            {mobileCoverPreviewUrl ? (
+                            {displayMobileCoverUrl ? (
                               <>
                                 <Image
-                                  src={mobileCoverPreviewUrl}
-                                  alt="Vista previa de la portada mobile"
+                                  src={displayMobileCoverUrl}
+                                  alt={
+                                    mobileCoverPhoto
+                                      ? "Vista previa de la portada mobile"
+                                      : "Portada mobile actual"
+                                  }
                                   fill
-                                  unoptimized
+                                  unoptimized={Boolean(mobileCoverPreviewUrl)}
                                   className="object-cover"
                                 />
                                 <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                                 <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
-                                  Portada mobile
+                                  {mobileCoverPhoto
+                                    ? "Portada mobile nueva"
+                                    : "Portada mobile actual"}
                                 </span>
                               </>
                             ) : (

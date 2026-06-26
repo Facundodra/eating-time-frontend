@@ -25,6 +25,8 @@ import {
   getPendingConfirmationOrdersCount,
   getPendingOrderRatingsCount,
 } from "@/services/client/client-service";
+import { getPendingClientClaimsCount } from "@/services/client/claim-service";
+import { getAvailableClientVouchersCount } from "@/services/client/virtual-money-service";
 import EatingTimeLogo from "@/ui/shared/images/logo.png";
 import ThemeToggle from "../shared/theme/theme-toggle";
 import ProfilePicture from "../shared/widgets/profile-picture";
@@ -32,6 +34,46 @@ import ProfilePicture from "../shared/widgets/profile-picture";
 const menuLinkClass =
   "flex items-center gap-3 rounded-md px-2 py-2 text-sm text-gray-800 transition hover:bg-slate-100 dark:text-slate-200 dark:hover:bg-slate-800";
 const menuIconClass = "h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400";
+const clientNotificationEvents = [
+  "order-rating-updated",
+  "pending-orders-updated",
+  "client-claims-updated",
+  "client-wallet-updated",
+];
+
+type PendingBadgeTone = "orders" | "ratings" | "claims" | "wallet";
+
+const pendingBadgeToneClasses: Record<PendingBadgeTone, string> = {
+  orders: "bg-orange-600 dark:bg-orange-500",
+  ratings: "bg-sky-600 dark:bg-sky-500",
+  claims: "bg-violet-600 dark:bg-violet-500",
+  wallet: "bg-emerald-600 dark:bg-emerald-500",
+};
+
+function formatPendingCount(count: number) {
+  return count > 9 ? "9+" : count;
+}
+
+function PendingCountBadge({
+  count,
+  label,
+  tone,
+}: {
+  count: number;
+  label: string;
+  tone: PendingBadgeTone;
+}) {
+  if (count <= 0) return null;
+
+  return (
+    <span
+      aria-label={`${count} ${label}`}
+      className={`ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full px-1.5 text-[11px] font-bold leading-none text-white ${pendingBadgeToneClasses[tone]}`}
+    >
+      {formatPendingCount(count)}
+    </span>
+  );
+}
 
 export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
@@ -45,6 +87,13 @@ export default function Header({ session }: { session: LoginWebResponse }) {
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
   const [pendingRatingCount, setPendingRatingCount] = useState(0);
   const [pendingOrdersCount, setPendingOrdersCount] = useState(0);
+  const [pendingClaimsCount, setPendingClaimsCount] = useState(0);
+  const [availableVouchersCount, setAvailableVouchersCount] = useState(0);
+  const pendingMenuCount =
+    pendingRatingCount +
+    pendingOrdersCount +
+    pendingClaimsCount +
+    availableVouchersCount;
 
   const restaurantMatch = pathname.match(/^\/client\/restaurant\/(\d+)/);
   const cartHref = restaurantMatch
@@ -83,19 +132,26 @@ export default function Header({ session }: { session: LoginWebResponse }) {
 
     async function loadPendingCounts() {
       try {
-        const [ratingsCount, ordersCount] = await Promise.all([
-          getPendingOrderRatingsCount(),
-          getPendingConfirmationOrdersCount(),
-        ]);
+        const [ratingsCount, ordersCount, claimsCount, vouchersCount] =
+          await Promise.all([
+            getPendingOrderRatingsCount().catch(() => 0),
+            getPendingConfirmationOrdersCount().catch(() => 0),
+            getPendingClientClaimsCount(),
+            getAvailableClientVouchersCount(),
+          ]);
 
         if (!ignore) {
           setPendingRatingCount(ratingsCount);
           setPendingOrdersCount(ordersCount);
+          setPendingClaimsCount(claimsCount);
+          setAvailableVouchersCount(vouchersCount);
         }
       } catch {
         if (!ignore) {
           setPendingRatingCount(0);
           setPendingOrdersCount(0);
+          setPendingClaimsCount(0);
+          setAvailableVouchersCount(0);
         }
       }
     }
@@ -106,19 +162,25 @@ export default function Header({ session }: { session: LoginWebResponse }) {
       void loadPendingCounts();
     }
 
-    window.addEventListener("order-rating-updated", handlePendingCountsUpdated);
-    window.addEventListener("pending-orders-updated", handlePendingCountsUpdated);
+    function handleVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void loadPendingCounts();
+      }
+    }
+
+    clientNotificationEvents.forEach((eventName) => {
+      window.addEventListener(eventName, handlePendingCountsUpdated);
+    });
+    window.addEventListener("focus", handlePendingCountsUpdated);
+    document.addEventListener("visibilitychange", handleVisibilityChange);
 
     return () => {
       ignore = true;
-      window.removeEventListener(
-        "order-rating-updated",
-        handlePendingCountsUpdated,
-      );
-      window.removeEventListener(
-        "pending-orders-updated",
-        handlePendingCountsUpdated,
-      );
+      clientNotificationEvents.forEach((eventName) => {
+        window.removeEventListener(eventName, handlePendingCountsUpdated);
+      });
+      window.removeEventListener("focus", handlePendingCountsUpdated);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, []);
 
@@ -211,24 +273,6 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             className="relative block rounded-full focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
           >
             <ProfilePicture imageUrl={imageUrl} alt={profileAlt} />
-            {pendingOrdersCount > 0 ? (
-              <span
-                aria-label={`${pendingOrdersCount} pedidos en curso cancelables`}
-                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-orange-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950"
-              >
-                {pendingOrdersCount > 9 ? "9+" : pendingOrdersCount}
-              </span>
-            ) : null}
-            {pendingRatingCount > 0 ? (
-              <span
-                aria-label={`${pendingRatingCount} pedidos pendientes de calificacion`}
-                className={`absolute flex h-4 min-w-4 items-center justify-center rounded-full bg-sky-500 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:ring-slate-950 ${
-                  pendingOrdersCount > 0 ? "-left-1 -top-1" : "-right-1 -top-1"
-                }`}
-              >
-                {pendingRatingCount > 9 ? "9+" : pendingRatingCount}
-              </span>
-            ) : null}
           </button>
 
           {accountMenuOpen ? (
@@ -275,9 +319,17 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             aria-expanded={navigationMenuOpen}
             aria-label="Abrir menu de navegacion"
             onClick={toggleNavigationMenu}
-            className="grid h-[37px] w-[37px] place-items-center rounded-md text-gray-800 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
+            className="relative grid h-[37px] w-[37px] place-items-center rounded-md text-gray-800 transition hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:ring-offset-2 dark:text-slate-200 dark:hover:bg-slate-800 dark:focus:ring-slate-700 dark:focus:ring-offset-slate-950"
           >
             <Bars3Icon className="h-5 w-5" />
+            {pendingMenuCount > 0 && !navigationMenuOpen ? (
+              <span
+                aria-label={`${pendingMenuCount} novedades pendientes`}
+                className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-cyan-600 px-1 text-[10px] font-black leading-none text-white ring-2 ring-white dark:bg-cyan-500 dark:ring-slate-950"
+              >
+                {formatPendingCount(pendingMenuCount)}
+              </span>
+            ) : null}
           </button>
         </div>
       </div>
@@ -299,40 +351,68 @@ export default function Header({ session }: { session: LoginWebResponse }) {
               <Link
                 href="/client/pending-orders"
                 onClick={closeHeaderMenus}
-                className={menuLinkClass}
+                className={`${menuLinkClass} justify-between`}
               >
-                <ClockIcon className={menuIconClass} />
-                Pedidos en curso
+                <span className="flex min-w-0 items-center gap-3">
+                  <ClockIcon className={menuIconClass} />
+                  Pedidos en curso
+                </span>
+                <PendingCountBadge
+                  count={pendingOrdersCount}
+                  label="pedidos en curso"
+                  tone="orders"
+                />
               </Link>
             </li>
             <li>
               <Link
                 href="/client/order-ratings"
                 onClick={closeHeaderMenus}
-                className={menuLinkClass}
+                className={`${menuLinkClass} justify-between`}
               >
-                <StarIcon className={menuIconClass} />
-                Calificación de pedidos
+                <span className="flex min-w-0 items-center gap-3">
+                  <StarIcon className={menuIconClass} />
+                  Calificación de pedidos
+                </span>
+                <PendingCountBadge
+                  count={pendingRatingCount}
+                  label="pedidos pendientes de calificacion"
+                  tone="ratings"
+                />
               </Link>
             </li>
             <li>
               <Link
                 href="/client/claims"
                 onClick={closeHeaderMenus}
-                className={menuLinkClass}
+                className={`${menuLinkClass} justify-between`}
               >
-                <ChatBubbleLeftRightIcon className={menuIconClass} />
-                Seguimiento de reclamos
+                <span className="flex min-w-0 items-center gap-3">
+                  <ChatBubbleLeftRightIcon className={menuIconClass} />
+                  Seguimiento de reclamos
+                </span>
+                <PendingCountBadge
+                  count={pendingClaimsCount}
+                  label="reclamos pendientes"
+                  tone="claims"
+                />
               </Link>
             </li>
             <li>
               <Link
                 href="/client/mi-cuenta/dinero-virtual"
                 onClick={closeHeaderMenus}
-                className={menuLinkClass}
+                className={`${menuLinkClass} justify-between`}
               >
-                <WalletIcon className={menuIconClass} />
-                Mi billetera
+                <span className="flex min-w-0 items-center gap-3">
+                  <WalletIcon className={menuIconClass} />
+                  Mi billetera
+                </span>
+                <PendingCountBadge
+                  count={availableVouchersCount}
+                  label="vouchers disponibles"
+                  tone="wallet"
+                />
               </Link>
             </li>
             <li>
