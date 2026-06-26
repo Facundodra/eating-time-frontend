@@ -213,7 +213,7 @@ export default function ClientHomePage() {
             Mejores locales
           </h2>
           <Link
-            href="/client/search?tab=restaurants"
+            href="/client/restaurants"
             className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
           >
             Ver todos
@@ -304,7 +304,7 @@ export default function ClientHomePage() {
             Platos más vendidos
           </h2>
           <Link
-            href="/client/search?tab=dishes"
+            href="/client/dishes"
             className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
           >
             Ver todos

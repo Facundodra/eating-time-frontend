@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -102,6 +102,18 @@ function formatDishCount(count: number) {
   return `${count} platos`;
 }
 
+function formatRating(value: number) {
+  return value > 0 ? value.toFixed(1) : "-";
+}
+
+function getRestaurantCoverUrl(restaurant: RestaurantList) {
+  return (
+    restaurant.coverPhotoDesktopUrl ||
+    restaurant.coverPhotoUrl ||
+    restaurant.coverPhotoMobileUrl
+  );
+}
+
 function getResultErrorMessage(result: PromiseSettledResult<unknown>) {
   if (result.status === "fulfilled") return null;
 
@@ -155,46 +167,46 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function RestaurantCard({ restaurant }: { restaurant: RestaurantList }) {
+function RestaurantCompactCard({ restaurant }: { restaurant: RestaurantList }) {
+  const coverPhotoUrl = getRestaurantCoverUrl(restaurant);
+
   return (
-    <Link
-      href={`/client/restaurant/${restaurant.id}`}
-      className="group block overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm transition duration-200 hover:-translate-y-0.5 hover:border-orange-300 hover:shadow-md dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
-    >
-      <div className="relative flex h-28 items-center justify-center bg-gray-50 dark:bg-slate-950">
-        {restaurant.coverPhotoUrl ? (
-          <Image
-            alt={restaurant.name}
-            src={restaurant.coverPhotoUrl}
-            fill
-            unoptimized
-            sizes="(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover"
-          />
-        ) : (
-          <BuildingStorefrontIcon className="h-12 w-12 text-gray-300 dark:text-slate-700" />
-        )}
-        <span
-          aria-label={restaurant.state ? "Abierto" : "Cerrado"}
-          title={restaurant.state ? "Abierto" : "Cerrado"}
-          className={clsx(
-            "absolute right-3 top-3 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-semibold shadow-sm",
-            restaurant.state
-              ? "bg-green-100 text-green-800 dark:bg-green-500/15 dark:text-green-300"
-              : "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400",
-          )}
-        >
-          {restaurant.state ? (
-            <CheckCircleIcon className="h-4 w-4" />
+    <Link href={`/client/restaurant/${restaurant.id}`} className="group block">
+      <article className="min-w-0">
+        <div className="relative flex aspect-[1.86/1] items-center justify-center overflow-hidden rounded-xl bg-gray-50 shadow-sm dark:bg-slate-950">
+          {coverPhotoUrl ? (
+            <Image
+              alt={`Portada de ${restaurant.name}`}
+              src={coverPhotoUrl}
+              fill
+              unoptimized
+              sizes="(min-width: 1280px) 20vw, (min-width: 1024px) 25vw, (min-width: 640px) 33vw, 100vw"
+              className="object-cover transition duration-300 group-hover:scale-[1.03]"
+            />
           ) : (
-            <MoonIcon className="h-4 w-4" />
+            <BuildingStorefrontIcon className="h-12 w-12 text-gray-300 dark:text-slate-700" />
           )}
-          {restaurant.state ? "Abierto" : "Cerrado"}
-        </span>
-      </div>
-      <div className="p-3">
-        <div className="flex items-center gap-2">
-          <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
+          <span
+            aria-label={restaurant.state ? "Abierto" : "Cerrado"}
+            title={restaurant.state ? "Abierto" : "Cerrado"}
+            className={clsx(
+              "absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black shadow-sm",
+              restaurant.state
+                ? "bg-green-100 text-green-900 dark:bg-green-500/15 dark:text-green-200"
+                : "bg-white/95 text-slate-600 dark:bg-slate-950/90 dark:text-slate-300",
+            )}
+          >
+            {restaurant.state ? (
+              <CheckCircleIcon className="h-3.5 w-3.5" />
+            ) : (
+              <MoonIcon className="h-3.5 w-3.5" />
+            )}
+            {restaurant.state ? "Abierto" : "Cerrado"}
+          </span>
+        </div>
+
+        <div className="mt-2.5 flex min-w-0 items-start gap-2">
+          <div className="relative mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
             {restaurant.profilePhotoUrl ? (
               <Image
                 alt={`Perfil de ${restaurant.name}`}
@@ -208,17 +220,19 @@ function RestaurantCard({ restaurant }: { restaurant: RestaurantList }) {
               restaurant.name.charAt(0).toUpperCase()
             )}
           </div>
-          <div className="min-w-0">
-            <h3 className="line-clamp-2 text-sm font-bold text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
-              {restaurant.name}
-            </h3>
-            <div className="mt-1 flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-              <StarIcon className="h-4 w-4 text-orange-400" />
-              <span>{restaurant.stars || "Sin calificación"}</span>
+          <div className="min-w-0 flex-1">
+            <div className="flex min-w-0 items-start justify-between gap-2">
+              <h3 className="truncate text-base font-black leading-5 text-slate-900 group-hover:text-orange-700 dark:text-slate-50 dark:group-hover:text-orange-400">
+                {restaurant.name}
+              </h3>
+              <span className="inline-flex shrink-0 items-center gap-1 rounded-lg bg-orange-50 px-2 py-1 text-xs font-black text-slate-900 dark:bg-orange-500/10 dark:text-slate-100">
+                <StarIcon className="h-3.5 w-3.5 fill-orange-400 text-orange-400" />
+                <span>{formatRating(restaurant.stars)}</span>
+              </span>
             </div>
           </div>
         </div>
-      </div>
+      </article>
     </Link>
   );
 }
@@ -732,7 +746,7 @@ export default function SearchPage({
               ) : null}
             </div>
             {searchData.restaurants.length > 0 ? (
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-7 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
                 {searchData.restaurants
                   .slice(
                     0,
@@ -741,7 +755,7 @@ export default function SearchPage({
                       : searchData.restaurants.length,
                   )
                   .map((restaurant) => (
-                    <RestaurantCard
+                    <RestaurantCompactCard
                       key={restaurant.id}
                       restaurant={restaurant}
                     />
