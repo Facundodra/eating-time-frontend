@@ -27,7 +27,7 @@ import PanelError from "@/ui/shared/feedback/panel-error";
 
 type UserType = "clientes" | "locales" | "admins";
 type StatusFilter = "all" | "active" | "blocked" | "deleted";
-type SortBy = "recent" | "oldest" | "name-asc";
+type SortBy = "recent" | "oldest" | "name-asc" | "rating-desc" | "rating-asc";
 
 const PAGE_SIZE = 20;
 
@@ -131,6 +131,10 @@ function formatCalificacion(cal: number | null) {
   return cal !== null ? `${cal.toFixed(1)} ★` : "-";
 }
 
+function getUserRating(user: User | Client | Restaurant) {
+  return "calificacion" in user ? user.calificacion : null;
+}
+
 export default function AdminUsersList() {
   const [allUsers, setAllUsers] = useState<(User | Client | Restaurant)[]>([]);
   const [type, setType] = useState<UserType>("clientes");
@@ -148,6 +152,12 @@ export default function AdminUsersList() {
   const listEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => { setPage(1); }, [type, search, filterStatus, sortBy]);
+
+  useEffect(() => {
+    if (type === "admins" && (sortBy === "rating-desc" || sortBy === "rating-asc")) {
+      setSortBy("recent");
+    }
+  }, [type, sortBy]);
 
   // Cada cambio de tipo consulta backend otra vez, pero mantiene filtros y
   // estructura visible mientras la tabla muestra su propio loader/error.
@@ -195,6 +205,18 @@ export default function AdminUsersList() {
 
     return [...filtered].sort((a, b) => {
       if (sortBy === "name-asc") return a.nombre.localeCompare(b.nombre);
+      if (sortBy === "rating-desc" || sortBy === "rating-asc") {
+        const ratingA = getUserRating(a);
+        const ratingB = getUserRating(b);
+
+        if (ratingA === null && ratingB === null) return a.nombre.localeCompare(b.nombre);
+        if (ratingA === null) return 1;
+        if (ratingB === null) return -1;
+
+        const diff = ratingA - ratingB;
+        return sortBy === "rating-asc" ? diff : -diff;
+      }
+
       const diff = a.creacion.getTime() - b.creacion.getTime();
       return sortBy === "oldest" ? diff : -diff;
     });
@@ -312,6 +334,12 @@ export default function AdminUsersList() {
                 <option value="recent">Más recientes</option>
                 <option value="oldest">Más antiguos</option>
                 <option value="name-asc">Nombre A-Z</option>
+                {type !== "admins" ? (
+                  <>
+                    <option value="rating-desc">Mejor calificación</option>
+                    <option value="rating-asc">Menor calificación</option>
+                  </>
+                ) : null}
               </select>
             </div>
           </div>
@@ -471,6 +499,12 @@ export default function AdminUsersList() {
               <option value="recent">Más recientes</option>
               <option value="oldest">Más antiguos</option>
               <option value="name-asc">Nombre A-Z</option>
+              {type !== "admins" ? (
+                <>
+                  <option value="rating-desc">Mejor calificación</option>
+                  <option value="rating-asc">Menor calificación</option>
+                </>
+              ) : null}
             </select>
           </label>
         </div>
@@ -507,6 +541,12 @@ export default function AdminUsersList() {
           <option value="recent">Más recientes</option>
           <option value="oldest">Más antiguos</option>
           <option value="name-asc">Nombre A-Z</option>
+          {type !== "admins" ? (
+            <>
+              <option value="rating-desc">Mejor calificación</option>
+              <option value="rating-asc">Menor calificación</option>
+            </>
+          ) : null}
         </select>
 
         {!isLoading && !loadError && (
