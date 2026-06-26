@@ -18,6 +18,8 @@ export type LoginWebResponse = {
   urlFoto?: string | null;
   urlPortada?: string | null;
   urlFotoPortada?: string | null;
+  urlPortadaMobile?: string | null;
+  urlPortadaDesktop?: string | null;
 };
 
 export type RegisterCredentials = {

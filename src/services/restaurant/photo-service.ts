@@ -1,14 +1,7 @@
 import axios from "axios";
 
-import type { RestaurantCoverPhotoInput } from "@/lib/restaurant/photo/types";
+import type { RestaurantCoverPhotosInput } from "@/lib/restaurant/photo/types";
 import { clientApi as api } from "@/services/shared/api-client";
-
-type RestaurantLocalApiResponse = {
-  urlPortada?: string | null;
-  urlFotoPortada?: string | null;
-  fotoPortadaUrl?: string | null;
-  coverPhotoUrl?: string | null;
-};
 
 function getApiErrorMessage(error: unknown, fallback: string) {
   if (!axios.isAxiosError(error)) return fallback;
@@ -17,54 +10,36 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   return data?.error ?? data?.message ?? fallback;
 }
 
-function getFirstStringValue(...values: Array<string | null | undefined>) {
-  return (
-    values
-      .find((value) => typeof value === "string" && value.trim())
-      ?.trim() ?? ""
-  );
-}
-
-export async function getRestaurantCoverPhotoUrl(
+export async function setRestaurantCoverPhotos(
   restaurantId: number,
-): Promise<string> {
-  try {
-    const response = await api.get<RestaurantLocalApiResponse>(
-      `/api/local/${encodeURIComponent(restaurantId)}`,
-    );
-
-    return getFirstStringValue(
-      response.data.urlPortada,
-      response.data.urlFotoPortada,
-      response.data.fotoPortadaUrl,
-      response.data.coverPhotoUrl,
-    );
-  } catch (error) {
-    if (axios.isAxiosError(error) && error.response?.status === 404) {
-      return "";
-    }
-
-    throw new Error(
-      getApiErrorMessage(error, "No se pudo cargar la foto de portada."),
-    );
-  }
-}
-
-export async function setRestaurantCoverPhoto(
-  restaurantId: number,
-  input: RestaurantCoverPhotoInput,
+  input: RestaurantCoverPhotosInput,
 ): Promise<void> {
   const body = new FormData();
-  body.append("foto", input.file, input.file.name);
+
+  if (input.mobileFile) {
+    body.append(
+      "fotoPortadaMobile",
+      input.mobileFile,
+      input.mobileFile.name,
+    );
+  }
+
+  if (input.desktopFile) {
+    body.append(
+      "fotoPortadaDesktop",
+      input.desktopFile,
+      input.desktopFile.name,
+    );
+  }
 
   try {
-    await api.post(
-      `/api/local/${encodeURIComponent(restaurantId)}/foto-portada`,
+    await api.patch(
+      `/api/local/${encodeURIComponent(restaurantId)}/portadas`,
       body,
     );
   } catch (error) {
     throw new Error(
-      getApiErrorMessage(error, "No se pudo actualizar la foto de portada."),
+      getApiErrorMessage(error, "No se pudieron actualizar las fotos de portada."),
     );
   }
 }
