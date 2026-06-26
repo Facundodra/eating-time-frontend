@@ -1,3 +1,4 @@
-export type RestaurantCoverPhotoInput = {
-  file: File;
+export type RestaurantCoverPhotosInput = {
+  desktopFile?: File | null;
+  mobileFile?: File | null;
 };
