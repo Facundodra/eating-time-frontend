@@ -59,6 +59,7 @@ export async function login(
   const response = await fetch("/api/auth/login", {
     method: "POST",
     cache: "no-store",
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
     },
@@ -86,6 +87,7 @@ export async function getCurrentSession(): Promise<LoginWebResponse | null> {
   const response = await fetch("/api/auth/me", {
     method: "GET",
     cache: "no-store",
+    credentials: "same-origin",
   });
 
   if (response.status === 401) {
@@ -217,7 +219,10 @@ function mapLoginFetchError(status: number, responseMessage?: string) {
     return new LoginError(responseMessage ?? "No tenes permiso para ingresar.", 403);
   }
 
-  return new LoginError("No se pudo iniciar sesión. Intentalo nuevamente.", status);
+  return new LoginError(
+    responseMessage ?? "No se pudo iniciar sesión. Intentalo nuevamente.",
+    status,
+  );
 }
 
 function mapRestaurantConfirmationError(

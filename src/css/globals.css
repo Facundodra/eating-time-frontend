@@ -8,6 +8,17 @@
 :root{
     --color-orange-700: #e96409;
     --color-orange-800: #d85904;
+    --font-brand: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+}
+
+html{
+    color-scheme: light;
+    background: #f8fafc;
+}
+
+html.dark{
+    color-scheme: dark;
+    background: #020617;
 }
 
 .btn-primary{
@@ -23,12 +34,20 @@
 }
 
 .client-brand-font{
-    font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, Arial, sans-serif;
+    font-family: var(--font-brand);
     font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
 .client-brand-font :where(button, a, input, select, textarea){
     font-family: inherit;
+}
+
+.brand-logotype,
+.logo_content_name{
+    font-family: var(--font-brand);
+    font-feature-settings: "cv02", "cv03", "cv04", "cv11";
+    font-weight: 800;
+    letter-spacing: 0;
 }
 
 .client-brand-font :where(button, a, input, select, textarea):focus-visible{
@@ -215,5 +234,140 @@ button, a{
     @apply h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-white dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20;
 }
 
+.client-theme-scope{
+    --client-dark-page: #020617;
+    --client-dark-surface: #0f172a;
+    --client-dark-surface-muted: #1e293b;
+    --client-dark-border: #334155;
+    --client-dark-text: #f8fafc;
+    --client-dark-text-muted: #cbd5e1;
+    --client-dark-text-subtle: #94a3b8;
+}
+
+.dark .client-theme-scope :where([class~="bg-white"]:not([class*="dark:bg-"])){
+    background-color: var(--client-dark-surface);
+}
+
+.dark .client-theme-scope :where(
+    [class~="bg-gray-50"]:not([class*="dark:bg-"]),
+    [class~="bg-gray-100"]:not([class*="dark:bg-"]),
+    [class~="bg-slate-50"]:not([class*="dark:bg-"]),
+    [class~="bg-slate-100"]:not([class*="dark:bg-"])
+){
+    background-color: var(--client-dark-surface-muted);
+}
+
+.dark .client-theme-scope :where([class~="bg-orange-50"]:not([class*="dark:bg-"])){
+    background-color: rgb(234 88 12 / 0.12);
+}
+
+.dark .client-theme-scope :where([class~="bg-red-50"]:not([class*="dark:bg-"])){
+    background-color: rgb(239 68 68 / 0.12);
+}
+
+.dark .client-theme-scope :where([class~="bg-green-50"]:not([class*="dark:bg-"])){
+    background-color: rgb(34 197 94 / 0.12);
+}
+
+.dark .client-theme-scope :where([class~="bg-amber-50"]:not([class*="dark:bg-"])){
+    background-color: rgb(245 158 11 / 0.12);
+}
+
+.dark .client-theme-scope :where(
+    [class~="border-gray-100"]:not([class*="dark:border-"]),
+    [class~="border-gray-200"]:not([class*="dark:border-"]),
+    [class~="border-gray-300"]:not([class*="dark:border-"])
+){
+    border-color: var(--client-dark-border);
+}
+
+.dark .client-theme-scope :where(
+    [class~="border-orange-100"]:not([class*="dark:border-"]),
+    [class~="border-orange-200"]:not([class*="dark:border-"]),
+    [class~="border-orange-300"]:not([class*="dark:border-"]),
+    [class~="border-orange-400"]:not([class*="dark:border-"])
+){
+    border-color: rgb(249 115 22 / 0.35);
+}
+
+.dark .client-theme-scope :where(
+    [class~="border-red-200"]:not([class*="dark:border-"]),
+    [class~="border-red-300"]:not([class*="dark:border-"])
+){
+    border-color: rgb(248 113 113 / 0.4);
+}
+
+.dark .client-theme-scope :where([class~="divide-gray-100"]:not([class*="dark:divide-"])) > :not([hidden]) ~ :not([hidden]){
+    border-color: #1e293b;
+}
+
+.dark .client-theme-scope :where(
+    [class~="text-gray-900"]:not([class*="dark:text-"]),
+    [class~="text-gray-800"]:not([class*="dark:text-"])
+){
+    color: var(--client-dark-text);
+}
+
+.dark .client-theme-scope :where(
+    [class~="text-gray-700"]:not([class*="dark:text-"]),
+    [class~="text-gray-600"]:not([class*="dark:text-"])
+){
+    color: var(--client-dark-text-muted);
+}
+
+.dark .client-theme-scope :where(
+    [class~="text-gray-500"]:not([class*="dark:text-"]),
+    [class~="text-gray-400"]:not([class*="dark:text-"])
+){
+    color: var(--client-dark-text-subtle);
+}
+
+.dark .client-theme-scope :where([class~="text-gray-300"]:not([class*="dark:text-"])){
+    color: #64748b;
+}
+
+.dark .client-theme-scope :where([class~="text-orange-700"]:not([class*="dark:text-"])){
+    color: #fdba74;
+}
+
+.dark .client-theme-scope :where([class~="text-red-600"]:not([class*="dark:text-"])){
+    color: #fca5a5;
+}
+
+.dark .client-theme-scope :where(
+    [class~="text-green-700"]:not([class*="dark:text-"]),
+    [class~="text-green-800"]:not([class*="dark:text-"])
+){
+    color: #86efac;
+}
+
+.dark .client-theme-scope :where(input, select, textarea):not([class*="dark:bg-"]){
+    background-color: var(--client-dark-page);
+    color: var(--client-dark-text);
+}
+
+.dark .client-theme-scope :where(input, select, textarea):not([class*="dark:border-"]){
+    border-color: var(--client-dark-border);
+}
+
+.dark .client-theme-scope :where([class*="placeholder:text-gray-"]:not([class*="dark:placeholder"]))::placeholder{
+    color: #64748b;
+}
+
+.dark .client-theme-scope :where([class*="hover:bg-orange-50"]:not([class*="dark:hover:bg-"]):hover){
+    background-color: rgb(234 88 12 / 0.12);
+}
+
+.dark .client-theme-scope :where([class*="hover:bg-orange-100"]:not([class*="dark:hover:bg-"]):hover){
+    background-color: rgb(234 88 12 / 0.18);
+}
+
+.dark .client-theme-scope :where([class*="hover:bg-gray-50"]:not([class*="dark:hover:bg-"]):hover){
+    background-color: var(--client-dark-surface-muted);
+}
+
+.dark .client-theme-scope :where([class*="has-[:checked]:bg-orange-50"]:has(:checked):not([class*="dark:has-"])){
+    background-color: rgb(234 88 12 / 0.12);
+}
 
 

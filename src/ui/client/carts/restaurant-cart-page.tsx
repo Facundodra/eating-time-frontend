@@ -524,6 +524,7 @@ export default function RestaurantCartPage({
       setAvailableVouchers((previous) =>
         previous.filter((entry) => entry.id !== voucher.id),
       );
+      window.dispatchEvent(new Event("client-wallet-updated"));
     } catch (err) {
       setVoucherError(
         err instanceof Error ? err.message : "No se pudo aplicar el voucher.",
@@ -550,6 +551,7 @@ export default function RestaurantCartPage({
           ),
         );
       }
+      window.dispatchEvent(new Event("client-wallet-updated"));
     } catch (err) {
       setVoucherError(
         err instanceof Error ? err.message : "No se pudo quitar el voucher.",

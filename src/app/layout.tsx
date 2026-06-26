@@ -43,7 +43,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeScript }} />
       </head>
-      <body className="min-h-screen bg-gray-50 font-sans antialiased text-slate-900 dark:bg-slate-950 dark:text-slate-50">
+      <body className="client-brand-font min-h-screen bg-gray-50 antialiased text-slate-900 dark:bg-slate-950 dark:text-slate-50">
         {children}
       </body>
     </html>
