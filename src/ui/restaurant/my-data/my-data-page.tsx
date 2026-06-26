@@ -7,6 +7,7 @@ import {
   CloudArrowUpIcon,
   KeyIcon,
   PhotoIcon,
+  PlusCircleIcon,
 } from "@heroicons/react/24/outline";
 import Image from "next/image";
 import Link from "next/link";
@@ -428,10 +429,14 @@ export default function RestaurantMyDataPage() {
                               alt="Foto del local"
                               className="h-full w-full object-cover"
                             />
-                            <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                            <span className="absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] truncate rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
-                              {profilePhoto ? "Foto nueva" : "Foto actual"}
-                            </span>
+                            {profilePhoto ? (
+                              <span
+                                aria-label="Foto nueva seleccionada"
+                                className="absolute right-3 top-3 rounded-full bg-orange-600 p-1.5 text-white shadow-lg ring-2 ring-white/90 dark:ring-slate-950/80"
+                              >
+                                <PlusCircleIcon className="h-7 w-7" />
+                              </span>
+                            ) : null}
                           </>
                         ) : (
                           <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
@@ -491,12 +496,14 @@ export default function RestaurantMyDataPage() {
                                   unoptimized={Boolean(mobileCoverPreviewUrl)}
                                   className="object-cover"
                                 />
-                                <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
-                                  {mobileCoverPhoto
-                                    ? "Portada mobile nueva"
-                                    : "Portada mobile actual"}
-                                </span>
+                                {mobileCoverPhoto ? (
+                                  <span
+                                    aria-label="Portada mobile nueva seleccionada"
+                                    className="absolute right-3 top-3 rounded-full bg-orange-600 p-1.5 text-white shadow-lg ring-2 ring-white/90 dark:ring-slate-950/80"
+                                  >
+                                    <PlusCircleIcon className="h-7 w-7" />
+                                  </span>
+                                ) : null}
                               </>
                             ) : (
                               <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
@@ -551,12 +558,14 @@ export default function RestaurantMyDataPage() {
                                   unoptimized={Boolean(desktopCoverPreviewUrl)}
                                   className="object-cover"
                                 />
-                                <span className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                                <span className="absolute bottom-3 left-3 rounded-full bg-white/95 px-2.5 py-1 text-xs font-black text-slate-800 shadow-sm">
-                                  {desktopCoverPhoto
-                                    ? "Portada desktop nueva"
-                                    : "Portada desktop actual"}
-                                </span>
+                                {desktopCoverPhoto ? (
+                                  <span
+                                    aria-label="Portada desktop nueva seleccionada"
+                                    className="absolute right-3 top-3 rounded-full bg-orange-600 p-1.5 text-white shadow-lg ring-2 ring-white/90 dark:ring-slate-950/80"
+                                  >
+                                    <PlusCircleIcon className="h-7 w-7" />
+                                  </span>
+                                ) : null}
                               </>
                             ) : (
                               <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
