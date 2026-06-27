@@ -33,7 +33,7 @@ export default function CategoryCarousel({
   categories,
   loading,
   hrefForCategory = (category) =>
-    `/client/search?q=${encodeURIComponent(category.name)}&tab=dishes`,
+    `/client/dishes?categoryId=${category.id}`,
   selectedCategoryId = null,
   onSelectCategory,
 }: CategoryCarouselProps) {
