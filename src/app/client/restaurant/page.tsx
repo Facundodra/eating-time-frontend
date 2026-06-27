@@ -1,5 +1,5 @@
 import ClientRestaurantsPage from "@/ui/client/restaurants/restaurants-page";
 
-export default function RestaurantsPage() {
+export default function RestaurantPage() {
   return <ClientRestaurantsPage />;
 }

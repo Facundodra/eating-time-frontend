@@ -196,7 +196,7 @@ function DishResultCard({
 
   return (
     <Link
-      href={`/client/platos/${dish.id}`}
+      href={`/client/restaurant/${dish.localId}?dishId=${dish.id}`}
       className="group flex min-h-36 gap-4 rounded-xl border border-slate-200 bg-white p-4 transition hover:border-orange-300 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
     >
       <div className="relative flex h-28 w-32 shrink-0 items-center justify-center overflow-hidden rounded-lg bg-orange-50 dark:bg-orange-500/10">
@@ -369,7 +369,15 @@ function RestaurantDishRow({
   );
 }
 
-export default function ClientDishesByRestaurantPage() {
+type ClientDishesByRestaurantPageProps = {
+  initialCategoryId?: number | null;
+  initialQuery?: string;
+};
+
+export default function ClientDishesByRestaurantPage({
+  initialCategoryId = null,
+  initialQuery = "",
+}: ClientDishesByRestaurantPageProps) {
   const [restaurants, setRestaurants] = useState<RestaurantList[]>([]);
   const [categories, setCategories] = useState<ClientDishCategorySummary[]>([]);
   const [dishes, setDishes] = useState<ClientDish[]>([]);
@@ -377,12 +385,15 @@ export default function ClientDishesByRestaurantPage() {
   const [loading, setLoading] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialQuery);
   const [sort, setSort] = useState<DishSort>("ventas-desc");
   const [status, setStatus] = useState<RestaurantStatusFilter>("all");
   const [priceMin, setPriceMin] = useState("");
   const [priceMax, setPriceMax] = useState("");
-  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(null);
+  const [discountOnly, setDiscountOnly] = useState(false);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<number | null>(
+    initialCategoryId,
+  );
   const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
 
   const hasActiveFilters =
@@ -390,6 +401,7 @@ export default function ClientDishesByRestaurantPage() {
     status !== "all" ||
     priceMin !== "" ||
     priceMax !== "" ||
+    discountOnly ||
     selectedCategoryId != null;
 
   function clearFilters() {
@@ -397,8 +409,17 @@ export default function ClientDishesByRestaurantPage() {
     setStatus("all");
     setPriceMin("");
     setPriceMax("");
+    setDiscountOnly(false);
     setSelectedCategoryId(null);
   }
+
+  useEffect(() => {
+    setSelectedCategoryId(initialCategoryId);
+  }, [initialCategoryId]);
+
+  useEffect(() => {
+    setQuery(initialQuery);
+  }, [initialQuery]);
 
   useEffect(() => {
     let cancelled = false;
@@ -429,7 +450,7 @@ export default function ClientDishesByRestaurantPage() {
         const restaurantsById = new Map(
           restaurantsData.map((restaurant) => [restaurant.id, restaurant]),
         );
-        const filteredDishes = sortDishes(dishesData, sort).filter((dish) => {
+        const candidateDishes = sortDishes(dishesData, sort).filter((dish) => {
           const restaurant = restaurantsById.get(dish.localId);
           if (!restaurant) return false;
           if (status === "open" && !restaurant.state) return false;
@@ -440,10 +461,7 @@ export default function ClientDishesByRestaurantPage() {
             normalizedQuery,
           );
         });
-        const restaurantIdsWithDishes = new Set(
-          filteredDishes.map((dish) => dish.localId),
-        );
-        const discountIdsToFetch = filteredDishes
+        const discountIdsToFetch = candidateDishes
           .map((dish) => dish.id)
           .filter((dishId) => discountedIds.has(dishId));
         const discountResults = await Promise.allSettled(
@@ -458,6 +476,12 @@ export default function ClientDishesByRestaurantPage() {
             nextDiscounts.set(discountIdsToFetch[index], result.value);
           }
         });
+        const filteredDishes = discountOnly
+          ? candidateDishes.filter((dish) => nextDiscounts.has(dish.id))
+          : candidateDishes;
+        const restaurantIdsWithDishes = new Set(
+          filteredDishes.map((dish) => dish.localId),
+        );
 
         setRestaurants(
           restaurantsData.filter((restaurant) =>
@@ -485,7 +509,7 @@ export default function ClientDishesByRestaurantPage() {
     return () => {
       cancelled = true;
     };
-  }, [priceMax, priceMin, query, selectedCategoryId, sort, status]);
+  }, [discountOnly, priceMax, priceMin, query, selectedCategoryId, sort, status]);
 
   useEffect(() => {
     let cancelled = false;
@@ -658,6 +682,21 @@ export default function ClientDishesByRestaurantPage() {
                       />
                     </div>
                   </div>
+
+                  <button
+                    type="button"
+                    onClick={() => setDiscountOnly((current) => !current)}
+                    aria-pressed={discountOnly}
+                    className={clsx(
+                      "flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-extrabold transition",
+                      discountOnly
+                        ? "border-orange-500 bg-orange-50 text-orange-700 dark:border-orange-500/60 dark:bg-orange-500/15 dark:text-orange-300"
+                        : "border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:text-orange-400",
+                    )}
+                  >
+                    <TagIcon className="h-4 w-4" />
+                    Con descuento
+                  </button>
                 </div>
 
                 <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
@@ -683,7 +722,7 @@ export default function ClientDishesByRestaurantPage() {
           )}
         </div>
 
-        <div className="hidden gap-5 xl:grid xl:grid-cols-[minmax(16rem,1fr)_auto_auto_auto] xl:items-center">
+        <div className="hidden gap-5 xl:grid xl:grid-cols-[minmax(16rem,1fr)_auto_auto_auto_auto] xl:items-center">
           <label className="relative min-w-0">
             <MagnifyingGlassIcon className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
             <input
@@ -748,6 +787,21 @@ export default function ClientDishesByRestaurantPage() {
               className="h-10 min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20"
             />
           </div>
+
+          <button
+            type="button"
+            onClick={() => setDiscountOnly((current) => !current)}
+            aria-pressed={discountOnly}
+            className={clsx(
+              "flex h-10 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-extrabold transition",
+              discountOnly
+                ? "border-orange-500 bg-orange-50 text-orange-700 dark:border-orange-500/60 dark:bg-orange-500/15 dark:text-orange-300"
+                : "border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:text-orange-400",
+            )}
+          >
+            <TagIcon className="h-4 w-4" />
+            Con descuento
+          </button>
         </div>
       </section>
       <CategoryCarousel

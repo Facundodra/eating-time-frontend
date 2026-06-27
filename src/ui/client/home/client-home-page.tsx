@@ -1,105 +1,333 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {
+  type ComponentType,
+  type SVGProps,
+  useEffect,
+  useRef,
+  useState,
+} from "react";
 import Link from "next/link";
-import Image from "next/image";
 import {
   BuildingStorefrontIcon,
-  CheckCircleIcon,
-  InformationCircleIcon,
-  MoonIcon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ShoppingBagIcon,
-  Squares2X2Icon,
-  StarIcon,
-  TagIcon,
 } from "@heroicons/react/24/outline";
 
 import {
-  getDishDiscount,
-  getDishes,
-  getDiscountedDishIds,
-  getRestaurants,
+  getAllDishes,
+  getAllRestaurants,
   getClientDishCategorySummaries,
+  getDiscountedDishIds,
 } from "@/services/client/client-service";
 import type {
   ClientDish,
   ClientDishCategorySummary,
-  Discount,
   RestaurantList,
 } from "@/lib/client/types";
+import CategoryCarousel from "@/ui/client/categories/category-carousel";
+import { RestaurantCompactCard } from "@/ui/client/restaurants/restaurant-compact-card";
 
-const CATEGORY_SKELETON_COUNT = 8;
-const HOME_SECTION_ITEM_COUNT = 8;
-const HOME_MOBILE_ITEM_COUNT = 4;
+const HOME_SECTION_ITEM_COUNT = 10;
+const HOME_FETCH_SIZE = 100;
+
+type HomeRestaurantRankings = {
+  bestRated: RestaurantList[];
+  popular: RestaurantList[];
+  discounted: RestaurantList[];
+  affordable: RestaurantList[];
+  variety: RestaurantList[];
+};
+
+const emptyRestaurantRankings: HomeRestaurantRankings = {
+  bestRated: [],
+  popular: [],
+  discounted: [],
+  affordable: [],
+  variety: [],
+};
 
 function RestaurantCardSkeleton() {
   return (
-    <div className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="h-[92px] bg-gray-100 dark:bg-slate-800" />
-      <div className="space-y-2 p-2.5">
-        <div className="flex items-center gap-2">
-          <div className="h-9 w-9 shrink-0 rounded-full bg-gray-200 dark:bg-slate-700" />
+    <div className="animate-pulse">
+      <div className="aspect-[1.86/1] rounded-xl bg-gray-100 dark:bg-slate-800" />
+      <div className="mt-2.5 flex items-start gap-2">
+        <div className="h-9 w-9 rounded-lg bg-gray-200 dark:bg-slate-700" />
+        <div className="min-w-0 flex-1 space-y-2">
           <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
-        </div>
-        <div className="flex items-center gap-2">
-          <div className="h-4 w-4 rounded bg-gray-200 dark:bg-slate-700" />
-          <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
+          <div className="h-3 w-16 rounded bg-gray-100 dark:bg-slate-800" />
         </div>
       </div>
     </div>
   );
 }
 
-function DishCardSkeleton() {
+function getRestaurantCountMap(dishes: ClientDish[]) {
+  return dishes.reduce((map, dish) => {
+    map.set(dish.localId, (map.get(dish.localId) ?? 0) + 1);
+    return map;
+  }, new Map<number, number>());
+}
+
+function getRestaurantSalesMap(dishes: ClientDish[]) {
+  return dishes.reduce((map, dish) => {
+    map.set(dish.localId, (map.get(dish.localId) ?? 0) + dish.salesCount);
+    return map;
+  }, new Map<number, number>());
+}
+
+function getDiscountedDishCountMap(
+  dishes: ClientDish[],
+  discountedDishIds: Set<number>,
+) {
+  return dishes.reduce((map, dish) => {
+    if (!discountedDishIds.has(dish.id)) return map;
+    map.set(dish.localId, (map.get(dish.localId) ?? 0) + 1);
+    return map;
+  }, new Map<number, number>());
+}
+
+function getRestaurantMinPriceMap(dishes: ClientDish[]) {
+  return dishes.reduce((map, dish) => {
+    const currentPrice = map.get(dish.localId);
+    if (currentPrice == null || dish.price < currentPrice) {
+      map.set(dish.localId, dish.price);
+    }
+    return map;
+  }, new Map<number, number>());
+}
+
+function compareByRating(left: RestaurantList, right: RestaurantList) {
+  const ratingComparison = right.stars - left.stars;
+  if (ratingComparison !== 0) return ratingComparison;
+  return left.name.localeCompare(right.name, "es");
+}
+
+function getTopRestaurants(
+  restaurants: RestaurantList[],
+  compare: (left: RestaurantList, right: RestaurantList) => number,
+) {
+  return [...restaurants].sort(compare).slice(0, HOME_SECTION_ITEM_COUNT);
+}
+
+function buildRestaurantRankings(
+  restaurants: RestaurantList[],
+  dishes: ClientDish[],
+  discountedDishIds: Set<number>,
+): HomeRestaurantRankings {
+  const salesByRestaurant = getRestaurantSalesMap(dishes);
+  const dishesByRestaurant = getRestaurantCountMap(dishes);
+  const minPriceByRestaurant = getRestaurantMinPriceMap(dishes);
+  const discountedDishesByRestaurant = getDiscountedDishCountMap(
+    dishes,
+    discountedDishIds,
+  );
+
+  return {
+    bestRated: getTopRestaurants(restaurants, compareByRating),
+    popular: getTopRestaurants(
+      restaurants.filter(
+        (restaurant) => (salesByRestaurant.get(restaurant.id) ?? 0) > 0,
+      ),
+      (left, right) => {
+        const salesComparison =
+          (salesByRestaurant.get(right.id) ?? 0) -
+          (salesByRestaurant.get(left.id) ?? 0);
+        if (salesComparison !== 0) return salesComparison;
+        return compareByRating(left, right);
+      },
+    ),
+    discounted: getTopRestaurants(
+      restaurants.filter((restaurant) =>
+        discountedDishesByRestaurant.has(restaurant.id),
+      ),
+      (left, right) => {
+        const discountComparison =
+          (discountedDishesByRestaurant.get(right.id) ?? 0) -
+          (discountedDishesByRestaurant.get(left.id) ?? 0);
+        if (discountComparison !== 0) return discountComparison;
+        return compareByRating(left, right);
+      },
+    ),
+    affordable: getTopRestaurants(
+      restaurants.filter((restaurant) => minPriceByRestaurant.has(restaurant.id)),
+      (left, right) => {
+        const priceComparison =
+          (minPriceByRestaurant.get(left.id) ?? Number.MAX_SAFE_INTEGER) -
+          (minPriceByRestaurant.get(right.id) ?? Number.MAX_SAFE_INTEGER);
+        if (priceComparison !== 0) return priceComparison;
+        return compareByRating(left, right);
+      },
+    ),
+    variety: getTopRestaurants(
+      restaurants.filter(
+        (restaurant) => (dishesByRestaurant.get(restaurant.id) ?? 0) > 0,
+      ),
+      (left, right) => {
+        const varietyComparison =
+          (dishesByRestaurant.get(right.id) ?? 0) -
+          (dishesByRestaurant.get(left.id) ?? 0);
+        if (varietyComparison !== 0) return varietyComparison;
+        return compareByRating(left, right);
+      },
+    ),
+  };
+}
+
+type QuickBrowseCardProps = {
+  href: string;
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  title: string;
+  description: string;
+};
+
+function QuickBrowseCard({
+  href,
+  icon: Icon,
+  title,
+  description,
+}: QuickBrowseCardProps) {
   return (
-    <div className="animate-pulse overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
-      <div className="h-[108px] bg-gray-100 dark:bg-slate-800" />
-      <div className="space-y-2 p-2.5">
-        <div className="h-4 w-2/3 rounded bg-gray-200 dark:bg-slate-700" />
-        <div className="h-3 w-1/4 rounded bg-gray-100 dark:bg-slate-800" />
-      </div>
-    </div>
+    <Link
+      href={href}
+      className="group flex items-center gap-4 rounded-xl border border-gray-200 bg-white p-4 transition-all duration-200 hover:border-orange-700 hover:shadow-sm dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500"
+    >
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-orange-50 text-orange-700 transition-colors group-hover:bg-orange-100 dark:bg-orange-500/10 dark:text-orange-300 dark:group-hover:bg-orange-500/20">
+        <Icon className="h-7 w-7" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-base font-black text-gray-900 dark:text-white">
+          {title}
+        </span>
+        <span className="mt-1 block text-sm font-medium leading-5 text-gray-500 dark:text-slate-400">
+          {description}
+        </span>
+      </span>
+    </Link>
   );
 }
 
-function CategoryCardSkeleton() {
+type RestaurantRankingSectionProps = {
+  title: string;
+  restaurants: RestaurantList[];
+  loading: boolean;
+};
+
+function RestaurantRankingSection({
+  title,
+  restaurants,
+  loading,
+}: RestaurantRankingSectionProps) {
+  const carouselRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  function updateScrollState() {
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    setCanScrollLeft(carousel.scrollLeft > 0);
+    setCanScrollRight(
+      carousel.scrollLeft + carousel.clientWidth < carousel.scrollWidth - 1,
+    );
+  }
+
+  useEffect(() => {
+    updateScrollState();
+    const carousel = carouselRef.current;
+    if (!carousel) return;
+
+    carousel.addEventListener("scroll", updateScrollState, { passive: true });
+    window.addEventListener("resize", updateScrollState);
+
+    return () => {
+      carousel.removeEventListener("scroll", updateScrollState);
+      window.removeEventListener("resize", updateScrollState);
+    };
+  }, [restaurants, loading]);
+
+  function scrollCarousel(direction: "left" | "right") {
+    carouselRef.current?.scrollBy({
+      left: direction === "left" ? -580 : 580,
+      behavior: "smooth",
+    });
+  }
+
+  if (!loading && restaurants.length === 0) return null;
+
   return (
-    <div className="w-24 shrink-0 snap-start animate-pulse sm:w-28">
-      <div className="h-[72px] rounded-3xl bg-gray-100 dark:bg-slate-800 sm:h-20" />
-      <div className="mt-2 space-y-2">
-        <div className="mx-auto h-4 w-20 rounded bg-gray-200 dark:bg-slate-700" />
-        <div className="mx-auto h-3 w-12 rounded bg-gray-100 dark:bg-slate-800" />
+    <section>
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <h2 className="text-lg font-bold text-gray-800 dark:text-white">
+          {title}
+        </h2>
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            aria-label="Ver locales anteriores"
+            disabled={!canScrollLeft}
+            onClick={() => scrollCarousel("left")}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white dark:disabled:text-slate-700"
+          >
+            <ChevronLeftIcon className="h-6 w-6" />
+          </button>
+          <button
+            type="button"
+            aria-label="Ver más locales"
+            disabled={!canScrollRight}
+            onClick={() => scrollCarousel("right")}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-slate-700 transition hover:bg-slate-100 hover:text-slate-900 disabled:cursor-not-allowed disabled:text-slate-300 disabled:hover:bg-transparent dark:text-slate-200 dark:hover:bg-slate-800 dark:hover:text-white dark:disabled:text-slate-700"
+          >
+            <ChevronRightIcon className="h-6 w-6" />
+          </button>
+        </div>
       </div>
-    </div>
+      <div
+        ref={carouselRef}
+        className="scrollbar-none flex gap-4 overflow-x-auto scroll-smooth pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      >
+        {loading
+          ? Array.from({ length: HOME_SECTION_ITEM_COUNT }).map((_, index) => (
+              <div
+                key={index}
+                className="w-[220px] shrink-0 sm:w-[250px] lg:w-[270px]"
+              >
+                <RestaurantCardSkeleton />
+              </div>
+            ))
+          : restaurants.map((restaurant) => (
+              <div
+                key={restaurant.id}
+                className="w-[220px] shrink-0 sm:w-[250px] lg:w-[270px]"
+              >
+                <RestaurantCompactCard restaurant={restaurant} />
+              </div>
+            ))}
+      </div>
+    </section>
   );
-}
-
-function formatDishCount(count: number) {
-  if (count === 0) return "Sin platos";
-  if (count === 1) return "1 plato";
-  return `${count} platos`;
-}
-
-function getHomeCardClassName(index: number) {
-  return index >= HOME_MOBILE_ITEM_COUNT ? "hidden lg:block" : "block";
 }
 
 export default function ClientHomePage() {
-  const [restaurants, setRestaurants] = useState<RestaurantList[]>([]);
+  const [restaurantRankings, setRestaurantRankings] =
+    useState<HomeRestaurantRankings>(emptyRestaurantRankings);
   const [categories, setCategories] = useState<ClientDishCategorySummary[]>([]);
-  const [dishes, setDishes] = useState<ClientDish[]>([]);
-  const [discounts, setDiscounts] = useState<Map<number, Discount>>(new Map());
   const [loadingRestaurants, setLoadingRestaurants] = useState(true);
   const [loadingCategories, setLoadingCategories] = useState(true);
-  const [loadingDishes, setLoadingDishes] = useState(true);
+
   useEffect(() => {
-    getRestaurants({
-      ordenarPor: "calificacion",
-      direccion: "desc",
-      size: HOME_SECTION_ITEM_COUNT,
-    })
-      .then(({ restaurants }) => setRestaurants(restaurants))
-      .catch(() => setRestaurants([]))
+    Promise.all([
+      getAllRestaurants({}, HOME_FETCH_SIZE),
+      getAllDishes({}, HOME_FETCH_SIZE),
+      getDiscountedDishIds(),
+    ])
+      .then(([restaurants, dishes, discountedDishIds]) =>
+        setRestaurantRankings(
+          buildRestaurantRankings(restaurants, dishes, discountedDishIds),
+        ),
+      )
+      .catch(() => setRestaurantRankings(emptyRestaurantRankings))
       .finally(() => setLoadingRestaurants(false));
   }, []);
 
@@ -110,284 +338,56 @@ export default function ClientHomePage() {
       .finally(() => setLoadingCategories(false));
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    Promise.all([
-      getDishes({
-        orden: "ventas",
-        sentido: "desc",
-        tamano: HOME_SECTION_ITEM_COUNT,
-      }),
-      getDiscountedDishIds(),
-    ])
-      .then(async ([dishesData, discountedIds]) => {
-        if (cancelled) return;
-        setDishes(dishesData);
-
-        const idsToFetch = dishesData
-          .map((dish) => dish.id)
-          .filter((id) => discountedIds.has(id));
-
-        if (idsToFetch.length === 0) return;
-
-        const results = await Promise.allSettled(
-          idsToFetch.map(getDishDiscount),
-        );
-
-        if (cancelled) return;
-
-        const map = new Map<number, Discount>();
-        results.forEach((result, index) => {
-          if (result.status === "fulfilled" && result.value != null) {
-            map.set(idsToFetch[index], result.value);
-          }
-        });
-        setDiscounts(map);
-      })
-      .catch(() => setDishes([]))
-      .finally(() => {
-        if (!cancelled) setLoadingDishes(false);
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
   return (
     <div className="mx-auto max-w-[1440px] space-y-7 px-0 py-4 sm:px-4 sm:py-5">
       <section className="min-w-0">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-            Categorías
-          </h2>
-          <Link
-            href="/client/search?tab=categories"
-            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
-          >
-            Ver todas
-          </Link>
-        </div>
-        <div className="desktop-slider-scrollbar flex snap-x snap-mandatory gap-3 overflow-x-auto overscroll-x-contain scroll-smooth pb-1 touch-pan-x lg:pb-3">
-            {loadingCategories
-              ? Array.from({ length: CATEGORY_SKELETON_COUNT }).map(
-                  (_, index) => <CategoryCardSkeleton key={index} />,
-                )
-              : categories.map((category) => (
-                  <Link
-                    key={category.id}
-                    href={`/client/search?q=${encodeURIComponent(category.name)}`}
-                    className="group w-24 shrink-0 snap-center sm:w-28"
-                  >
-                    <div className="relative flex h-[72px] items-center justify-center overflow-hidden rounded-3xl bg-slate-100 dark:bg-slate-800 sm:h-20">
-                      {category.imageUrl ? (
-                        <Image
-                          alt={category.name}
-                          src={category.imageUrl}
-                          fill
-                          unoptimized
-                          sizes="(min-width: 640px) 112px, 96px"
-                          className="scale-110 object-cover transition duration-200 group-hover:scale-125"
-                        />
-                      ) : (
-                        <Squares2X2Icon className="h-9 w-9 text-orange-300 dark:text-orange-500/60" />
-                      )}
-                    </div>
-                    <div className="mt-2 min-w-0 text-center">
-                      <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
-                        {category.name}
-                      </span>
-                      <span className="mt-0.5 block text-xs font-medium text-gray-400 dark:text-slate-500">
-                        {formatDishCount(category.dishCount)}
-                      </span>
-                    </div>
-                  </Link>
-                ))}
-        </div>
+        <CategoryCarousel
+          categories={categories}
+          loading={loadingCategories}
+          hrefForCategory={(category) => `/client/dishes?categoryId=${category.id}`}
+        />
       </section>
 
-      <section>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-            Mejores locales
-          </h2>
-          <Link
-            href="/client/restaurants"
-            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
-          >
-            Ver todos
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
-          {loadingRestaurants
-            ? Array.from({ length: HOME_SECTION_ITEM_COUNT }).map(
-                (_, index) => (
-                  <div key={index} className={getHomeCardClassName(index)}>
-                    <RestaurantCardSkeleton />
-                  </div>
-                ),
-              )
-            : restaurants.map((restaurant, index) => (
-                <Link
-                  key={restaurant.id}
-                  href={`/client/restaurant/${restaurant.id}`}
-                  className={`${getHomeCardClassName(index)} overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500`}
-                >
-                    <div className="relative h-[92px] bg-gray-50 dark:bg-slate-950">
-                      {restaurant.coverPhotoUrl ? (
-                        <Image
-                          alt={restaurant.name}
-                          src={restaurant.coverPhotoUrl}
-                          fill
-                          unoptimized
-                          sizes="(min-width: 1536px) 18vw, (min-width: 1280px) 24vw, (min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-                          className="object-cover"
-                        />
-                      ) : (
-                        <div className="mx-auto flex h-full w-[120px] items-center justify-center text-gray-300 dark:text-slate-700">
-                          <BuildingStorefrontIcon className="h-12 w-12" />
-                        </div>
-                      )}
-                      <span
-                        aria-label={restaurant.state ? "Abierto" : "Cerrado"}
-                        title={restaurant.state ? "Abierto" : "Cerrado"}
-                        className={`absolute right-2 top-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-bold shadow-sm ${
-                          restaurant.state
-                            ? "bg-green-100 text-green-900 dark:bg-green-900 dark:text-green-300"
-                            : "bg-gray-200 text-gray-500 dark:bg-slate-800 dark:text-slate-400"
-                        }`}
-                      >
-                        {restaurant.state ? (
-                          <CheckCircleIcon className="h-4 w-4" />
-                        ) : (
-                          <MoonIcon className="h-4 w-4" />
-                        )}
-                        {restaurant.state ? "Abierto" : "Cerrado"}
-                      </span>
-                    </div>
-                    <div className="p-2.5">
-                      <div className="flex items-center gap-2">
-                        <div className="relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full border border-orange-100 bg-orange-50 text-sm font-black text-orange-700 dark:border-orange-500/20 dark:bg-orange-500/10 dark:text-orange-300">
-                          {restaurant.profilePhotoUrl ? (
-                            <Image
-                              alt={`Perfil de ${restaurant.name}`}
-                              src={restaurant.profilePhotoUrl}
-                              fill
-                              unoptimized
-                              sizes="36px"
-                              className="object-cover"
-                            />
-                          ) : (
-                            restaurant.name.charAt(0).toUpperCase()
-                          )}
-                        </div>
-                        <span className="truncate text-sm font-bold text-gray-800 dark:text-slate-100">
-                          {restaurant.name}
-                        </span>
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <StarIcon className="h-4 w-4 text-orange-400" />
-                        <span className="text-xs text-gray-400 dark:text-slate-500">
-                          {restaurant.stars}
-                        </span>
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-        </div>
+      <section className="grid gap-3 sm:grid-cols-2">
+        <QuickBrowseCard
+          href="/client/restaurant"
+          icon={BuildingStorefrontIcon}
+          title="Explorar locales"
+          description="Buscá restaurantes por categoría, precio y disponibilidad."
+        />
+        <QuickBrowseCard
+          href="/client/dishes"
+          icon={ShoppingBagIcon}
+          title="Explorar platos"
+          description="Compará opciones por local, categoría y precio."
+        />
       </section>
 
-      <section>
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h2 className="text-lg font-bold text-gray-800 dark:text-white">
-            Platos más vendidos
-          </h2>
-          <Link
-            href="/client/dishes"
-            className="text-sm font-bold text-orange-700 transition hover:text-orange-800 dark:text-orange-400 dark:hover:text-orange-300"
-          >
-            Ver todos
-          </Link>
-        </div>
-        <div className="grid grid-cols-1 gap-3 min-[380px]:grid-cols-2 lg:grid-cols-4">
-          {loadingDishes
-            ? Array.from({ length: HOME_SECTION_ITEM_COUNT }).map(
-                (_, index) => (
-                  <div key={index} className={getHomeCardClassName(index)}>
-                    <DishCardSkeleton />
-                  </div>
-                ),
-              )
-            : dishes.map((dish, index) => {
-                const discount = discounts.get(dish.id);
-                const discountedPrice = discount
-                  ? Math.round(
-                      dish.price * (1 - discount.porcentaje / 100) * 100,
-                    ) / 100
-                  : null;
-
-                return (
-                  <Link
-                    key={dish.id}
-                    href={`/client/platos/${dish.id}`}
-                    className={`${getHomeCardClassName(index)} overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500`}
-                  >
-                    <div className="relative flex h-[108px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
-                      {discount ? (
-                        <span className="absolute left-2 top-2 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white shadow">
-                          <TagIcon className="h-3 w-3" />
-                          -{discount.porcentaje}%
-                        </span>
-                      ) : null}
-                      <span
-                        title="Ver descripcion"
-                        className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 transition dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-700"
-                      >
-                        <InformationCircleIcon className="h-4 w-4" />
-                        <span className="sr-only">Ver descripcion</span>
-                      </span>
-                      {dish.imageUrl ? (
-                        <Image
-                          alt={dish.name}
-                          src={dish.imageUrl}
-                          width={320}
-                          height={180}
-                          unoptimized
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <span className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-orange-600 shadow-sm dark:bg-slate-950 dark:text-orange-300">
-                          <ShoppingBagIcon className="h-8 w-8" />
-                        </span>
-                      )}
-                    </div>
-                    <div className="p-2.5">
-                      <span className="block truncate text-sm font-bold text-gray-800 dark:text-slate-100">
-                        {dish.name}
-                      </span>
-                      <div className="mt-1 flex items-center gap-2">
-                        {discountedPrice != null ? (
-                          <>
-                            <span className="text-sm font-bold text-orange-700 dark:text-orange-300">
-                              ${discountedPrice}
-                            </span>
-                            <span className="text-xs text-gray-400 line-through dark:text-slate-500">
-                              ${dish.price}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-sm font-bold text-orange-700 dark:text-orange-300">
-                            ${dish.price}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
-                );
-              })}
-        </div>
-      </section>
+      <RestaurantRankingSection
+        title="Top 10 locales mejor calificados"
+        restaurants={restaurantRankings.bestRated}
+        loading={loadingRestaurants}
+      />
+      <RestaurantRankingSection
+        title="Top 10 locales más populares"
+        restaurants={restaurantRankings.popular}
+        loading={loadingRestaurants}
+      />
+      <RestaurantRankingSection
+        title="Top 10 locales con descuentos"
+        restaurants={restaurantRankings.discounted}
+        loading={loadingRestaurants}
+      />
+      <RestaurantRankingSection
+        title="Top 10 locales con opciones más económicas"
+        restaurants={restaurantRankings.affordable}
+        loading={loadingRestaurants}
+      />
+      <RestaurantRankingSection
+        title="Top 10 locales con más variedad"
+        restaurants={restaurantRankings.variety}
+        loading={loadingRestaurants}
+      />
     </div>
   );
 }
