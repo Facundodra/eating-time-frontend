@@ -33,6 +33,7 @@ import {
   getDishDiscount,
   getDiscountedDishIds,
 } from "@/services/client/client-service";
+import { applyRestaurantAvailability } from "@/services/client/restaurant-availability-service";
 import CategoryCarousel from "@/ui/client/categories/category-carousel";
 
 const FETCH_SIZE = 120;
@@ -447,8 +448,15 @@ export default function ClientDishesByRestaurantPage({
         if (cancelled) return;
 
         const normalizedQuery = normalizeSearchText(query);
+        const restaurantsWithAvailability =
+          await applyRestaurantAvailability(restaurantsData);
+        if (cancelled) return;
+
         const restaurantsById = new Map(
-          restaurantsData.map((restaurant) => [restaurant.id, restaurant]),
+          restaurantsWithAvailability.map((restaurant) => [
+            restaurant.id,
+            restaurant,
+          ]),
         );
         const candidateDishes = sortDishes(dishesData, sort).filter((dish) => {
           const restaurant = restaurantsById.get(dish.localId);
@@ -484,7 +492,7 @@ export default function ClientDishesByRestaurantPage({
         );
 
         setRestaurants(
-          restaurantsData.filter((restaurant) =>
+          restaurantsWithAvailability.filter((restaurant) =>
             restaurantIdsWithDishes.has(restaurant.id),
           ),
         );

@@ -21,6 +21,7 @@ import {
   getAllDishes,
   getClientDishCategorySummaries,
 } from "@/services/client/client-service";
+import { applyRestaurantAvailability } from "@/services/client/restaurant-availability-service";
 import CategoryCarousel from "@/ui/client/categories/category-carousel";
 import { RestaurantCompactCard } from "@/ui/client/restaurants/restaurant-compact-card";
 
@@ -113,21 +114,17 @@ export default function ClientRestaurantsPage() {
 
       try {
         const { orderBy, direction } = getSortParams(sort);
-        const service =
-          status === "open"
-            ? "ACTIVO"
-            : status === "closed"
-              ? "INACTIVO"
-              : undefined;
         const data = await getAllRestaurants(
           {
             nombre: query.trim() || undefined,
-            servicio: service,
             ordenarPor: orderBy,
             direccion: direction,
           },
           RESTAURANT_FETCH_SIZE,
         );
+        const restaurantsWithAvailability = await applyRestaurantAvailability(data);
+        if (cancelled) return;
+
         const dishPriceMin = parseOptionalNumber(priceMin);
         const dishPriceMax = parseOptionalNumber(priceMax);
         const shouldFilterByDish =
@@ -151,10 +148,17 @@ export default function ClientRestaurantsPage() {
               );
         const filteredData =
           categoryRestaurantIds == null
-            ? data
-            : data.filter((restaurant) => categoryRestaurantIds.has(restaurant.id));
+            ? restaurantsWithAvailability
+            : restaurantsWithAvailability.filter((restaurant) =>
+                categoryRestaurantIds.has(restaurant.id),
+              );
+        const filteredByStatus = filteredData.filter((restaurant) => {
+          if (status === "open") return restaurant.state;
+          if (status === "closed") return !restaurant.state;
+          return true;
+        });
 
-        if (!cancelled) setRestaurants(filteredData);
+        if (!cancelled) setRestaurants(filteredByStatus);
       } catch (err) {
         if (!cancelled) {
           setRestaurants([]);
