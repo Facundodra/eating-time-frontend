@@ -1,18 +1,23 @@
-"use client";
+﻿"use client";
 
 import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import {
+  ArrowsUpDownIcon,
+  CurrencyDollarIcon,
+  FunnelIcon,
   InformationCircleIcon,
   MinusIcon,
   PlusIcon,
   ShoppingBagIcon,
   TagIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 import {
-  getClientDishCategories,
+  getClientDishCategorySummaries,
+  getAllDishes,
   getDishes,
   getDiscountedDishIds,
   getDishDiscount,
@@ -22,9 +27,11 @@ import {
 import type {
   Cart,
   ClientDish,
-  ClientDishCategory,
+  ClientDishCategorySummary,
   Discount,
 } from "@/lib/client/types";
+import CategoryCarousel from "@/ui/client/categories/category-carousel";
+import DishesDetailPage from "@/ui/client/dishes/dishes-detail-page";
 
 const PAGE_SIZE = 20;
 
@@ -58,24 +65,41 @@ type Props = {
   idLocal?: number;
   cart?: Cart | null;
   onCartUpdate?: (cart: Cart | null) => void;
+  initialSelectedDishId?: string | null;
 };
 
-export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
+export default function DishesList({
+  idLocal,
+  cart,
+  onCartUpdate,
+  initialSelectedDishId = null,
+}: Props) {
+  const router = useRouter();
   const [dishes, setDishes] = useState<ClientDish[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>({});
-  const [categories, setCategories] = useState<ClientDishCategory[]>([]);
+  const [categories, setCategories] = useState<ClientDishCategorySummary[]>([]);
   const [loadingCategories, setLoadingCategories] = useState(true);
+  const [localCategoryIds, setLocalCategoryIds] = useState<Set<number> | null>(
+    null,
+  );
+  const [loadingLocalCategories, setLoadingLocalCategories] = useState(false);
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
 
   const [precioMin, setPrecioMin] = useState("");
   const [precioMax, setPrecioMax] = useState("");
+  const [query, setQuery] = useState("");
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
+  const [selectedDishId, setSelectedDishId] = useState<number | null>(null);
+  const [dismissedInitialDishId, setDismissedInitialDishId] = useState<
+    string | null
+  >(null);
 
   // IDs de platos con descuento activo (para este local) y detalle de cada descuento ya consultado.
-  // El Map guarda `null` para los que ya se consultaron pero no tienen descuento vigente — así
+  // El Map guarda `null` para los que ya se consultaron pero no tienen descuento vigente:
   // podemos distinguir "todavía no se consultó" (afecta el skeleton) de "se consultó, no hay descuento".
   const [discountedIds, setDiscountedIds] = useState<Set<number> | null>(null);
   const [discounts, setDiscounts] = useState<Map<number, Discount | null>>(new Map());
@@ -90,7 +114,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   useEffect(() => {
     let cancelled = false;
 
-    getClientDishCategories()
+    getClientDishCategorySummaries()
       .then((data) => {
         if (!cancelled) setCategories(data);
       })
@@ -105,6 +129,36 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
       cancelled = true;
     };
   }, []);
+
+  useEffect(() => {
+    if (!idLocal) {
+      setLocalCategoryIds(null);
+      setLoadingLocalCategories(false);
+      return;
+    }
+
+    let cancelled = false;
+    setLoadingLocalCategories(true);
+
+    getAllDishes({ idLocal })
+      .then((localDishes) => {
+        if (cancelled) return;
+
+        setLocalCategoryIds(
+          new Set(localDishes.flatMap((dish) => dish.categories)),
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setLocalCategoryIds(new Set());
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingLocalCategories(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [idLocal]);
 
   // IDs con descuento activo: se recalculan solo cuando cambia el local, y limpian el cache de detalles
   useEffect(() => {
@@ -125,6 +179,19 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
       cancelled = true;
     };
   }, [idLocal]);
+
+  useEffect(() => {
+    if (!initialSelectedDishId) {
+      setDismissedInitialDishId(null);
+      setSelectedDishId(null);
+      return;
+    }
+
+    if (dismissedInitialDishId === initialSelectedDishId) return;
+
+    const parsedDishId = Number(initialSelectedDishId);
+    setSelectedDishId(Number.isFinite(parsedDishId) ? parsedDishId : null);
+  }, [dismissedInitialDishId, initialSelectedDishId]);
 
   useEffect(() => {
     const isNewSearch = page === 1;
@@ -156,7 +223,7 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
 
     if (idsToFetch.length === 0) return;
     // Marcamos los IDs como solicitados de inmediato: el ref persiste entre el doble efecto
-    // de Strict Mode (monta → limpia → vuelve a montar), así la segunda pasada no reintenta
+    // de Strict Mode (monta, limpia y vuelve a montar), así la segunda pasada no reintenta
     // y la promesa de la primera pasada queda como única responsable de actualizar el estado
     // (si usáramos también un flag "cancelled" por efecto, esa promesa quedaría descartada
     // y el listado se quedaría esperando el descuento para siempre).
@@ -192,16 +259,16 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
     }
   }
 
-  function handleCategory(value: string) {
-    const categoryId = Number(value);
-
-    updateFilters({
-      categoriaId: value && !isNaN(categoryId) ? categoryId : undefined,
-    });
-  }
-
   function toggleDescuento() {
     updateFilters({ conDescuento: filters.conDescuento ? undefined : true });
+  }
+
+  function clearFilters() {
+    setPage(1);
+    setFilters({});
+    setPrecioMin("");
+    setPrecioMax("");
+    setQuery("");
   }
 
   function applyPrecio() {
@@ -216,6 +283,23 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   const ordenValue: OrdenValue = filters.orden
     ? `${filters.orden}-${filters.sentido ?? "asc"}`
     : "";
+  const hasActiveFilters =
+    Boolean(query) ||
+    Boolean(filters.categoriaId) ||
+    Boolean(filters.conDescuento) ||
+    filters.precioMin != null ||
+    filters.precioMax != null;
+  const visibleDishes = dishes.filter((dish) => {
+    if (query.trim() && !dish.name.toLowerCase().includes(query.trim().toLowerCase())) {
+      return false;
+    }
+    if (filters.conDescuento && !discounts.get(dish.id)) return false;
+    return true;
+  });
+  const visibleCategories =
+    idLocal && localCategoryIds
+      ? categories.filter((category) => localCategoryIds.has(category.id))
+      : categories;
 
   // Mientras no sepamos qué platos de la página actual tienen descuento (o aún falten consultar
   // su detalle), seguimos mostrando el skeleton para evitar el "flash" del precio sin descontar.
@@ -256,174 +340,322 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
   return (
     <div className="max-w-[1440px] mx-auto">
       {/* Barra de filtros */}
-      <div className="mb-5 grid grid-cols-2 gap-2 rounded-xl border border-gray-100 bg-white p-2.5 text-sm text-gray-500 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 sm:mb-6 sm:flex sm:flex-wrap sm:items-center sm:gap-x-6 sm:gap-y-2 sm:border-b sm:p-3">
-        <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
-          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Ordenar:</span>
-          <select
-            aria-label="Ordenar platos"
-            value={ordenValue}
-            onChange={(e) => handleOrden(e.target.value as OrdenValue)}
-            className="w-full min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:w-auto sm:text-sm sm:font-normal"
-          >
-            <option value="">Por defecto</option>
-            <option value="precio-asc">Precio: menor a mayor</option>
-            <option value="precio-desc">Precio: mayor a menor</option>
-            <option value="ventas-desc">Mas vendidos</option>
-            <option value="ventas-asc">Menos vendidos</option>
-          </select>
+      <section className="mb-5 rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:mb-6">
+        <div className="grid gap-4 xl:hidden">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsMobileFiltersOpen(true)}
+              className="flex h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            >
+              <FunnelIcon className="h-4 w-4" />
+              Filtros
+              {hasActiveFilters && (
+                <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+              )}
+            </button>
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <select
+                aria-label="Ordenar platos"
+                value={ordenValue}
+                onChange={(e) => handleOrden(e.target.value as OrdenValue)}
+                className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="">Por defecto</option>
+                <option value="precio-asc">Precio menor</option>
+                <option value="precio-desc">Precio mayor</option>
+                <option value="ventas-desc">Más vendidos</option>
+                <option value="ventas-asc">Menos vendidos</option>
+              </select>
+            </div>
+          </div>
+
+          {isMobileFiltersOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pb-4 pt-20 backdrop-blur-sm sm:items-center sm:pt-16">
+              <div className="w-full rounded-2xl border border-gray-200 bg-white shadow-xl sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                      Filtros
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Ajusta los platos visibles del local.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    aria-label="Cerrar filtros"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-orange-400"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="grid gap-4 px-5 py-5">
+                  <label className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Nombre
+                    </span>
+                    <input
+                      type="search"
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Buscar plato"
+                      className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
+                    />
+                  </label>
+                  <div>
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Precio
+                    </span>
+                    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5">
+                      <input
+                        aria-label="Precio mínimo"
+                        type="number"
+                        min={0}
+                        placeholder="min"
+                        value={precioMin}
+                        onChange={(e) => setPrecioMin(e.target.value)}
+                        onBlur={applyPrecio}
+                        onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
+                        className="h-11 min-w-0 rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                      />
+                      <span className="text-slate-400">-</span>
+                      <input
+                        aria-label="Precio máximo"
+                        type="number"
+                        min={0}
+                        placeholder="max"
+                        value={precioMax}
+                        onChange={(e) => setPrecioMax(e.target.value)}
+                        onBlur={applyPrecio}
+                        onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
+                        className="h-11 min-w-0 rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+                      />
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={toggleDescuento}
+                    aria-pressed={Boolean(filters.conDescuento)}
+                    className={`flex h-11 w-full items-center justify-center gap-2 rounded-xl border px-4 text-sm font-extrabold transition ${
+                      filters.conDescuento
+                        ? "border-orange-500 bg-orange-50 text-orange-700 dark:border-orange-500/60 dark:bg-orange-500/15 dark:text-orange-300"
+                        : "border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    }`}
+                  >
+                    <TagIcon className="h-4 w-4" />
+                    Con descuento
+                  </button>
+                </div>
+                <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
-        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
-
-        <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
-          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Filtrar:</span>
-          <button
-            type="button"
-            aria-label="Filtrar platos con descuento"
-            onClick={toggleDescuento}
-            className={`flex w-full min-w-0 items-center justify-center gap-1.5 rounded-full border px-2 py-1.5 text-xs font-semibold transition-colors sm:w-auto sm:px-3 sm:py-1 sm:text-sm sm:font-medium ${
-              filters.conDescuento
-                ? "border-orange-600 bg-orange-600 text-white"
-                : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-300 dark:hover:border-orange-500/60 dark:hover:text-orange-300"
-            }`}
-          >
-            <TagIcon className="h-3.5 w-3.5" />
-            Con descuento
-          </button>
-        </div>
-
-        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
-
-        <div className="min-w-0 sm:flex sm:items-center sm:gap-2">
-          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Categoría:</span>
-          <select
-            aria-label="Filtrar platos por categoria"
-            value={filters.categoriaId ?? ""}
-            onChange={(e) => handleCategory(e.target.value)}
-            disabled={loadingCategories || categories.length === 0}
-            className="w-full min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:max-w-[180px] sm:text-sm sm:font-normal"
-          >
-            <option value="">Todas</option>
-            {categories.map((category) => (
-              <option key={category.id} value={category.id}>
-                {category.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="hidden h-4 w-px bg-gray-200 dark:bg-slate-700 sm:block" />
-
-        <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-1.5 sm:flex">
-          <span className="hidden font-medium text-gray-600 dark:text-slate-300 sm:inline">Precio:</span>
+        <div className="hidden gap-5 xl:grid xl:grid-cols-[minmax(16rem,1fr)_auto_auto_auto] xl:items-center">
           <input
-            aria-label="Precio minimo"
-            type="number"
-            min={0}
-            placeholder="mín"
-            value={precioMin}
-            onChange={(e) => setPrecioMin(e.target.value)}
-            onBlur={applyPrecio}
-            onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:w-20 sm:text-sm sm:font-normal"
+            type="search"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar plato"
+            className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20"
           />
-          <span className="text-gray-400 dark:text-slate-500">—</span>
-          <input
-            aria-label="Precio maximo"
-            type="number"
-            min={0}
-            placeholder="máx"
-            value={precioMax}
-            onChange={(e) => setPrecioMax(e.target.value)}
-            onBlur={applyPrecio}
-            onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
-            className="min-w-0 rounded-md border border-gray-200 bg-white px-2 py-1.5 text-xs font-semibold text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20 sm:w-20 sm:text-sm sm:font-normal"
-          />
+          <div className="flex min-w-0 items-center gap-2">
+            <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+            <select
+              aria-label="Ordenar platos"
+              value={ordenValue}
+              onChange={(e) => handleOrden(e.target.value as OrdenValue)}
+              className="h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            >
+              <option value="">Por defecto</option>
+              <option value="precio-asc">Precio menor</option>
+              <option value="precio-desc">Precio mayor</option>
+              <option value="ventas-desc">Más vendidos</option>
+              <option value="ventas-asc">Menos vendidos</option>
+            </select>
+          </div>
+          <div className="flex min-w-0 items-center gap-2">
+            <TagIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+            <button
+              type="button"
+              aria-label="Filtrar platos con descuento"
+              onClick={toggleDescuento}
+              aria-pressed={Boolean(filters.conDescuento)}
+              className={`flex h-10 min-w-0 items-center justify-center gap-2 rounded-lg border px-3 text-sm font-extrabold transition ${
+                filters.conDescuento
+                  ? "border-orange-500 bg-orange-50 text-orange-700 dark:border-orange-500/60 dark:bg-orange-500/15 dark:text-orange-300"
+                  : "border-gray-200 bg-white text-slate-600 hover:border-orange-200 hover:text-orange-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-300 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              }`}
+            >
+              Con descuento
+            </button>
+          </div>
+          <div className="grid grid-cols-[auto_5rem_auto_5rem] items-center gap-1.5">
+            <CurrencyDollarIcon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            <input
+              aria-label="Precio mínimo"
+              type="number"
+              min={0}
+              placeholder="min"
+              value={precioMin}
+              onChange={(e) => setPrecioMin(e.target.value)}
+              onBlur={applyPrecio}
+              onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
+              className="h-10 min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            />
+            <span className="text-gray-400 dark:text-slate-500">-</span>
+            <input
+              aria-label="Precio máximo"
+              type="number"
+              min={0}
+              placeholder="max"
+              value={precioMax}
+              onChange={(e) => setPrecioMax(e.target.value)}
+              onBlur={applyPrecio}
+              onKeyDown={(e) => e.key === "Enter" && applyPrecio()}
+              className="h-10 min-w-0 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20"
+            />
+          </div>
         </div>
-      </div>
+      </section>
+
+      <CategoryCarousel
+        categories={visibleCategories}
+        loading={loadingCategories || loadingLocalCategories}
+        selectedCategoryId={filters.categoriaId ?? null}
+        onSelectCategory={(category) =>
+          updateFilters({
+            categoriaId:
+              filters.categoriaId === category.id ? undefined : category.id,
+          })
+        }
+      />
+
 
       {/* Resultados */}
       {loading || (page === 1 && discountsPending) ? (
         <DishSkeleton />
       ) : error ? (
         <p className="text-sm text-red-500 dark:text-red-300">{error}</p>
-      ) : dishes.length === 0 ? (
+      ) : visibleDishes.length === 0 ? (
         <p className="text-sm text-slate-400">
           No se encontraron resultados para los filtros aplicados.
         </p>
       ) : (
         <>
           <div className="flex flex-wrap">
-            {dishes.map((dish) => {
+            {visibleDishes.map((dish) => {
               const qty = getCartQty(dish.id);
               const isUpdating = updatingDishId === dish.id;
               const discount = discounts.get(dish.id);
               const discountedPrice = discount
                 ? Math.round(dish.price * (1 - discount.porcentaje / 100) * 100) / 100
                 : null;
+              const dishPreview = (
+                <>
+                  <div className="relative flex h-[150px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
+                    {discount && (
+                      <span className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white shadow">
+                        <TagIcon className="h-3 w-3" />
+                        -{discount.porcentaje}%
+                      </span>
+                    )}
+                    <span
+                      title="Ver descripcion"
+                      className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 transition dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-700"
+                    >
+                      <InformationCircleIcon className="h-4 w-4" />
+                      <span className="sr-only">Ver descripcion</span>
+                    </span>
+                    {dish.imageUrl ? (
+                      <Image
+                        alt={dish.name}
+                        src={dish.imageUrl}
+                        fill
+                        unoptimized
+                        sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
+                        className="object-cover"
+                      />
+                    ) : (
+                      <span className="text-4xl font-black text-orange-600 dark:text-orange-300">
+                        {dish.name.charAt(0).toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+                  <div className="px-4 pt-4 pb-2 text-left">
+                    <span className="inline-block font-bold text-gray-800 dark:text-slate-100">
+                      {dish.name}
+                    </span>
+                    <div className="mt-1 flex items-center gap-2">
+                      {discountedPrice != null ? (
+                        <>
+                          <span className="text-md text-orange-700 font-bold">
+                            ${discountedPrice}
+                          </span>
+                          <span className="text-sm text-gray-400 line-through dark:text-slate-500">
+                            ${dish.price}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-md text-orange-700 font-bold">
+                          ${dish.price}
+                        </span>
+                      )}
+                    </div>
+                    {dish.salesCount > 0 ? (
+                      <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
+                        <ShoppingBagIcon className="h-3.5 w-3.5" />
+                        {dish.salesCount} ventas
+                      </div>
+                    ) : null}
+                  </div>
+                </>
+              );
+
               return (
                 <div key={dish.id} className="px-2 py-2 w-1/2 md:w-1/3 lg:w-1/4">
                   <div className="flex flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition-all duration-200 hover:border-orange-700 dark:border-slate-800 dark:bg-slate-900 dark:hover:border-orange-500">
-                    <Link href={`/client/platos/${dish.id}`} className="block">
-                      <div className="relative flex h-[150px] items-center justify-center bg-orange-50 dark:bg-orange-500/10">
-                        {discount && (
-                          <span className="absolute top-2 left-2 z-10 flex items-center gap-1 rounded-full bg-orange-600 px-2 py-0.5 text-xs font-bold text-white shadow">
-                            <TagIcon className="h-3 w-3" />
-                            -{discount.porcentaje}%
-                          </span>
-                        )}
-                        <span
-                          title="Ver descripcion"
-                          className="absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-slate-700 shadow-sm ring-1 ring-slate-200 transition dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-700"
-                        >
-                          <InformationCircleIcon className="h-4 w-4" />
-                          <span className="sr-only">Ver descripcion</span>
-                        </span>
-                        {dish.imageUrl ? (
-                          <Image
-                            alt={dish.name}
-                            src={dish.imageUrl}
-                            fill
-                            unoptimized
-                            sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw"
-                            className="object-cover"
-                          />
-                        ) : (
-                          <span className="text-4xl font-black text-orange-600 dark:text-orange-300">
-                            {dish.name.charAt(0).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                      <div className="px-4 pt-4 pb-2">
-                        <span className="inline-block font-bold text-gray-800 dark:text-slate-100">
-                          {dish.name}
-                        </span>
-                        <div className="mt-1 flex items-center gap-2">
-                          {discountedPrice != null ? (
-                            <>
-                              <span className="text-md text-orange-700 font-bold">
-                                ${discountedPrice}
-                              </span>
-                              <span className="text-sm text-gray-400 line-through dark:text-slate-500">
-                                ${dish.price}
-                              </span>
-                            </>
-                          ) : (
-                            <span className="text-md text-orange-700 font-bold">
-                              ${dish.price}
-                            </span>
-                          )}
-                        </div>
-                        {dish.salesCount > 0 ? (
-                          <div className="mt-2 inline-flex items-center gap-1 text-xs font-medium text-slate-400 dark:text-slate-500">
-                            <ShoppingBagIcon className="h-3.5 w-3.5" />
-                            {dish.salesCount} ventas
-                          </div>
-                        ) : null}
-                      </div>
-                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDishId(dish.id)}
+                      className="block w-full"
+                    >
+                      {dishPreview}
+                    </button>
 
-                    {/* Contador de carrito — solo visible dentro de un local */}
+                    {/* Contador de carrito: solo visible dentro de un local */}
                     {idLocal && onCartUpdate && (
                       <div className="px-4 pb-4 mt-auto">
                         {qty === 0 ? (
@@ -501,6 +733,18 @@ export default function DishesList({ idLocal, cart, onCartUpdate }: Props) {
           )}
         </>
       )}
+      {selectedDishId != null ? (
+        <DishesDetailPage
+          id={String(selectedDishId)}
+          onClose={() => {
+            setSelectedDishId(null);
+            if (idLocal && initialSelectedDishId) {
+              setDismissedInitialDishId(initialSelectedDishId);
+              router.replace(`/client/restaurant/${idLocal}`, { scroll: false });
+            }
+          }}
+        />
+      ) : null}
     </div>
   );
 }
