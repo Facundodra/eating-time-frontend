@@ -194,7 +194,13 @@ function RestaurantBusinessSchedule({
   );
 }
 
-export default function RestaurantDetailPage({ id }: { id: string }) {
+export default function RestaurantDetailPage({
+  id,
+  initialDishId = null,
+}: {
+  id: string;
+  initialDishId?: string | null;
+}) {
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -346,7 +352,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
                 <span className="flex align-center items-center text-sm text-orange-700 dark:text-orange-300">
                   <StarIcon className="w-[20px] mr-1"></StarIcon>{" "}
                   <span className="relative">{restaurant.stars}</span>
-                  <Link href={`/client/restaurant/${id}/comentarios`} className="leading-1 ml-3 text-xs font-semibold text-gray-800 hover:text-orange-700 dark:text-slate-300 dark:hover:text-orange-300">
+                  <Link href={`/client/restaurant/${id}/comments`} className="leading-1 ml-3 text-xs font-semibold text-gray-800 hover:text-orange-700 dark:text-slate-300 dark:hover:text-orange-300">
                     Ver comentarios
                   </Link>
                 </span>
@@ -375,6 +381,7 @@ export default function RestaurantDetailPage({ id }: { id: string }) {
           idLocal={Number(id)}
           cart={cart}
           onCartUpdate={setCart}
+          initialSelectedDishId={initialDishId}
         />
       </div>
 

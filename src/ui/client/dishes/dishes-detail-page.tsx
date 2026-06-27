@@ -17,7 +17,13 @@ import type { Cart, ClientDish, Discount } from "@/lib/client/types";
 import { getCart, getDish, getDishDiscount, updateCartItem } from "@/services/client/client-service";
 import LocalNameWidget from "@/ui/shared/widgets/local-name-widget";
 
-export default function DishesDetailPage({ id }: { id: string }) {
+export default function DishesDetailPage({
+  id,
+  onClose,
+}: {
+  id: string;
+  onClose?: () => void;
+}) {
   const router = useRouter();
   const [dish, setDish] = useState<ClientDish | null>(null);
   const [loading, setLoading] = useState(true);
@@ -30,28 +36,66 @@ export default function DishesDetailPage({ id }: { id: string }) {
   const cartUpdateInFlight = useRef(false);
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+    let cancelled = false;
 
-  useEffect(() => {
+    setDish(null);
+    setError(null);
+    setLoading(true);
+
     getDish(id)
-      .then(setDish)
-      .catch((err) => setError(err instanceof Error ? err.message : "Error al cargar"))
-      .finally(() => setLoading(false));
+      .then((data) => {
+        if (!cancelled) setDish(data);
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          setError(err instanceof Error ? err.message : "Error al cargar");
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [id]);
 
   useEffect(() => {
     if (!dish) return;
-    getCart(dish.localId).then(setCart).catch(() => setCart(null));
+    let cancelled = false;
+
+    getCart(dish.localId)
+      .then((data) => {
+        if (!cancelled) setCart(data);
+      })
+      .catch(() => {
+        if (!cancelled) setCart(null);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [dish]);
 
   useEffect(() => {
     if (!dish) return;
+    let cancelled = false;
+
     setDiscountLoading(true);
     getDishDiscount(dish.id)
-      .then(setDiscount)
-      .catch(() => setDiscount(null))
-      .finally(() => setDiscountLoading(false));
+      .then((data) => {
+        if (!cancelled) setDiscount(data);
+      })
+      .catch(() => {
+        if (!cancelled) setDiscount(null);
+      })
+      .finally(() => {
+        if (!cancelled) setDiscountLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
   }, [dish]);
 
   const discountedPrice = discount && dish
@@ -84,13 +128,22 @@ export default function DishesDetailPage({ id }: { id: string }) {
     }
   }
 
+  function closeDetail() {
+    if (onClose) {
+      onClose();
+      return;
+    }
+
+    router.back();
+  }
+
   if (error) {
     return (
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/35 px-4 py-6 backdrop-blur-[1px]">
         <div className="w-full max-w-md rounded-2xl border border-gray-200 bg-white p-6 shadow-2xl dark:border-slate-800 dark:bg-slate-900">
           <button
             type="button"
-            onClick={() => router.back()}
+            onClick={closeDetail}
             className="ml-auto flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 text-slate-500 transition hover:border-orange-300 hover:text-orange-700 dark:border-slate-700 dark:text-slate-300"
             aria-label="Cerrar detalle del plato"
           >
@@ -116,7 +169,7 @@ export default function DishesDetailPage({ id }: { id: string }) {
       >
         <button
           type="button"
-          onClick={() => router.back()}
+          onClick={closeDetail}
           className="absolute right-4 top-4 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-white/95 text-slate-600 shadow-sm ring-1 ring-gray-200 transition hover:text-orange-700 dark:bg-slate-950/90 dark:text-slate-200 dark:ring-slate-800"
           aria-label="Cerrar detalle del plato"
         >
@@ -236,7 +289,7 @@ export default function DishesDetailPage({ id }: { id: string }) {
               </div>
             )}
 
-            {cartItemCount > 0 && (
+            {!onClose && cartItemCount > 0 && (
               <div className="mt-6 flex items-center justify-between rounded-2xl bg-orange-700 px-5 py-4 text-white shadow-lg">
                 <div className="flex items-center gap-3">
                   <div className="relative">

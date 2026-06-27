@@ -599,6 +599,8 @@ interface RestaurantDtoFromApi {
     profilePhotoUrl?: string | null;
     urlPortada?: string | null;
     urlFotoPortada?: string | null;
+    urlPortadaMobile?: string | null;
+    urlPortadaDesktop?: string | null;
     fotoPortadaUrl?: string | null;
     coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
@@ -618,16 +620,20 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
         r.imageUrl,
     );
     const explicitCoverPhotoUrl = getFirstStringValue(
+        r.urlPortadaDesktop,
         r.urlPortada,
         r.urlFotoPortada,
         r.fotoPortadaUrl,
         r.coverPhotoUrl,
+        r.urlPortadaMobile,
     );
 
     return {
         id,
         name: getFirstStringValue(r.nombre, r.name, r.razonSocial) ?? `Local #${id}`,
         coverPhotoUrl: explicitCoverPhotoUrl ?? "",
+        coverPhotoMobileUrl: getFirstStringValue(r.urlPortadaMobile) ?? explicitCoverPhotoUrl ?? "",
+        coverPhotoDesktopUrl: getFirstStringValue(r.urlPortadaDesktop) ?? explicitCoverPhotoUrl ?? "",
         profilePhotoUrl: getFirstStringValue(
             r.urlFotoPerfil,
             r.fotoPerfilUrl,
@@ -784,6 +790,8 @@ interface RestaurantSingleDtoFromApi {
     profilePhotoUrl?: string | null;
     urlPortada?: string | null;
     urlFotoPortada?: string | null;
+    urlPortadaMobile?: string | null;
+    urlPortadaDesktop?: string | null;
     fotoPortadaUrl?: string | null;
     coverPhotoUrl?: string | null;
     estadoServicio?: boolean | string | number | null;
