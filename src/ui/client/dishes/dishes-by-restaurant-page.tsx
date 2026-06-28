@@ -33,7 +33,6 @@ import {
   getDishDiscount,
   getDiscountedDishIds,
 } from "@/services/client/client-service";
-import { applyRestaurantAvailability } from "@/services/client/restaurant-availability-service";
 import CategoryCarousel from "@/ui/client/categories/category-carousel";
 
 const FETCH_SIZE = 120;
@@ -448,15 +447,8 @@ export default function ClientDishesByRestaurantPage({
         if (cancelled) return;
 
         const normalizedQuery = normalizeSearchText(query);
-        const restaurantsWithAvailability =
-          await applyRestaurantAvailability(restaurantsData);
-        if (cancelled) return;
-
         const restaurantsById = new Map(
-          restaurantsWithAvailability.map((restaurant) => [
-            restaurant.id,
-            restaurant,
-          ]),
+          restaurantsData.map((restaurant) => [restaurant.id, restaurant]),
         );
         const candidateDishes = sortDishes(dishesData, sort).filter((dish) => {
           const restaurant = restaurantsById.get(dish.localId);
@@ -492,7 +484,7 @@ export default function ClientDishesByRestaurantPage({
         );
 
         setRestaurants(
-          restaurantsWithAvailability.filter((restaurant) =>
+          restaurantsData.filter((restaurant) =>
             restaurantIdsWithDishes.has(restaurant.id),
           ),
         );
@@ -570,12 +562,12 @@ export default function ClientDishesByRestaurantPage({
             <button
               type="button"
               onClick={() => setIsMobileFiltersOpen(true)}
-              className="flex h-11 w-fit shrink-0 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-3 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              aria-label="Abrir filtros"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
             >
               <FunnelIcon className="h-4 w-4" />
-              Filtros
               {hasActiveFilters && (
-                <span className="h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
               )}
             </button>
             {hasActiveFilters && (

@@ -51,10 +51,10 @@ export function RestaurantCompactCard({
             aria-label={restaurant.state ? "Abierto" : "Cerrado"}
             title={restaurant.state ? "Abierto" : "Cerrado"}
             className={clsx(
-              "absolute left-2 top-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-xs font-black shadow-sm",
+              "absolute left-2 top-2 inline-flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-black shadow-sm backdrop-blur",
               restaurant.state
-                ? "bg-green-100 text-green-900 dark:bg-green-500/15 dark:text-green-200"
-                : "bg-white/95 text-slate-600 dark:bg-slate-950/90 dark:text-slate-300",
+                ? "border-green-200 bg-green-100 text-green-900 dark:border-green-400/35 dark:bg-slate-950/85 dark:text-green-300"
+                : "border-slate-200 bg-white/95 text-slate-600 dark:border-slate-500/35 dark:bg-slate-950/85 dark:text-slate-300",
             )}
           >
             {restaurant.state ? (
