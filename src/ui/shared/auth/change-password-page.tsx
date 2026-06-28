@@ -1,8 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import { EyeIcon, EyeSlashIcon, LockClosedIcon } from "@heroicons/react/24/outline";
+import {
+  CheckCircleIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  LockClosedIcon,
+  ShieldCheckIcon,
+  UserCircleIcon,
+} from "@heroicons/react/24/outline";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { type FormEvent, useState } from "react";
 
 import {
   changePassword,
@@ -14,184 +22,306 @@ type Props = { backHref: string };
 
 export default function ChangePasswordPage({ backHref }: Props) {
   const router = useRouter();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showCurrent, setShowCurrent] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
-  const [newPassword, setNewPassword] = useState("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [successMessage, setSuccessMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
   const [confirmError, setConfirmError] = useState("");
-  const [done, setDone] = useState(false);
 
-  async function handleSubmit(e: { preventDefault(): void; currentTarget: HTMLFormElement }) {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const current = String(formData.get("current_password") ?? "");
-    const nueva = String(formData.get("new_password") ?? "");
-    const confirm = String(formData.get("confirm_password") ?? "");
+  const hasFormChanges =
+    currentPassword.length > 0 ||
+    newPassword.length > 0 ||
+    confirmPassword.length > 0;
 
-    if (nueva !== confirm) {
-      setConfirmError("Las contraseñas no coinciden");
+  function clearForm() {
+    setCurrentPassword("");
+    setNewPassword("");
+    setConfirmPassword("");
+    setConfirmError("");
+    setErrorMessage("");
+    setSuccessMessage("");
+  }
+
+  function handleNewPasswordChange(value: string) {
+    setNewPassword(value);
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    if (confirmPassword && confirmPassword !== value) {
+      setConfirmError("Las contraseñas no coinciden.");
+      return;
+    }
+
+    setConfirmError("");
+  }
+
+  function handleConfirmPasswordChange(value: string) {
+    setConfirmPassword(value);
+    setSuccessMessage("");
+    setErrorMessage("");
+
+    if (value && value !== newPassword) {
+      setConfirmError("Las contraseñas no coinciden.");
+      return;
+    }
+
+    setConfirmError("");
+  }
+
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+
+    if (newPassword !== confirmPassword) {
+      setConfirmError("Las contraseñas no coinciden.");
       return;
     }
 
     setErrorMessage("");
+    setSuccessMessage("");
     setIsSubmitting(true);
+
     try {
-      await changePassword(current, nueva);
-      setDone(true);
-    } catch (err) {
-      if (err instanceof ChangePasswordError && err.code === "unauthorized") {
+      await changePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      setConfirmError("");
+      setSuccessMessage("La contraseña se actualizó correctamente.");
+    } catch (error) {
+      if (error instanceof ChangePasswordError && error.code === "unauthorized") {
         router.replace("/login");
         return;
       }
-      if (err instanceof ChangePasswordError) {
-        setErrorMessage(err.message);
-      } else {
-        setErrorMessage("No se pudo cambiar la contraseña. Intentalo nuevamente.");
-      }
+
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "No se pudo cambiar la contraseña. Intentalo nuevamente.",
+      );
     } finally {
       setIsSubmitting(false);
     }
   }
 
   return (
-    <section className="mt-6 max-w-lg">
-        <div className="rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-slate-800 dark:bg-slate-900">
-          <div className="border-b border-gray-100 px-5 py-5 dark:border-slate-800">
-            <div className="flex items-center gap-3">
-              <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
-                <LockClosedIcon className="h-6 w-6" />
+    <section className="mt-6 space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <form
+          onSubmit={handleSubmit}
+          className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
+        >
+          <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
+                <LockClosedIcon className="h-5 w-5" />
               </span>
               <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Nueva contraseña</h2>
-                <p className="text-sm text-gray-500 dark:text-slate-400">
-                  Ingresá tu contraseña actual y elegí una nueva.
+                <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
+                  Cambiar contraseña
+                </h2>
+                <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Ingresá tu contraseña actual y definí una nueva para tu
+                  cuenta.
                 </p>
               </div>
             </div>
           </div>
 
-          {done ? (
-            <div className="flex flex-col items-center text-center px-5 py-10">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-100 mb-5 dark:bg-emerald-500/10">
-                <svg className="h-7 w-7 text-green-600 dark:text-emerald-300" fill="none" viewBox="0 0 24 24" strokeWidth={2.2} stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                </svg>
-              </div>
-              <h2 className="text-xl font-extrabold tracking-tight text-gray-900 dark:text-white">
-                ¡Contraseña actualizada!
-              </h2>
-              <p className="mt-3 text-sm font-medium text-gray-500 leading-6 dark:text-slate-400">
-                Tu contraseña fue cambiada correctamente.
-              </p>
-              <button
-                onClick={() => router.push(backHref)}
-                className="mt-7 h-[44px] px-8 cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_8px_16px_rgba(234,88,12,0.18)] transition hover:bg-orange-700 dark:bg-orange-500 dark:hover:bg-orange-600"
-              >
-                Volver a mi cuenta
-              </button>
+          <div className="space-y-5 px-5 py-5">
+            <PasswordField
+              id="current_password"
+              label="Contraseña actual"
+              value={currentPassword}
+              visible={showCurrent}
+              autoComplete="current-password"
+              onChange={(value) => {
+                setCurrentPassword(value);
+                setSuccessMessage("");
+                setErrorMessage("");
+              }}
+              onToggleVisibility={() => setShowCurrent((current) => !current)}
+              disabled={isSubmitting}
+            />
+
+            <PasswordField
+              id="new_password"
+              label="Nueva contraseña"
+              value={newPassword}
+              visible={showNew}
+              autoComplete="new-password"
+              minLength={8}
+              onChange={handleNewPasswordChange}
+              onToggleVisibility={() => setShowNew((current) => !current)}
+              disabled={isSubmitting}
+            />
+
+            <div>
+              <PasswordField
+                id="confirm_password"
+                label="Confirmar nueva contraseña"
+                value={confirmPassword}
+                visible={showConfirm}
+                autoComplete="new-password"
+                hasError={Boolean(confirmError)}
+                onChange={handleConfirmPasswordChange}
+                onToggleVisibility={() => setShowConfirm((current) => !current)}
+                disabled={isSubmitting}
+              />
+              {confirmError ? (
+                <p className="mt-2 text-xs font-bold text-red-500">
+                  {confirmError}
+                </p>
+              ) : null}
             </div>
-          ) : (
-            <form onSubmit={handleSubmit} className="space-y-5 px-5 py-5">
-              <div className="relative">
-                <label htmlFor="current_password" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
-                  Contraseña actual
-                </label>
-                <input
-                  id="current_password"
-                  name="current_password"
-                  type={showCurrent ? "text" : "password"}
-                  autoComplete="current-password"
-                  required
-                  className="field pr-[40px]"
-                />
+
+            {successMessage ? (
+              <div className="flex items-center gap-2 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-700 dark:border-emerald-500/30 dark:bg-emerald-500/10 dark:text-emerald-300">
+                <CheckCircleIcon className="h-5 w-5" />
+                {successMessage}
+              </div>
+            ) : null}
+
+            {errorMessage ? (
+              <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600 dark:border-red-500/30 dark:bg-red-500/10 dark:text-red-400">
+                {errorMessage}
+              </div>
+            ) : null}
+
+            <div className="flex flex-col-reverse gap-3 border-t border-gray-200 pt-5 sm:flex-row sm:justify-end dark:border-slate-800">
+              {hasFormChanges ? (
                 <button
                   type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowCurrent((v) => !v)}
-                  className="absolute bottom-[13px] right-[14px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                  onClick={clearForm}
+                  disabled={isSubmitting}
+                  className="h-11 cursor-pointer rounded-xl bg-slate-100 px-5 text-sm font-extrabold text-slate-700 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-800 dark:text-slate-200 dark:hover:bg-slate-700"
                 >
-                  {showCurrent ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
+                  Cancelar
                 </button>
-              </div>
-
-              <div className="relative">
-                <label htmlFor="new_password" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
-                  Nueva contraseña
-                </label>
-                <input
-                  id="new_password"
-                  name="new_password"
-                  type={showNew ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  minLength={8}
-                  className="field pr-[40px]"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowNew((v) => !v)}
-                  className="absolute bottom-[13px] right-[14px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  {showNew ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                </button>
-              </div>
-
-              <div className="relative">
-                <label htmlFor="confirm_password" className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300">
-                  Confirmar nueva contraseña
-                </label>
-                <input
-                  id="confirm_password"
-                  name="confirm_password"
-                  type={showConfirm ? "text" : "password"}
-                  autoComplete="new-password"
-                  required
-                  placeholder="Repetí la nueva contraseña"
-                  className={`field pr-[40px] ${confirmError ? "!border-red-400" : ""}`}
-                  onChange={(e) => {
-                    if (e.target.value && e.target.value !== newPassword) {
-                      setConfirmError("Las contraseñas no coinciden");
-                    } else {
-                      setConfirmError("");
-                    }
-                  }}
-                />
-                <button
-                  type="button"
-                  tabIndex={-1}
-                  onClick={() => setShowConfirm((v) => !v)}
-                  className="absolute bottom-[13px] right-[14px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-                >
-                  {showConfirm ? <EyeSlashIcon className="w-5 h-5" /> : <EyeIcon className="w-5 h-5" />}
-                </button>
-                {confirmError && (
-                  <p className="mt-2 text-xs font-medium text-red-500 dark:text-red-300">{confirmError}</p>
-                )}
-              </div>
-
-              {errorMessage && (
-                <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 dark:border-red-500/30 dark:bg-red-500/10">
-                  <p className="text-sm font-medium text-red-700 dark:text-red-300">{errorMessage}</p>
-                </div>
-              )}
-
+              ) : null}
               <LoadingButton
                 type="submit"
                 isLoading={isSubmitting}
                 loadingText="Guardando..."
-                disabled={!!confirmError}
-                className="h-[48px] w-full cursor-pointer rounded-2xl bg-orange-600 text-sm font-extrabold text-white shadow-[0_8px_16px_rgba(234,88,12,0.18)] transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-orange-500 dark:hover:bg-orange-600 dark:focus:ring-orange-500/20"
+                disabled={Boolean(confirmError)}
+                className="h-11 w-full rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-orange-500/20 sm:w-fit"
               >
                 Guardar contraseña
               </LoadingButton>
-            </form>
+            </div>
+          </div>
+        </form>
+
+        <aside className="space-y-4">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
+                <ShieldCheckIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="text-sm font-black text-slate-950 dark:text-white">
+                  Seguridad de la cuenta
+                </h2>
+                <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  Usá una contraseña de al menos 8 caracteres y evitá repetir
+                  credenciales de otros servicios.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+            <div className="flex items-start gap-3">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-orange-50 text-orange-600 dark:bg-orange-500/10 dark:text-orange-300">
+                <UserCircleIcon className="h-5 w-5" />
+              </span>
+              <div>
+                <h2 className="text-sm font-black text-slate-950 dark:text-white">
+                  Datos personales
+                </h2>
+                <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                  También podés actualizar tu nombre, teléfono y foto de perfil.
+                </p>
+              </div>
+            </div>
+            <Link
+              href={`${backHref}/edit-user`}
+              className="mt-4 inline-flex h-11 w-full items-center justify-center rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            >
+              Ir a editar perfil
+            </Link>
+          </div>
+        </aside>
+      </div>
+    </section>
+  );
+}
+
+type PasswordFieldProps = {
+  id: string;
+  label: string;
+  value: string;
+  visible: boolean;
+  autoComplete: string;
+  disabled: boolean;
+  hasError?: boolean;
+  minLength?: number;
+  onChange: (value: string) => void;
+  onToggleVisibility: () => void;
+};
+
+function PasswordField({
+  id,
+  label,
+  value,
+  visible,
+  autoComplete,
+  disabled,
+  hasError = false,
+  minLength,
+  onChange,
+  onToggleVisibility,
+}: PasswordFieldProps) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+        {label}
+      </span>
+      <span className="relative block">
+        <input
+          id={id}
+          name={id}
+          type={visible ? "text" : "password"}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          autoComplete={autoComplete}
+          minLength={minLength}
+          disabled={disabled}
+          required
+          className={`h-11 w-full rounded-xl border bg-white px-4 pr-12 text-sm font-semibold text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 ${
+            hasError
+              ? "border-red-300 focus:border-red-500 focus:ring-4 focus:ring-red-100 dark:border-red-500/50 dark:focus:ring-red-500/20"
+              : "border-gray-200 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:focus:ring-orange-500/20"
+          }`}
+        />
+        <button
+          type="button"
+          onClick={onToggleVisibility}
+          disabled={disabled}
+          aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
+          className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+        >
+          {visible ? (
+            <EyeSlashIcon className="h-5 w-5" />
+          ) : (
+            <EyeIcon className="h-5 w-5" />
           )}
-        </div>
-      </section>
+        </button>
+      </span>
+    </label>
   );
 }

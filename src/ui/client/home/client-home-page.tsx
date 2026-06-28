@@ -21,7 +21,6 @@ import {
   getClientDishCategorySummaries,
   getDiscountedDishIds,
 } from "@/services/client/client-service";
-import { applyRestaurantAvailability } from "@/services/client/restaurant-availability-service";
 import type {
   ClientDish,
   ClientDishCategorySummary,
@@ -323,13 +322,9 @@ export default function ClientHomePage() {
       getAllDishes({}, HOME_FETCH_SIZE),
       getDiscountedDishIds(),
     ])
-      .then(async ([restaurants, dishes, discountedDishIds]) =>
+      .then(([restaurants, dishes, discountedDishIds]) =>
         setRestaurantRankings(
-          buildRestaurantRankings(
-            await applyRestaurantAvailability(restaurants),
-            dishes,
-            discountedDishIds,
-          ),
+          buildRestaurantRankings(restaurants, dishes, discountedDishIds),
         ),
       )
       .catch(() => setRestaurantRankings(emptyRestaurantRankings))

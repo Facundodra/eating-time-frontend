@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { HandThumbUpIcon } from "@heroicons/react/24/outline";
+import { ChevronLeftIcon, HandThumbUpIcon } from "@heroicons/react/24/outline";
 
 import type { Order, OrderRating } from "@/lib/client/types";
 import { getOrderHistory } from "@/services/client/client-service";
@@ -129,7 +129,7 @@ export default function OrderRatingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-[1000px] space-y-6 px-4 py-6">
+    <div className="space-y-6">
       {selectedRatingOrder ? (
         <OrderRatingModal
           key={selectedRatingOrder.id}
@@ -148,9 +148,13 @@ export default function OrderRatingsPage() {
       ) : null}
 
       <section>
-        <span className="text-xs text-gray-400 dark:text-slate-500">
-          <Link href="/client/mi-cuenta">Mi cuenta</Link>
-        </span>
+        <Link
+          href="/client/mi-cuenta"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-gray-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-300"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+          Volver a mi cuenta
+        </Link>
         <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
           Calificación de pedidos
         </h1>

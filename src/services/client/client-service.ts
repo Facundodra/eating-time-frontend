@@ -28,6 +28,23 @@ export type { RestaurantList, DeliveryPointCredentials, DeliveryPoint, ClientDis
 
 const CATEGORY_RELATION_PAGE_SIZE = 100;
 const RESTAURANT_FETCH_PAGE_SIZE = 100;
+const CATEGORY_SUMMARY_CACHE_TTL_MS = 5 * 60 * 1000;
+const PUBLIC_LIST_CACHE_TTL_MS = 60 * 1000;
+
+let categorySummaryCache:
+    | {
+        data: ClientDishCategorySummary[];
+        expiresAt: number;
+    }
+    | null = null;
+
+const publicListCache = new Map<
+    string,
+    {
+        data: unknown;
+        expiresAt: number;
+    }
+>();
 
 type ApiCollectionResponse<T> =
     | T[]
@@ -44,6 +61,43 @@ type ApiCollectionResponse<T> =
 
 function isRecord(value: unknown): value is Record<string, unknown> {
     return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function normalizeCacheKeyValue(value: unknown): unknown {
+    if (Array.isArray(value)) return value.map(normalizeCacheKeyValue);
+    if (!isRecord(value)) return value;
+
+    return Object.keys(value)
+        .sort()
+        .reduce<Record<string, unknown>>((normalized, key) => {
+            const item = value[key];
+            if (item !== undefined) {
+                normalized[key] = normalizeCacheKeyValue(item);
+            }
+            return normalized;
+        }, {});
+}
+
+function getPublicCacheKey(name: string, ...parts: unknown[]) {
+    return JSON.stringify([name, ...parts.map(normalizeCacheKeyValue)]);
+}
+
+function getPublicCachedValue<T>(key: string): T | null {
+    const cached = publicListCache.get(key);
+
+    if (!cached || cached.expiresAt <= Date.now()) {
+        publicListCache.delete(key);
+        return null;
+    }
+
+    return cached.data as T;
+}
+
+function setPublicCachedValue<T>(key: string, data: T) {
+    publicListCache.set(key, {
+        data,
+        expiresAt: Date.now() + PUBLIC_LIST_CACHE_TTL_MS,
+    });
 }
 
 function getCollectionFromResponse<T>(data: ApiCollectionResponse<T> | unknown): T[] {
@@ -438,11 +492,21 @@ export async function getDishes(filter?: DishFilter): Promise<ClientDish[]>{
 export async function getAllDishes(
     filter: DishFilter = {},
     pageSize = CATEGORY_RELATION_PAGE_SIZE,
+    forceRefresh = false,
 ): Promise<ClientDish[]> {
     const safePageSize = Math.max(pageSize, 1);
     const baseFilter: DishFilter = { ...filter };
     delete baseFilter.pagina;
     delete baseFilter.tamano;
+    const canUsePublicCache = baseFilter.idLocal == null;
+    const cacheKey = canUsePublicCache
+        ? getPublicCacheKey("all-dishes", baseFilter, safePageSize)
+        : null;
+
+    if (cacheKey && !forceRefresh) {
+        const cached = getPublicCachedValue<ClientDish[]>(cacheKey);
+        if (cached) return cached;
+    }
 
     const dishes: ClientDish[] = [];
     const seenDishIds = new Set<number>();
@@ -468,7 +532,13 @@ export async function getAllDishes(
         page += 1;
     }
 
-    return applyDishClientFilters(dishes, baseFilter);
+    const filteredDishes = applyDishClientFilters(dishes, baseFilter);
+
+    if (cacheKey) {
+        setPublicCachedValue(cacheKey, filteredDishes);
+    }
+
+    return filteredDishes;
 }
 
 export async function getClientDishCategories(): Promise<ClientDishCategory[]> {
@@ -489,7 +559,19 @@ async function getDishesForCategoryRelations(): Promise<ClientDish[]> {
     return getAllDishes({}, CATEGORY_RELATION_PAGE_SIZE);
 }
 
-export async function getClientDishCategorySummaries(): Promise<ClientDishCategorySummary[]> {
+export async function getClientDishCategorySummaries(
+    forceRefresh = false,
+): Promise<ClientDishCategorySummary[]> {
+    const now = Date.now();
+
+    if (
+        !forceRefresh &&
+        categorySummaryCache &&
+        categorySummaryCache.expiresAt > now
+    ) {
+        return categorySummaryCache.data;
+    }
+
     const categories = await getClientDishCategories();
     const dishes = await getDishesForCategoryRelations().catch(() => []);
     const dishCountByCategoryId = new Map<number, number>();
@@ -507,7 +589,7 @@ export async function getClientDishCategorySummaries(): Promise<ClientDishCatego
         });
     });
 
-    return categories
+    const summaries = categories
         .map((category) => ({
             ...category,
             imageUrl: category.imageUrl ?? dishImageByCategoryId.get(category.id) ?? null,
@@ -519,6 +601,13 @@ export async function getClientDishCategorySummaries(): Promise<ClientDishCatego
                 ? countComparison
                 : left.name.localeCompare(right.name, "es");
         });
+
+    categorySummaryCache = {
+        data: summaries,
+        expiresAt: now + CATEGORY_SUMMARY_CACHE_TTL_MS,
+    };
+
+    return summaries;
 }
 
 export async function getTopClientDishCategorySummaries(
@@ -561,10 +650,27 @@ export async function getDishDiscount(dishId: number): Promise<Discount | null> 
 }
 
 // Devuelve los IDs de los platos con descuento activo, reutilizando el filtro conDescuento ya soportado por /api/locales/platos
-export async function getDiscountedDishIds(idLocal?: number): Promise<Set<number>> {
+export async function getDiscountedDishIds(
+    idLocal?: number,
+    forceRefresh = false,
+): Promise<Set<number>> {
+    const cacheKey =
+        idLocal == null ? getPublicCacheKey("discounted-dish-ids") : null;
+
+    if (cacheKey && !forceRefresh) {
+        const cached = getPublicCachedValue<Set<number>>(cacheKey);
+        if (cached) return cached;
+    }
+
     try {
         const dishes = await getAllDishes({ idLocal, conDescuento: true });
-        return new Set(dishes.map((dish) => dish.id));
+        const ids = new Set(dishes.map((dish) => dish.id));
+
+        if (cacheKey) {
+            setPublicCachedValue(cacheKey, ids);
+        }
+
+        return ids;
     } catch {
         return new Set<number>();
     }
@@ -603,6 +709,8 @@ interface RestaurantDtoFromApi {
     urlPortadaDesktop?: string | null;
     fotoPortadaUrl?: string | null;
     coverPhotoUrl?: string | null;
+    disponible?: boolean | string | number | null;
+    disponibilidad?: boolean | string | number | null;
     estadoServicio?: boolean | string | number | null;
     servicio?: boolean | string | number | null;
     estado?: boolean | string | number | null;
@@ -641,7 +749,7 @@ function mapRestaurantDtoApiToRestaurantType(r: RestaurantDtoFromApi): Restauran
             legacyPhotoUrl,
         ) ?? "",
         stars: getNumericValue(r.calificacion ?? r.rating ?? r.stars) ?? 0,
-        state: getBooleanValue(r.estadoServicio ?? r.servicio ?? r.estado) ?? false,
+        state: getBooleanValue(r.disponibilidad ?? r.disponible) ?? false,
     };
 }
 
@@ -728,11 +836,18 @@ export async function getRestaurants(
 export async function getAllRestaurants(
     filter: RestaurantFilter = {},
     pageSize = RESTAURANT_FETCH_PAGE_SIZE,
+    forceRefresh = false,
 ): Promise<RestaurantList[]> {
     const safePageSize = Math.max(pageSize, 1);
     const baseFilter: RestaurantFilter = { ...filter };
     delete baseFilter.page;
     delete baseFilter.size;
+    const cacheKey = getPublicCacheKey("all-restaurants", baseFilter, safePageSize);
+
+    if (!forceRefresh) {
+        const cached = getPublicCachedValue<RestaurantList[]>(cacheKey);
+        if (cached) return cached;
+    }
 
     const restaurants: RestaurantList[] = [];
     const seenRestaurantIds = new Set<number>();
@@ -769,7 +884,10 @@ export async function getAllRestaurants(
         page += 1;
     }
 
-    return applyRestaurantClientFilters(restaurants, baseFilter);
+    const filteredRestaurants = applyRestaurantClientFilters(restaurants, baseFilter);
+    setPublicCachedValue(cacheKey, filteredRestaurants);
+
+    return filteredRestaurants;
 }
 
 

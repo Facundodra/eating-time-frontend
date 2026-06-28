@@ -179,11 +179,7 @@ export default function RegisterForm() {
     } catch (error) {
       const message =
         error instanceof Error ? error.message : "Error al registrar";
-      setSubmitError(
-        message === "Bad Request"
-          ? "El email o la cédula ya están registrados"
-          : message,
-      );
+      setSubmitError(message);
     } finally {
       setIsSubmitting(false);
     }
@@ -228,7 +224,7 @@ export default function RegisterForm() {
   return (
     <div
       ref={formPanelRef}
-      className="scroll-mt-6 w-full max-w-[460px] rounded-[28px] border border-gray-200 bg-white px-6 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:px-9 sm:py-10"
+      className="scroll-mt-6 w-full max-w-[460px] rounded-[28px] border border-gray-200 bg-white px-6 py-8 shadow-[0_24px_80px_rgba(15,23,42,0.12)] dark:border-slate-800 dark:bg-slate-900 sm:px-9 sm:py-10 lg:max-w-[700px]"
     >
       <div>
         <h1 className="text-[28px] font-extrabold tracking-tight text-slate-900 dark:text-white">
@@ -270,7 +266,9 @@ export default function RegisterForm() {
             <input
               id="document"
               name="document"
-              type="number"
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
               autoComplete="document"
               placeholder="Sin puntos ni guiones"
               className="field"
@@ -315,72 +313,80 @@ export default function RegisterForm() {
 
         <div>
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="relative">
+            <div>
               <label
                 htmlFor="password"
                 className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300"
               >
                 Contraseña
               </label>
-              <input
-                id="password"
-                name="password"
-                type={showPsw ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Creá tu contraseña"
-                className="field pr-[30px]"
-                onChange={handlePasswordChange}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPsw((value) => !value)}
-                tabIndex={-1}
-                className="absolute right-[20px] bottom-[13px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                {showPsw ? (
-                  <EyeSlashIcon className="w-[20px]" />
-                ) : (
-                  <EyeIcon className="w-[20px]" />
-                )}
-              </button>
+              <div className="relative">
+                <input
+                  id="password"
+                  name="password"
+                  type={showPsw ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder="Creá tu contraseña"
+                  minLength={8}
+                  className="field pr-12"
+                  onChange={handlePasswordChange}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPsw((value) => !value)}
+                  tabIndex={-1}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  {showPsw ? (
+                    <EyeSlashIcon className="w-[20px]" />
+                  ) : (
+                    <EyeIcon className="w-[20px]" />
+                  )}
+                </button>
+              </div>
+              <p className="mt-2 text-xs font-medium text-slate-400 dark:text-slate-500">
+                Debe tener al menos 8 caracteres.
+              </p>
             </div>
-            <div className="relative">
+            <div>
               <label
                 htmlFor="confirm_password"
                 className="mb-2 block text-xs font-bold text-slate-600 dark:text-slate-300"
               >
                 Confirmar contraseña
               </label>
-              <input
-                id="confirm_password"
-                name="confirm_password"
-                type={showConfirmPsw ? "text" : "password"}
-                autoComplete="new-password"
-                placeholder="Repetí la contraseña"
-                className={`field pr-[30px] ${passwordError ? "!border-red-400" : ""}`}
-                onChange={handleConfirmChange}
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPsw((value) => !value)}
-                tabIndex={-1}
-                className="absolute right-[20px] bottom-[13px] text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
-              >
-                {showConfirmPsw ? (
-                  <EyeSlashIcon className="w-[20px]" />
-                ) : (
-                  <EyeIcon className="w-[20px]" />
-                )}
-              </button>
+              <div className="relative">
+                <input
+                  id="confirm_password"
+                  name="confirm_password"
+                  type={showConfirmPsw ? "text" : "password"}
+                  autoComplete="new-password"
+                  placeholder="Repetí la contraseña"
+                  className={`field pr-12 ${passwordError ? "!border-red-400" : ""}`}
+                  onChange={handleConfirmChange}
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPsw((value) => !value)}
+                  tabIndex={-1}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                >
+                  {showConfirmPsw ? (
+                    <EyeSlashIcon className="w-[20px]" />
+                  ) : (
+                    <EyeIcon className="w-[20px]" />
+                  )}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="mt-2 text-xs font-medium text-red-500">
+                  {passwordError}
+                </p>
+              )}
             </div>
           </div>
-          {passwordError && (
-            <p className="mt-2 text-xs font-medium text-red-500">
-              {passwordError}
-            </p>
-          )}
         </div>
 
         <div>

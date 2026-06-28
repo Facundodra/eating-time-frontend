@@ -395,8 +395,30 @@ export async function register(credentials: RegisterCredentials): Promise<void> 
     await api.post("/api/auth/registro", body);
   } catch (error) {
     if (axios.isAxiosError(error)) {
-      const data = error.response?.data;
-      const message = data?.error ?? data?.message ?? `Error al registrar (${error.response?.status})`;
+      const status = error.response?.status;
+      const data = error.response?.data as LoginErrorResponse | string | undefined;
+      const responseMessage =
+        typeof data === "string"
+          ? data
+          : data?.error ?? data?.message ?? data?.detail;
+
+      if (status === 400) {
+        const message =
+          responseMessage && responseMessage !== "Bad Request"
+            ? responseMessage
+            : "Revisá los datos ingresados.";
+        throw new Error(message);
+      }
+
+      if (status === 409) {
+        const message =
+          responseMessage && responseMessage !== "Conflict"
+            ? responseMessage
+            : "El email o la cédula ya están registrados";
+        throw new Error(message);
+      }
+
+      const message = responseMessage ?? `Error al registrar (${status})`;
       throw new Error(message);
     }
     throw new Error("No se pudo registrar. Intentalo nuevamente.");

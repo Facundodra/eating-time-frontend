@@ -241,6 +241,10 @@ export default function Header({ session }: { session: LoginWebResponse }) {
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden md:block">
+          <ThemeToggle />
+        </div>
+
         <div className="cart relative shrink-0">
           <Link
             href={cartHref}
@@ -411,7 +415,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
                 Historial de pedidos
               </Link>
             </li>
-            <li>
+            <li className="md:hidden">
               <ThemeToggle variant="menu" />
             </li>
             <li>
