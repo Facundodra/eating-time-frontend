@@ -14,7 +14,7 @@ export default function RegisterPage() {
         <ThemeToggle />
       </div>
 
-      <div className="mx-auto grid min-h-[calc(100vh-64px)] w-full max-w-[1440px] items-center gap-10 lg:grid-cols-[minmax(0,1fr)_460px] xl:gap-20">
+      <div className="mx-auto grid min-h-[calc(100vh-64px)] w-full max-w-[1440px] items-center gap-10 lg:grid-cols-[minmax(0,1fr)_600px] xl:grid-cols-[minmax(0,1fr)_700px] xl:gap-20">
         <section className="flex h-full flex-col justify-center">
           <Link href="/" className="flex w-fit items-center gap-4">
             <Image
