@@ -51,12 +51,14 @@ type ClaimActionRequest = {
   valorVoucher?: number;
 };
 
-type ClaimErrorResponse = {
-  error?: string;
-  message?: string;
-  detail?: string;
-  errors?: Record<string, string | string[]>;
-};
+type ClaimErrorResponse =
+  | string
+  | {
+      error?: string;
+      message?: string;
+      detail?: string;
+      errors?: Record<string, string | string[]>;
+    };
 
 const claimStatusByApiStatus: Record<ClaimApiStatus, ClaimStatus> = {
   PENDIENTE: "pending",
@@ -133,6 +135,10 @@ function getClaimErrorMessage(error: unknown, fallbackMessage: string) {
   const data = error.response?.data;
   if (typeof data === "string" && data.trim()) {
     return data;
+  }
+
+  if (!data || typeof data !== "object") {
+    return fallbackMessage;
   }
 
   const fieldError = data?.errors
