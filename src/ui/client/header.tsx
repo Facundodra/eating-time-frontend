@@ -1,7 +1,6 @@
 "use client";
 
 import {
-  AdjustmentsHorizontalIcon,
   ArrowRightOnRectangleIcon,
   Bars3Icon,
   ChatBubbleLeftRightIcon,
@@ -79,9 +78,10 @@ export default function Header({ session }: { session: LoginWebResponse }) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { imageUrl, profileAlt } = getSessionDisplayData(session);
-  const isClientSearchPage = pathname === "/client/search";
-  const currentSearchQuery =
-    isClientSearchPage ? searchParams.get("q") ?? "" : "";
+  const isClientDishesPage = pathname === "/client/dishes";
+  const currentSearchQuery = isClientDishesPage
+    ? searchParams.get("q") ?? ""
+    : "";
   const [searchQuery, setSearchQuery] = useState(currentSearchQuery);
   const [navigationMenuOpen, setNavigationMenuOpen] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
@@ -122,10 +122,6 @@ export default function Header({ session }: { session: LoginWebResponse }) {
   useEffect(() => {
     closeHeaderMenus();
   }, [pathname]);
-
-  function toggleSearchFilters() {
-    window.dispatchEvent(new CustomEvent("client-search-filters-toggle"));
-  }
 
   useEffect(() => {
     let ignore = false;
@@ -202,8 +198,8 @@ export default function Header({ session }: { session: LoginWebResponse }) {
       </Link>
 
       <Form
-        action="/client/search"
-        className="flex min-w-0 flex-1 items-center rounded-full border border-transparent bg-slate-100 px-3 py-2 shadow-sm transition focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:focus-within:border-slate-700 dark:focus-within:bg-slate-900 md:hidden"
+        action="/client/dishes"
+        className="flex min-w-0 flex-1 items-center rounded-full border border-transparent bg-slate-100 px-3 py-2 shadow-sm transition focus-within:border-transparent focus-within:bg-white dark:bg-slate-900 dark:focus-within:border-transparent dark:focus-within:bg-slate-900 md:hidden"
       >
         <input
           name="q"
@@ -211,7 +207,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
           value={searchQuery}
           onChange={(event) => setSearchQuery(event.target.value)}
           placeholder="Buscar..."
-          className="min-w-0 flex-1 bg-transparent pr-2 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white dark:placeholder:text-slate-500"
+          className="min-w-0 flex-1 rounded-full bg-transparent pr-2 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none dark:bg-transparent dark:text-white dark:placeholder:text-slate-500"
         />
         <button
           type="submit"
@@ -224,8 +220,8 @@ export default function Header({ session }: { session: LoginWebResponse }) {
 
       <div className="search hidden min-w-0 flex-1 items-center justify-center px-8 md:flex">
         <Form
-          action="/client/search"
-          className="flex w-[min(42vw,520px)] items-center rounded-full border border-transparent bg-slate-100 px-4 py-2 shadow-sm transition hover:bg-white focus-within:border-slate-200 focus-within:bg-white dark:bg-slate-900 dark:hover:bg-slate-900 dark:focus-within:border-slate-700 dark:focus-within:bg-slate-900"
+          action="/client/dishes"
+          className="flex w-[min(42vw,520px)] items-center rounded-full border border-transparent bg-slate-100 px-4 py-2 shadow-sm transition hover:bg-white focus-within:border-transparent focus-within:bg-white dark:bg-slate-900 dark:hover:bg-slate-900 dark:focus-within:border-transparent dark:focus-within:bg-slate-900"
         >
           <input
             name="q"
@@ -233,7 +229,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             value={searchQuery}
             onChange={(event) => setSearchQuery(event.target.value)}
             placeholder="Buscar..."
-            className="min-w-0 flex-1 bg-transparent pr-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none dark:text-white dark:placeholder:text-slate-500"
+            className="min-w-0 flex-1 rounded-full bg-transparent pr-3 text-sm font-medium text-slate-900 placeholder:text-slate-400 focus:outline-none dark:bg-transparent dark:text-white dark:placeholder:text-slate-500"
           />
           <button
             type="submit"
@@ -242,19 +238,13 @@ export default function Header({ session }: { session: LoginWebResponse }) {
             <MagnifyingGlassIcon className="h-4 w-4 text-white" />
           </button>
         </Form>
-        {isClientSearchPage ? (
-          <button
-            type="button"
-            aria-label="Mostrar u ocultar filtros de busqueda"
-            onClick={toggleSearchFilters}
-            className="flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-700 shadow-sm transition hover:border-slate-300 hover:bg-slate-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-slate-600 dark:hover:bg-slate-800"
-          >
-            <AdjustmentsHorizontalIcon className="h-5 w-5" />
-          </button>
-        ) : null}
       </div>
 
       <div className="flex shrink-0 items-center gap-2">
+        <div className="hidden md:block">
+          <ThemeToggle />
+        </div>
+
         <div className="cart relative shrink-0">
           <Link
             href={cartHref}
@@ -425,7 +415,7 @@ export default function Header({ session }: { session: LoginWebResponse }) {
                 Historial de pedidos
               </Link>
             </li>
-            <li>
+            <li className="md:hidden">
               <ThemeToggle variant="menu" />
             </li>
             <li>

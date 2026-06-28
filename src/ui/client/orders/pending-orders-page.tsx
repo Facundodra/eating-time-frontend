@@ -1,5 +1,7 @@
 "use client";
 
+import { ChevronLeftIcon } from "@heroicons/react/24/outline";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 
@@ -130,9 +132,16 @@ export default function PendingOrdersPage() {
   }
 
   return (
-    <div className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6">
+    <div className="w-full max-w-3xl space-y-6">
       <div className="mb-8">
-        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
+        <Link
+          href="/client"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-gray-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-300"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+          Volver al inicio
+        </Link>
+        <h1 className="mt-2 text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">
           Pedidos en curso
         </h1>
         <p className="mt-2 text-sm font-medium text-slate-500 dark:text-slate-400">

@@ -9,11 +9,14 @@ import type {
 } from "@/lib/restaurant/discount/types";
 import { clientApi as api } from "@/services/shared/api-client";
 
-type DiscountErrorResponse = {
-  error?: string;
-  message?: string;
-  detail?: string;
-};
+type DiscountErrorResponse =
+  | string
+  | {
+      error?: string;
+      message?: string;
+      detail?: string;
+      errors?: Record<string, string | string[]>;
+    };
 
 type DishApiResponse = {
   id: number;
@@ -81,7 +84,21 @@ function getDiscountErrorMessage(error: unknown, fallbackMessage: string) {
   }
 
   const data = error.response?.data;
-  return data?.error ?? data?.message ?? data?.detail ?? fallbackMessage;
+  if (typeof data === "string" && data.trim()) {
+    return data;
+  }
+
+  if (!data || typeof data !== "object") {
+    return fallbackMessage;
+  }
+
+  const fieldError = data?.errors
+    ? Object.values(data.errors)
+        .flat()
+        .find((message) => message.trim().length > 0)
+    : null;
+
+  return data?.error ?? data?.message ?? data?.detail ?? fieldError ?? fallbackMessage;
 }
 
 export async function getRestaurantDiscounts(

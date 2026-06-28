@@ -3,9 +3,17 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
+  ArrowPathIcon,
+  ArrowsUpDownIcon,
+  BuildingStorefrontIcon,
+  CalendarDaysIcon,
   ChatBubbleLeftRightIcon,
+  CheckCircleIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
+  FunnelIcon,
+  HashtagIcon,
+  XMarkIcon,
 } from "@heroicons/react/24/outline";
 
 import type { OrderClaim, OrderClaimStatus } from "@/lib/client/types";
@@ -153,6 +161,7 @@ export default function ClientClaimsPage() {
   const [pedidoId, setPedidoId] = useState("");
   const [desde, setDesde] = useState("");
   const [hasta, setHasta] = useState("");
+  const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
   const [appliedFilter, setAppliedFilter] = useState<ClientClaimFilter>({});
   const [restaurants, setRestaurants] = useState<ClientClaimRestaurant[]>([]);
   const [restaurantsLoading, setRestaurantsLoading] = useState(true);
@@ -236,6 +245,17 @@ export default function ClientClaimsPage() {
     setAppliedFilter(next);
   }
 
+  function clearFilters() {
+    setLocalId("");
+    setStatus("");
+    setPedidoId("");
+    setDesde("");
+    setHasta("");
+    setPage(0);
+    setAppliedFilter({});
+    setIsMobileFiltersOpen(false);
+  }
+
   function goToPage(target: number) {
     setPage(target);
     if (typeof window !== "undefined") {
@@ -245,13 +265,21 @@ export default function ClientClaimsPage() {
 
   const controlsDisabled = restaurantsLoading;
   const controlClasses =
-    "h-10 w-full rounded-md border border-gray-200 bg-white px-3 text-sm text-gray-700 focus:border-orange-500 focus:outline-none focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:border-orange-400 dark:focus:ring-orange-500/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500";
+    "h-10 w-full rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 outline-none transition focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500";
+  const mobileControlClasses =
+    "h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500";
+  const hasActiveFilters =
+    localId !== "" ||
+    status !== "" ||
+    pedidoId !== "" ||
+    desde !== "" ||
+    hasta !== "";
   const actionClasses =
     "text-sm font-semibold text-indigo-700 transition-colors hover:text-indigo-800 hover:underline disabled:cursor-not-allowed disabled:opacity-60 dark:text-indigo-300 dark:hover:text-indigo-200";
   const pageNumbers = getPageNumbers(page + 1, totalPages);
 
   return (
-    <div className="mx-auto max-w-[1150px] space-y-6 px-4 py-6">
+    <div className="space-y-6">
       {selectedClaim ? (
         <ViewClaimModal
           claim={selectedClaim}
@@ -260,9 +288,13 @@ export default function ClientClaimsPage() {
       ) : null}
 
       <section>
-        <span className="text-xs text-gray-400 dark:text-slate-500">
-          <Link href="/client/mi-cuenta">Mi cuenta</Link>
-        </span>
+        <Link
+          href="/client/mi-cuenta"
+          className="inline-flex items-center gap-1 text-sm font-semibold text-gray-500 transition-colors hover:text-orange-600 dark:text-slate-400 dark:hover:text-orange-300"
+        >
+          <ChevronLeftIcon className="h-4 w-4" />
+          Volver a mi cuenta
+        </Link>
         <h1 className="mt-2 text-2xl font-bold text-gray-900 dark:text-white">
           Seguimiento de reclamos
         </h1>
@@ -271,15 +303,209 @@ export default function ClientClaimsPage() {
         </p>
       </section>
 
-      <div className="space-y-4 rounded-xl border border-gray-100 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-slate-200">
-              Ordenar por
-            </span>
-            <select
-              className={controlClasses}
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900">
+        <div className="grid gap-4 xl:hidden">
+          <div className="flex items-center gap-4">
+            <button
+              type="button"
+              onClick={() => setIsMobileFiltersOpen(true)}
+              aria-label="Abrir filtros"
+              className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+            >
+              <FunnelIcon className="h-4 w-4" />
+              {hasActiveFilters && (
+                <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-orange-600 dark:bg-orange-400" />
+              )}
+            </button>
+
+            {hasActiveFilters && (
+              <button
+                type="button"
+                onClick={clearFilters}
+                aria-label="Limpiar filtros"
+                className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              >
+                <FunnelIcon className="h-5 w-5" />
+                <XMarkIcon className="absolute right-2 top-2 h-3 w-3 stroke-[3]" />
+              </button>
+            )}
+
+            <button
+              type="button"
+              onClick={applyFilters}
               disabled={controlsDisabled}
+              className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+              aria-label="Actualizar filtros"
+            >
+              <ArrowPathIcon className="h-4 w-4" />
+            </button>
+
+            <div className="ml-auto flex min-w-0 items-center gap-2">
+              <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+              <label htmlFor="client-claims-sort-mobile" className="sr-only">
+                Orden
+              </label>
+              <select
+                id="client-claims-sort-mobile"
+                value={sort}
+                onChange={(event) => {
+                  setPage(0);
+                  setSort(event.target.value as SortKey);
+                }}
+                className="h-11 w-[150px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
+              >
+                <option value="estado-desc">Pendientes</option>
+                <option value="fecha-desc">Más recientes</option>
+                <option value="fecha-asc">Más antiguos</option>
+              </select>
+            </div>
+          </div>
+
+          {isMobileFiltersOpen && (
+            <div className="fixed inset-0 z-50 flex items-start justify-center bg-slate-950/50 px-4 pb-4 pt-20 backdrop-blur-sm sm:items-center sm:pt-16">
+              <div className="w-full rounded-2xl border border-gray-200 bg-white shadow-xl sm:max-w-md dark:border-slate-800 dark:bg-slate-900">
+                <div className="flex items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-800">
+                  <div>
+                    <h3 className="text-base font-extrabold text-slate-950 dark:text-white">
+                      Filtros
+                    </h3>
+                    <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
+                      Ajusta el listado de reclamos visible.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsMobileFiltersOpen(false)}
+                    aria-label="Cerrar filtros"
+                    className="flex h-9 w-9 items-center justify-center rounded-xl bg-slate-100 text-slate-500 transition hover:text-orange-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:text-orange-400"
+                  >
+                    <XMarkIcon className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="grid gap-4 px-5 py-5">
+                  <label htmlFor="client-claims-local-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Local
+                    </span>
+                    <select
+                      id="client-claims-local-mobile"
+                      className={mobileControlClasses}
+                      disabled={controlsDisabled}
+                      onChange={(event) => setLocalId(event.target.value)}
+                      value={localId}
+                    >
+                      <option value="">
+                        {restaurantsLoading ? "Cargando locales..." : "Todos los locales"}
+                      </option>
+                      {restaurants.map((restaurant) => (
+                        <option key={restaurant.id} value={restaurant.id}>
+                          {restaurant.name}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label htmlFor="client-claims-status-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Estado
+                    </span>
+                    <select
+                      id="client-claims-status-mobile"
+                      className={mobileControlClasses}
+                      disabled={controlsDisabled}
+                      onChange={(event) => setStatus(event.target.value)}
+                      value={status}
+                    >
+                      <option value="">Todos los estados</option>
+                      {statusOptions.map(([value, label]) => (
+                        <option key={value} value={value}>
+                          {label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  <label htmlFor="client-claims-order-mobile" className="block">
+                    <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                      Pedido #
+                    </span>
+                    <input
+                      id="client-claims-order-mobile"
+                      className={mobileControlClasses}
+                      disabled={controlsDisabled}
+                      inputMode="numeric"
+                      onChange={(event) => setPedidoId(event.target.value)}
+                      placeholder="Ej: 42"
+                      type="text"
+                      value={pedidoId}
+                    />
+                  </label>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <label htmlFor="client-claims-from-mobile" className="block">
+                      <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                        Desde
+                      </span>
+                      <input
+                        id="client-claims-from-mobile"
+                        className={mobileControlClasses}
+                        disabled={controlsDisabled}
+                        onChange={(event) => setDesde(event.target.value)}
+                        type="date"
+                        value={desde}
+                      />
+                    </label>
+
+                    <label htmlFor="client-claims-to-mobile" className="block">
+                      <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
+                        Hasta
+                      </span>
+                      <input
+                        id="client-claims-to-mobile"
+                        className={mobileControlClasses}
+                        disabled={controlsDisabled}
+                        onChange={(event) => setHasta(event.target.value)}
+                        type="date"
+                        value={hasta}
+                      />
+                    </label>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 border-t border-gray-200 px-5 py-4 dark:border-slate-800">
+                  {hasActiveFilters && (
+                    <button
+                      type="button"
+                      onClick={clearFilters}
+                      className="h-11 flex-1 rounded-xl border border-gray-200 bg-white px-4 text-sm font-extrabold text-slate-500 transition hover:border-orange-200 hover:text-orange-600 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
+                    >
+                      Limpiar filtros
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      applyFilters();
+                      setIsMobileFiltersOpen(false);
+                    }}
+                    disabled={controlsDisabled}
+                    className="h-11 flex-1 rounded-xl bg-orange-600 px-4 text-sm font-extrabold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:bg-orange-300 dark:disabled:bg-orange-900/60"
+                  >
+                    Ver resultados
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        <div className="hidden gap-5 xl:grid xl:grid-cols-[minmax(12rem,1fr)_14rem_12rem_auto_auto_auto] xl:items-center">
+          <div className="flex min-w-0 items-center gap-2">
+            <ArrowsUpDownIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
+            <select
+              aria-label="Ordenar reclamos"
+              className={controlClasses}
               onChange={(event) => {
                 setPage(0);
                 setSort(event.target.value as SortKey);
@@ -290,13 +516,12 @@ export default function ClientClaimsPage() {
               <option value="fecha-desc">Fecha: más recientes</option>
               <option value="fecha-asc">Fecha: más antiguos</option>
             </select>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-slate-200">
-              Local
-            </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <BuildingStorefrontIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
             <select
+              aria-label="Filtrar por local"
               className={controlClasses}
               disabled={controlsDisabled}
               onChange={(event) => setLocalId(event.target.value)}
@@ -311,13 +536,12 @@ export default function ClientClaimsPage() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-slate-200">
-              Estado
-            </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <CheckCircleIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
             <select
+              aria-label="Filtrar por estado"
               className={controlClasses}
               disabled={controlsDisabled}
               onChange={(event) => setStatus(event.target.value)}
@@ -330,69 +554,61 @@ export default function ClientClaimsPage() {
                 </option>
               ))}
             </select>
-          </label>
+          </div>
 
-          <label className="block">
-            <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-slate-200">
-              Pedido #
-            </span>
+          <div className="flex min-w-0 items-center gap-2">
+            <HashtagIcon className="h-5 w-5 shrink-0 text-slate-500 dark:text-slate-400" />
             <input
-              className={controlClasses}
+              aria-label="Filtrar por pedido"
+              className="h-10 w-24 rounded-lg border border-gray-200 bg-white px-3 text-sm font-semibold text-gray-700 outline-none transition placeholder:text-slate-400 focus:border-orange-500 focus:ring-2 focus:ring-orange-100 disabled:cursor-not-allowed disabled:bg-gray-50 disabled:text-gray-400 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100 dark:focus:ring-orange-500/20 dark:disabled:bg-slate-900 dark:disabled:text-slate-500"
               disabled={controlsDisabled}
               inputMode="numeric"
               onChange={(event) => setPedidoId(event.target.value)}
-              placeholder="Ej: 42"
+              placeholder="Pedido"
               type="text"
               value={pedidoId}
             />
-          </label>
-        </div>
+          </div>
 
-        <div className="flex flex-wrap items-end gap-4">
-          <div className="flex flex-wrap items-end gap-3">
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-slate-200">
-                Desde
-              </span>
-              <input
-                className={`${controlClasses} w-36`}
-                disabled={controlsDisabled}
-                onChange={(event) => setDesde(event.target.value)}
-                type="date"
-                value={desde}
-              />
-            </label>
-
-            <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-gray-700 dark:text-slate-200">
-                Hasta
-              </span>
-              <input
-                className={`${controlClasses} w-36`}
-                disabled={controlsDisabled}
-                onChange={(event) => setHasta(event.target.value)}
-                type="date"
-                value={hasta}
-              />
-            </label>
+          <div className="grid grid-cols-[auto_8.75rem_auto_8.75rem] items-center gap-1.5">
+            <CalendarDaysIcon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+            <input
+              aria-label="Fecha desde"
+              className={controlClasses}
+              disabled={controlsDisabled}
+              onChange={(event) => setDesde(event.target.value)}
+              type="date"
+              value={desde}
+            />
+            <span className="text-slate-400">-</span>
+            <input
+              aria-label="Fecha hasta"
+              className={controlClasses}
+              disabled={controlsDisabled}
+              onChange={(event) => setHasta(event.target.value)}
+              type="date"
+              value={hasta}
+            />
           </div>
 
           <button
-            className="h-10 rounded-md bg-orange-700 px-5 text-sm font-semibold text-white transition-colors hover:bg-orange-800 disabled:cursor-not-allowed disabled:bg-orange-300 dark:bg-orange-600 dark:hover:bg-orange-500 dark:disabled:bg-orange-900/60"
+            className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-gray-200 bg-white text-slate-700 transition hover:border-orange-200 hover:text-orange-600 disabled:cursor-not-allowed disabled:opacity-60 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-orange-500/30 dark:hover:text-orange-400"
             disabled={controlsDisabled}
             onClick={applyFilters}
             type="button"
+            aria-label="Actualizar filtros"
+            title="Actualizar filtros"
           >
-            Aplicar filtros
+            <ArrowPathIcon className="h-4 w-4" />
           </button>
         </div>
 
         {restaurantsLoading ? (
-          <p className="text-xs text-gray-400 dark:text-slate-500">
+          <p className="mt-4 text-xs text-gray-400 dark:text-slate-500">
             Cargando locales... los filtros se habilitarán en un momento.
           </p>
         ) : null}
-      </div>
+      </section>
 
       {restaurantsError ? (
         <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800 dark:bg-amber-500/10 dark:text-amber-200">

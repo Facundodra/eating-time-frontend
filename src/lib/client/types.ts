@@ -76,6 +76,8 @@ export type RestaurantList = {
   id: number;
   name: string;
   coverPhotoUrl: string;
+  coverPhotoMobileUrl: string;
+  coverPhotoDesktopUrl: string;
   profilePhotoUrl: string;
   stars: number;
   state: boolean;
@@ -85,6 +87,8 @@ export type Restaurant ={
   id: number;
   name: string;
   coverPhotoUrl: string;
+  coverPhotoMobileUrl: string;
+  coverPhotoDesktopUrl: string;
   profilePhotoUrl: string;
   stars: number;
   state: boolean;

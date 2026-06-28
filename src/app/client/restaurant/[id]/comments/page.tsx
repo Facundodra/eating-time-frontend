@@ -1,4 +1,4 @@
-import DishesDetailPage from "@/ui/client/dishes/dishes-detail-page";
+import LocalRatingPage from "@/ui/client/ratings/local-rating-page";
 
 export default async function Page({
   params,
@@ -6,5 +6,5 @@ export default async function Page({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  return <DishesDetailPage id={id} />;
+  return <LocalRatingPage restaurant={{ id }} />;
 }
