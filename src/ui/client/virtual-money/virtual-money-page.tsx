@@ -213,13 +213,13 @@ export default function ClientVirtualMoneyPage() {
   }, [loadWallet]);
 
   return (
-    <div className="mx-auto max-w-[1150px] space-y-6 px-4 py-6">
+    <div className="space-y-6">
       <Link
         href="/client/mi-cuenta"
         className="inline-flex items-center gap-1 text-sm font-semibold text-slate-500 transition hover:text-orange-700 dark:text-slate-400 dark:hover:text-orange-300"
       >
         <ChevronLeftIcon className="h-4 w-4" />
-        Mi cuenta
+        Volver a mi cuenta
       </Link>
 
       <section>
