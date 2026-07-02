@@ -4,11 +4,12 @@ const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
 const baseURL = externalBaseUrl ?? "http://localhost:3000";
 
 export default defineConfig({
-  testDir: "./tests/e2e",
-  fullyParallel: true,
+  testDir: "./tests",
+  testMatch: ["**/*.spec.ts", "**/*.spec.ts.ts"],
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: [
     ["list"],
     ["html", { open: "never" }],
