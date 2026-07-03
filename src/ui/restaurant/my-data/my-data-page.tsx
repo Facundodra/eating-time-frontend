@@ -159,7 +159,7 @@ export default function RestaurantMyDataPage() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setFileError("Solo se permiten imagenes.");
+      setFileError("Solo se permiten imágenes.");
       return;
     }
 
@@ -209,7 +209,7 @@ export default function RestaurantMyDataPage() {
     if (!file) return;
 
     if (!file.type.startsWith("image/")) {
-      setErrorMessage("Solo se permiten imagenes para las portadas.");
+      setErrorMessage("Solo se permiten imágenes para las portadas.");
       if (variant === "mobile" && mobileCoverInputRef.current) {
         mobileCoverInputRef.current.value = "";
       }
@@ -253,6 +253,17 @@ export default function RestaurantMyDataPage() {
     if (desktopCoverInputRef.current) desktopCoverInputRef.current.value = "";
   }
 
+  function getErrorMessageFromUnknown(error: unknown) {
+    if (error instanceof Error) return error.message;
+    if (typeof error === "string") return error;
+
+    try {
+      return JSON.stringify(error);
+    } catch {
+      return "Ocurrió un error inesperado.";
+    }
+  }
+
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setErrorMessage("");
@@ -263,13 +274,16 @@ export default function RestaurantMyDataPage() {
       const nextName = name.trim();
       const nextPhone = phone.trim();
       let didSaveCoverPhotos = false;
+      let didSaveProfileData = false;
+      const tasks: Promise<void>[] = [];
 
       if (
         nextName !== initialFormData.name ||
         nextPhone !== initialFormData.phone ||
         profilePhoto !== null
       ) {
-        await editUserData(nextName, nextPhone, profilePhoto);
+        tasks.push(editUserData(nextName, nextPhone, profilePhoto));
+        didSaveProfileData = true;
       }
 
       if ((mobileCoverPhoto || desktopCoverPhoto) && !restaurantId) {
@@ -277,12 +291,16 @@ export default function RestaurantMyDataPage() {
       }
 
       if ((mobileCoverPhoto || desktopCoverPhoto) && restaurantId) {
-        await setRestaurantCoverPhotos(restaurantId, {
-          desktopFile: desktopCoverPhoto,
-          mobileFile: mobileCoverPhoto,
-        });
+        tasks.push(
+          setRestaurantCoverPhotos(restaurantId, {
+            desktopFile: desktopCoverPhoto,
+            mobileFile: mobileCoverPhoto,
+          }),
+        );
         didSaveCoverPhotos = true;
       }
+
+      await Promise.all(tasks);
 
       const updatedSession = await getCurrentSession();
       const nextPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
@@ -294,11 +312,15 @@ export default function RestaurantMyDataPage() {
         updatedSession?.urlFotoPortada ??
         currentDesktopCoverUrl;
 
-      setSuccessMessage(
-        didSaveCoverPhotos
+      const nextSuccessMessage = didSaveCoverPhotos
+        ? didSaveProfileData
           ? "Se guardaron los datos del local y las portadas."
-          : "Los datos del local se actualizaron correctamente.",
-      );
+          : "Se guardaron las portadas del local."
+        : didSaveProfileData
+        ? "Los datos del local se actualizaron correctamente."
+        : "No hubo cambios para guardar.";
+
+      setSuccessMessage(nextSuccessMessage);
       setCurrentPhotoUrl(nextPhotoUrl);
       setCurrentMobileCoverUrl(nextMobileCoverUrl);
       setCurrentDesktopCoverUrl(nextDesktopCoverUrl);
@@ -312,14 +334,11 @@ export default function RestaurantMyDataPage() {
       setProfilePhoto(null);
       setMobileCoverPhoto(null);
       setDesktopCoverPhoto(null);
+      if (fileInputRef.current) fileInputRef.current.value = "";
       if (mobileCoverInputRef.current) mobileCoverInputRef.current.value = "";
       if (desktopCoverInputRef.current) desktopCoverInputRef.current.value = "";
     } catch (error) {
-      setErrorMessage(
-        error instanceof Error
-          ? error.message
-          : "No se pudieron guardar los datos del local.",
-      );
+      setErrorMessage(getErrorMessageFromUnknown(error));
     } finally {
       setIsSubmitting(false);
     }
@@ -363,7 +382,7 @@ export default function RestaurantMyDataPage() {
 
                   <label className="block">
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Telefono
+                      Teléfono
                     </span>
                     <input
                       type="tel"
@@ -378,7 +397,7 @@ export default function RestaurantMyDataPage() {
 
                 <label className="block">
                   <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                    Correo electronico
+                    Correo electrónico
                   </span>
                   <input
                     type="email"
@@ -398,8 +417,8 @@ export default function RestaurantMyDataPage() {
                         Fotos del local
                       </h2>
                       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Administra la foto de perfil y las portadas mobile y desktop
-                        del local.
+                        Administra la foto de perfil y las portadas móvil y de
+                        escritorio del local.
                       </p>
                     </div>
                   </div>
@@ -451,7 +470,7 @@ export default function RestaurantMyDataPage() {
                         )}
                       </label>
                       <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        Recomendado: imagen cuadrada. Maximo 5MB.
+                        Recomendado: imagen cuadrada. Máximo 5MB.
                       </p>
                       {profilePhoto ? (
                         <button
@@ -489,8 +508,8 @@ export default function RestaurantMyDataPage() {
                                   src={displayMobileCoverUrl}
                                   alt={
                                     mobileCoverPhoto
-                                      ? "Vista previa de la portada mobile"
-                                      : "Portada mobile actual"
+                                      ? "Vista previa de la portada móvil"
+                                      : "Portada móvil actual"
                                   }
                                   fill
                                   unoptimized={Boolean(mobileCoverPreviewUrl)}
@@ -498,7 +517,7 @@ export default function RestaurantMyDataPage() {
                                 />
                                 {mobileCoverPhoto ? (
                                   <span
-                                    aria-label="Portada mobile nueva seleccionada"
+                                    aria-label="Portada móvil nueva seleccionada"
                                     className="absolute right-3 top-3 rounded-full bg-orange-600 p-1.5 text-white shadow-lg ring-2 ring-white/90 dark:ring-slate-950/80"
                                   >
                                     <PlusCircleIcon className="h-7 w-7" />
@@ -518,7 +537,7 @@ export default function RestaurantMyDataPage() {
                             )}
                           </label>
                           <p className="mt-2 text-center text-xs font-semibold text-slate-500 dark:text-slate-400">
-                            Recomendado para telefono: 1080 x 1920 px.
+                            Recomendado para teléfono: 1080 x 1920 px.
                           </p>
                           {mobileCoverPhoto ? (
                             <button
@@ -533,7 +552,7 @@ export default function RestaurantMyDataPage() {
 
                     <div className="w-full">
                           <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                            Portada computadora
+                            Portada de escritorio
                           </span>
                           <label className="group relative flex h-44 w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition focus-within:ring-2 focus-within:ring-orange-500 focus-within:ring-offset-2 hover:border-orange-400 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-600 dark:focus-within:ring-offset-slate-900 sm:h-56 md:h-64 xl:h-64">
                             <input
@@ -551,8 +570,8 @@ export default function RestaurantMyDataPage() {
                                   src={displayDesktopCoverUrl}
                                   alt={
                                     desktopCoverPhoto
-                                      ? "Vista previa de la portada computadora"
-                                      : "Portada computadora actual"
+                                      ? "Vista previa de la portada de escritorio"
+                                      : "Portada de escritorio actual"
                                   }
                                   fill
                                   unoptimized={Boolean(desktopCoverPreviewUrl)}
@@ -560,7 +579,7 @@ export default function RestaurantMyDataPage() {
                                 />
                                 {desktopCoverPhoto ? (
                                   <span
-                                    aria-label="Portada desktop nueva seleccionada"
+                                    aria-label="Portada de escritorio nueva seleccionada"
                                     className="absolute right-3 top-3 rounded-full bg-orange-600 p-1.5 text-white shadow-lg ring-2 ring-white/90 dark:ring-slate-950/80"
                                   >
                                     <PlusCircleIcon className="h-7 w-7" />

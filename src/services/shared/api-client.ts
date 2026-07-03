@@ -13,6 +13,7 @@ export const publicApi = axios.create({
 // requests cross-origin del browser al backend.
 export const clientApi = axios.create({
   baseURL: "/api/backend",
+  withCredentials: true,
 });
 
 clientApi.interceptors.response.use(

@@ -234,7 +234,7 @@ export default function RestaurantChangePasswordPage() {
                   Datos del local
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Accede a la pantalla de datos para editar el nombre, telefono
+                  Accede a la pantalla de datos para editar el nombre, teléfono
                   o foto del local.
                 </p>
               </div>
