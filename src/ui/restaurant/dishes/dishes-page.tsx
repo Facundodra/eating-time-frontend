@@ -361,7 +361,7 @@ function CategoryRows({
         className="mt-3 flex h-11 cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-50 px-5 text-sm font-extrabold text-orange-600 transition hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-orange-500/10 dark:text-orange-400 dark:hover:bg-orange-500/20"
       >
         <PlusIcon className="h-5 w-5" />
-        Agregar categorÃ­a
+        Agregar categoría
       </button>
     </>
   );
