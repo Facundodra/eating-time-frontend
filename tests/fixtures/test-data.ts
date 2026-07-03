@@ -13,6 +13,9 @@ function makeUruguayanDocument(seed: string) {
   return `${base}${verifier}`;
 }
 
+export type ClientRegistrationData = ReturnType<typeof makeClientRegistrationData>;
+export type DeliveryPointData = ReturnType<typeof makeDeliveryPointData>;
+
 export function makeClientRegistrationData() {
   const suffix = uniqueSuffix();
   const numericSuffix = suffix.slice(-7).padStart(7, "0");
