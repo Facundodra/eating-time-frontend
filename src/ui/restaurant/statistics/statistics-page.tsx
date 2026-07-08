@@ -111,7 +111,7 @@ export default function RestaurantStatisticsPage() {
                 }
                 className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
               >
-                <option value="dia">Por dia</option>
+                <option value="dia">Por día</option>
                 <option value="mes">Por mes</option>
               </select>
             </div>
@@ -126,7 +126,7 @@ export default function RestaurantStatisticsPage() {
                       Filtros
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Ajusta el rango y los paneles de estadisticas.
+                      Ajustá el rango y los paneles de estadísticas.
                     </p>
                   </div>
                   <button

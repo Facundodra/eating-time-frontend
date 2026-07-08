@@ -242,7 +242,7 @@ async function loadRestaurantClaims(): Promise<RestaurantClaimsResponse> {
   const session = await getCurrentSession();
 
   if (!session) {
-    throw new Error("No se encontro una sesion activa.");
+    throw new Error("No se encontró una sesión activa.");
   }
 
   return getRestaurantClaims(String(session.idTipoUsuario));
@@ -336,8 +336,8 @@ export default function RestaurantClaimsPage() {
                 }
                 className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
               >
-                <option value="created-desc">Mas nuevos</option>
-                <option value="created-asc">Mas antiguos</option>
+                <option value="created-desc">Más nuevos</option>
+                <option value="created-asc">Más antiguos</option>
                 <option value="amount-desc">Mayor monto</option>
                 <option value="amount-asc">Menor monto</option>
                 <option value="customer-asc">Cliente A-Z</option>
@@ -355,7 +355,7 @@ export default function RestaurantClaimsPage() {
                       Filtros
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Ajusta el listado de reclamos visible.
+                      Ajustá el listado de reclamos visible.
                     </p>
                   </div>
                   <button
@@ -386,7 +386,7 @@ export default function RestaurantClaimsPage() {
 
                   <label htmlFor="claim-created-after-filter-mobile" className="block">
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Creado despues de
+                      Creado después de
                     </span>
                     <input
                       id="claim-created-after-filter-mobile"
@@ -476,7 +476,7 @@ export default function RestaurantClaimsPage() {
 
             <label htmlFor="claim-created-after-filter" className="block">
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Creado despues de
+                Creado después de
               </span>
               <input
                 id="claim-created-after-filter"
@@ -547,8 +547,8 @@ export default function RestaurantClaimsPage() {
               onChange={(event) => setSort(event.target.value as ClaimSort)}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="created-desc">Mas nuevos</option>
-              <option value="created-asc">Mas antiguos</option>
+              <option value="created-desc">Más nuevos</option>
+              <option value="created-asc">Más antiguos</option>
               <option value="amount-desc">Mayor monto</option>
               <option value="amount-asc">Menor monto</option>
               <option value="customer-asc">Cliente A-Z</option>
@@ -564,7 +564,7 @@ export default function RestaurantClaimsPage() {
             Reclamos recibidos
           </h2>
           <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-            Revisa los reclamos y abre el detalle para ver el pedido asociado.
+            Revisá los reclamos y abre el detalle para ver el pedido asociado.
           </p>
         </div>
 

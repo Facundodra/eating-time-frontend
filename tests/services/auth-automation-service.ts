@@ -12,8 +12,7 @@ const roleHomePath: Record<TestUserRole, string> = {
 type LoginResult = "success" | "error" | "timeout";
 
 let runtimeClientUser: { email: string; password: string } | null = null;
-const usesExplicitClientCredentials =
-  Boolean(process.env.E2E_CLIENT_EMAIL) || Boolean(process.env.E2E_CLIENT_PASSWORD);
+const usesExplicitClientCredentials = Boolean(process.env.E2E_CLIENT_EMAIL);
 
 function pathRegex(path: string) {
   return new RegExp(`${path.replaceAll("/", "\\/")}(?:$|[/?#])`);

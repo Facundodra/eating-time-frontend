@@ -475,7 +475,7 @@ export default function RegisterForm() {
               href="/login"
               className="font-semibold text-orange-600 hover:text-orange-700"
             >
-              Inicia sesión
+              Iniciá sesión
             </Link>
           </p>
           <LoadingButton

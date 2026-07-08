@@ -42,7 +42,7 @@ type SortKey = "antiguedad-desc" | "antiguedad-asc" | "items-desc" | "items-asc"
 const statusLabels: Record<OrderStatus, string> = {
   EN_CARRITO: "En carrito",
   ETAPA_DE_PAGO: "En pago",
-  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente confirmacion",
+  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente confirmación",
   ACEPTADO_LOCAL: "Aceptado",
   EN_CURSO_LOCAL: "En curso",
   EN_CAMINO_LOCAL: "En camino",
@@ -158,7 +158,7 @@ function getOrderDescription(order: WorkbenchOrder) {
       .join(", ");
   }
 
-  return order.comment ?? order.instructions ?? "Pedido sin detalle de items";
+  return order.comment ?? order.instructions ?? "Pedido sin detalle de ítems";
 }
 
 function itemCountLabel(order: WorkbenchOrder) {
@@ -176,7 +176,7 @@ async function loadRestaurantOrders(
   const session = await getCurrentSession();
 
   if (!session) {
-    throw new Error("No se encontro una sesion activa.");
+    throw new Error("No se encontró una sesión activa.");
   }
 
   const restaurantId = String(session.idTipoUsuario);
@@ -371,10 +371,10 @@ export default function RestaurantOrdersPage() {
                 onChange={(event) => setSort(event.target.value as SortKey)}
                 className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
               >
-                <option value="antiguedad-desc">Mas recientes</option>
-                <option value="antiguedad-asc">Mas antiguos</option>
-                <option value="items-desc">Mas items</option>
-                <option value="items-asc">Menos items</option>
+                <option value="antiguedad-desc">Más recientes</option>
+                <option value="antiguedad-asc">Más antiguos</option>
+                <option value="items-desc">Más ítems</option>
+                <option value="items-asc">Menos ítems</option>
               </select>
             </div>
           </div>
@@ -388,7 +388,7 @@ export default function RestaurantOrdersPage() {
                       Filtros
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Ajusta el historial de pedidos visible.
+                      Ajustá el historial de pedidos visible.
                     </p>
                   </div>
                   <button
@@ -441,7 +441,7 @@ export default function RestaurantOrdersPage() {
 
                   <label htmlFor="order-start-filter-mobile" className="block">
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Creado despues de
+                      Creado después de
                     </span>
                     <input
                       id="order-start-filter-mobile"
@@ -534,7 +534,7 @@ export default function RestaurantOrdersPage() {
 
             <label htmlFor="order-start-filter" className="block">
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Creado despues de
+                Creado después de
               </span>
               <input
                 id="order-start-filter"
@@ -590,10 +590,10 @@ export default function RestaurantOrdersPage() {
               onChange={(event) => setSort(event.target.value as SortKey)}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="antiguedad-desc">Mas recientes</option>
-              <option value="antiguedad-asc">Mas antiguos</option>
-              <option value="items-desc">Mas items</option>
-              <option value="items-asc">Menos items</option>
+              <option value="antiguedad-desc">Más recientes</option>
+              <option value="antiguedad-asc">Más antiguos</option>
+              <option value="items-desc">Más ítems</option>
+              <option value="items-asc">Menos ítems</option>
             </select>
           </label>
         </div>
@@ -605,7 +605,7 @@ export default function RestaurantOrdersPage() {
             Pedidos recibidos
           </h2>
           <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-            Consulta el historial de pedidos y abre el detalle sin modificar su
+            Consultá el historial de pedidos y abre el detalle sin modificar su
             estado.
           </p>
         </div>
@@ -642,7 +642,7 @@ export default function RestaurantOrdersPage() {
                     <span>Cliente</span>
                     <span>Detalle</span>
                     <span>Estado</span>
-                    <span>Items</span>
+                    <span>Ítems</span>
                     <span>Total</span>
                     <span>Acciones</span>
                   </div>
@@ -668,7 +668,7 @@ export default function RestaurantOrdersPage() {
                           {getOrderDescription(order)}
                         </p>
                         <p className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">
-                          {order.address ?? "Sin direccion"}
+                          {order.address ?? "Sin dirección"}
                         </p>
                       </div>
                       <div className="flex items-center">
@@ -768,7 +768,7 @@ function OrderDetailModal({
         setRatingError(
           error instanceof Error
             ? error.message
-            : "No se pudo cargar la calificacion del cliente.",
+            : "No se pudo cargar la calificación del cliente.",
         );
       } finally {
         if (isActive) setIsRatingLoading(false);
@@ -807,7 +807,7 @@ function OrderDetailModal({
       setRatingError(
         error instanceof Error
           ? error.message
-          : "No se pudo registrar la calificacion.",
+          : "No se pudo registrar la calificación.",
       );
     } finally {
       setIsRatingSubmitting(false);
@@ -851,7 +851,7 @@ function OrderDetailModal({
               {formatDateTimeLabel(order.createdAt)}
             </DetailItem>
             {order.address ? (
-              <DetailItem label="Direccion">{order.address}</DetailItem>
+              <DetailItem label="Dirección">{order.address}</DetailItem>
             ) : null}
             {order.estimatedTime ? (
               <DetailItem label="Tiempo estimado">
@@ -916,10 +916,10 @@ function OrderDetailModal({
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
                   {isRatingLoading
-                    ? "Cargando calificacion guardada..."
+                    ? "Cargando calificación guardada..."
                     : canRateCustomer || isRatingReadOnly
-                      ? "Registra si la experiencia con este cliente fue positiva."
-                      : "Disponible cuando el pedido este finalizado."}
+                      ? "Registrá si la experiencia con este cliente fue positiva."
+                      : "Disponible cuando el pedido esté finalizado."}
                 </p>
               </div>
               {isRatingReadOnly ? (
@@ -942,7 +942,7 @@ function OrderDetailModal({
 
             {isRatingLoading ? (
                 <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-                  Buscando calificacion registrada...
+                  Buscando calificación registrada...
                 </p>
               ) : isRatingReadOnly ? (
                 <div className="rounded-xl border border-gray-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
@@ -991,7 +991,7 @@ function OrderDetailModal({
                   <textarea
                     value={ratingComment}
                     onChange={(event) => setRatingComment(event.target.value)}
-                    placeholder="Agrega un comentario interno sobre el cliente."
+                    placeholder="Agregá un comentario interno sobre el cliente."
                     rows={3}
                     className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                   />
@@ -1010,7 +1010,7 @@ function OrderDetailModal({
                     >
                       {isRatingSubmitting
                         ? "Guardando..."
-                        : "Guardar calificacion"}
+                        : "Guardar calificación"}
                     </button>
                   </div>
                 </form>

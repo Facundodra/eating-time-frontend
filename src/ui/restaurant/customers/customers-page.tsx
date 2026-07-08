@@ -59,7 +59,7 @@ type CustomerSummary = {
 const statusLabels: Record<OrderStatus, string> = {
   EN_CARRITO: "En carrito",
   ETAPA_DE_PAGO: "En pago",
-  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente confirmacion",
+  PENDIENTE_CONFIRMACION_LOCAL: "Pendiente confirmación",
   ACEPTADO_LOCAL: "Aceptado",
   EN_CURSO_LOCAL: "En curso",
   EN_CAMINO_LOCAL: "En camino",
@@ -170,7 +170,7 @@ function getOrderDescription(order: WorkbenchOrder) {
       .join(", ");
   }
 
-  return order.comment ?? order.instructions ?? "Pedido sin detalle de items";
+  return order.comment ?? order.instructions ?? "Pedido sin detalle de ítems";
 }
 
 function getOrderRating(order: WorkbenchOrder) {
@@ -380,7 +380,7 @@ async function loadRestaurantOrders(): Promise<WorkbenchOrder[]> {
   const session = await getCurrentSession();
 
   if (!session) {
-    throw new Error("No se encontro una sesion activa.");
+    throw new Error("No se encontró una sesión activa.");
   }
 
   const orders = await fetchRestaurantOrders(String(session.idTipoUsuario), {
@@ -418,7 +418,7 @@ function CustomerMobileCard({
         <DetailPreview label="Total gastado">
           {formatPrice(customer.totalSpent)}
         </DetailPreview>
-        <DetailPreview label="Ultimo pedido">
+        <DetailPreview label="Último pedido">
           {formatDateTimeLabel(customer.lastOrder.createdAt)}
         </DetailPreview>
         <DetailPreview label="Positivas">
@@ -560,16 +560,16 @@ export default function RestaurantCustomersPage() {
                 onChange={(event) => setSort(event.target.value as SortKey)}
                 className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
               >
-                <option value="last-order-desc">Mas recientes</option>
-                <option value="last-order-asc">Mas antiguos</option>
+                <option value="last-order-desc">Más recientes</option>
+                <option value="last-order-asc">Más antiguos</option>
                 <option value="name-asc">Nombre A-Z</option>
                 <option value="name-desc">Nombre Z-A</option>
-                <option value="orders-desc">Mas pedidos</option>
+                <option value="orders-desc">Más pedidos</option>
                 <option value="orders-asc">Menos pedidos</option>
-                <option value="spent-desc">Mas gasto</option>
+                <option value="spent-desc">Más gasto</option>
                 <option value="spent-asc">Menos gasto</option>
-                <option value="positive-desc">Mas positivas</option>
-                <option value="negative-desc">Mas negativas</option>
+                <option value="positive-desc">Más positivas</option>
+                <option value="negative-desc">Más negativas</option>
               </select>
             </div>
           </div>
@@ -583,7 +583,7 @@ export default function RestaurantCustomersPage() {
                       Filtros
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Ajusta la base de clientes visible.
+                      Ajustá la base de clientes visible.
                     </p>
                   </div>
                   <button
@@ -729,16 +729,16 @@ export default function RestaurantCustomersPage() {
               onChange={(event) => setSort(event.target.value as SortKey)}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="last-order-desc">Mas recientes</option>
-              <option value="last-order-asc">Mas antiguos</option>
+              <option value="last-order-desc">Más recientes</option>
+              <option value="last-order-asc">Más antiguos</option>
               <option value="name-asc">Nombre A-Z</option>
               <option value="name-desc">Nombre Z-A</option>
-              <option value="orders-desc">Mas pedidos</option>
+              <option value="orders-desc">Más pedidos</option>
               <option value="orders-asc">Menos pedidos</option>
-              <option value="spent-desc">Mas gasto</option>
+              <option value="spent-desc">Más gasto</option>
               <option value="spent-asc">Menos gasto</option>
-              <option value="positive-desc">Mas positivas</option>
-              <option value="negative-desc">Mas negativas</option>
+              <option value="positive-desc">Más positivas</option>
+              <option value="negative-desc">Más negativas</option>
             </select>
           </label>
         </div>
@@ -783,7 +783,7 @@ export default function RestaurantCustomersPage() {
                 <div className="min-w-[1120px] overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
                   <div className="grid grid-cols-[minmax(220px,1fr)_180px_140px_150px_150px_140px_150px] items-center gap-4 border-b border-gray-200 bg-slate-50 px-4 py-3 text-xs font-black uppercase text-slate-500 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400">
                     <span>Nombre</span>
-                    <span>Fecha de creacion</span>
+                    <span>Fecha de creación</span>
                     <span>Total gastado</span>
                     <span>Calificaciones positivas</span>
                     <span>Calificaciones negativas</span>
@@ -804,7 +804,7 @@ export default function RestaurantCustomersPage() {
                           {formatCustomerIdLabel(customer.customerId)}
                         </p>
                         <p className="mt-1 truncate text-xs font-medium text-slate-500 dark:text-slate-400">
-                          Ultimo: {formatDateTimeLabel(customer.lastOrder.createdAt)}
+                          Último: {formatDateTimeLabel(customer.lastOrder.createdAt)}
                         </p>
                       </div>
                       <div className="font-semibold text-slate-700 dark:text-slate-200">

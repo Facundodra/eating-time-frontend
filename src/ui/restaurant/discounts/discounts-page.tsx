@@ -367,7 +367,7 @@ export default function RestaurantDiscountsPage() {
     preferredSelectedDiscountId = "",
   ) {
     if (!restaurantId) {
-      throw new Error("No se encontrÃ³ el local para recargar descuentos.");
+      throw new Error("No se encontró el local para recargar descuentos.");
     }
 
     const freshData = await getRestaurantDiscounts(restaurantId);
@@ -674,7 +674,7 @@ export default function RestaurantDiscountsPage() {
 
   function addDishToSelectedDiscount() {
     if (!editableSelectedDiscount) {
-      setFormError("Selecciona un descuento para agregar platos.");
+      setFormError("Seleccioná un descuento para agregar platos.");
       return;
     }
 
@@ -683,7 +683,7 @@ export default function RestaurantDiscountsPage() {
     );
 
     if (!dish) {
-      setFormError("Selecciona un plato valido.");
+      setFormError("Seleccioná un plato válido.");
       return;
     }
 
@@ -708,7 +708,7 @@ export default function RestaurantDiscountsPage() {
     );
 
     if (!dish) {
-      setFormError("Selecciona un plato valido.");
+      setFormError("Seleccioná un plato válido.");
       return;
     }
 
@@ -866,7 +866,7 @@ export default function RestaurantDiscountsPage() {
 
   async function handleSaveChanges() {
     if (!editableSelectedDiscount) {
-      setFormError("Selecciona un descuento para guardar cambios.");
+      setFormError("Seleccioná un descuento para guardar cambios.");
       return;
     }
 
@@ -898,7 +898,7 @@ export default function RestaurantDiscountsPage() {
 
   async function handleDeleteDiscount() {
     if (!selectedDiscount) {
-      setFormError("Selecciona un descuento para eliminar.");
+      setFormError("Seleccioná un descuento para eliminar.");
       return;
     }
 
@@ -980,11 +980,11 @@ export default function RestaurantDiscountsPage() {
                 }
                 className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
               >
-                <option value="created-desc">Mas nuevos</option>
-                <option value="created-asc">Mas antiguos</option>
-                <option value="percentage-desc">Mas descuento</option>
+                <option value="created-desc">Más nuevos</option>
+                <option value="created-asc">Más antiguos</option>
+                <option value="percentage-desc">Más descuento</option>
                 <option value="percentage-asc">Menos descuento</option>
-                <option value="expires-desc">Vencen despues</option>
+                <option value="expires-desc">Vencen después</option>
                 <option value="expires-asc">Vencen antes</option>
               </select>
             </div>
@@ -999,7 +999,7 @@ export default function RestaurantDiscountsPage() {
                       Filtros
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Ajusta el listado de descuentos visible.
+                      Ajustá el listado de descuentos visible.
                     </p>
                   </div>
                   <button
@@ -1032,7 +1032,7 @@ export default function RestaurantDiscountsPage() {
 
                   <label htmlFor="discount-created-after-filter-mobile" className="block">
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Creado despues de
+                      Creado después de
                     </span>
                     <input
                       id="discount-created-after-filter-mobile"
@@ -1131,7 +1131,7 @@ export default function RestaurantDiscountsPage() {
 
             <label htmlFor="discount-created-after-filter" className="block">
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Creado despues de
+                Creado después de
               </span>
               <input
                 id="discount-created-after-filter"
@@ -1213,9 +1213,9 @@ export default function RestaurantDiscountsPage() {
               }
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="created-desc">Mas nuevos</option>
-              <option value="created-asc">Mas antiguos</option>
-              <option value="percentage-desc">Mas descuento</option>
+              <option value="created-desc">Más nuevos</option>
+              <option value="created-asc">Más antiguos</option>
+              <option value="percentage-desc">Más descuento</option>
               <option value="percentage-asc">Menos descuento</option>
               <option value="expires-desc">Vencen despues</option>
               <option value="expires-asc">Vencen antes</option>
@@ -1232,7 +1232,7 @@ export default function RestaurantDiscountsPage() {
                 Listado de descuentos
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Selecciona un descuento para ver sus datos o darlo de baja.
+                Seleccioná un descuento para ver sus datos o darlo de baja.
               </p>
             </div>
             <button
@@ -1541,7 +1541,7 @@ export default function RestaurantDiscountsPage() {
                   Nuevo descuento
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Completa los datos para dar de alta un nuevo descuento.
+                  Completá los datos para dar de alta un nuevo descuento.
                 </p>
               </div>
             </div>
@@ -1746,7 +1746,7 @@ export default function RestaurantDiscountsPage() {
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                    Fecha de creacion
+                    Fecha de creación
                   </span>
                   <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 text-sm font-extrabold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
                     {formatDateTimeLabel(selectedDiscount.createdAt)}

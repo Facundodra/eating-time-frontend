@@ -49,7 +49,7 @@ export default function RestaurantChangePasswordPage() {
     setConfirmPassword(value);
 
     if (value && value !== newPassword) {
-      setConfirmError("Las contrasenas no coinciden.");
+      setConfirmError("Las contraseñas no coinciden.");
       return;
     }
 
@@ -60,7 +60,7 @@ export default function RestaurantChangePasswordPage() {
     setNewPassword(value);
 
     if (confirmPassword && confirmPassword !== value) {
-      setConfirmError("Las contrasenas no coinciden.");
+      setConfirmError("Las contraseñas no coinciden.");
       return;
     }
 
@@ -71,7 +71,7 @@ export default function RestaurantChangePasswordPage() {
     event.preventDefault();
 
     if (newPassword !== confirmPassword) {
-      setConfirmError("Las contrasenas no coinciden.");
+      setConfirmError("Las contraseñas no coinciden.");
       return;
     }
 
@@ -85,7 +85,7 @@ export default function RestaurantChangePasswordPage() {
       setNewPassword("");
       setConfirmPassword("");
       setConfirmError("");
-      setSuccessMessage("La contrasena se actualizo correctamente.");
+      setSuccessMessage("La contraseña se actualizó correctamente.");
     } catch (error) {
       if (error instanceof ChangePasswordError && error.code === "unauthorized") {
         router.replace("/login");
@@ -95,7 +95,7 @@ export default function RestaurantChangePasswordPage() {
       setErrorMessage(
         error instanceof Error
           ? error.message
-          : "No se pudo cambiar la contrasena. Intentalo nuevamente.",
+          : "No se pudo cambiar la contraseña. Intentalo nuevamente.",
       );
     } finally {
       setIsSubmitting(false);
@@ -116,10 +116,10 @@ export default function RestaurantChangePasswordPage() {
               </span>
               <div>
                 <h1 className="text-lg font-extrabold text-slate-950 dark:text-white">
-                  Cambiar contrasena
+                  Cambiar contraseña
                 </h1>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Ingresa la contrasena actual y defini una nueva para el acceso
+                  Ingresá la contraseña actual y definí una nueva para el acceso
                   del local.
                 </p>
               </div>
@@ -129,7 +129,7 @@ export default function RestaurantChangePasswordPage() {
           <div className="space-y-5 px-5 py-5">
             <PasswordField
               id="current_password"
-              label="Contrasena actual"
+              label="Contraseña actual"
               value={currentPassword}
               visible={showCurrent}
               autoComplete="current-password"
@@ -140,7 +140,7 @@ export default function RestaurantChangePasswordPage() {
 
             <PasswordField
               id="new_password"
-              label="Nueva contrasena"
+              label="Nueva contraseña"
               value={newPassword}
               visible={showNew}
               autoComplete="new-password"
@@ -153,7 +153,7 @@ export default function RestaurantChangePasswordPage() {
             <div>
               <PasswordField
                 id="confirm_password"
-                label="Confirmar nueva contrasena"
+                label="Confirmar nueva contraseña"
                 value={confirmPassword}
                 visible={showConfirm}
                 autoComplete="new-password"
@@ -200,7 +200,7 @@ export default function RestaurantChangePasswordPage() {
                 disabled={Boolean(confirmError)}
                 className="h-11 w-full rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 focus:outline-none focus:ring-4 focus:ring-orange-100 disabled:cursor-not-allowed disabled:opacity-60 dark:focus:ring-orange-500/20 sm:w-fit"
               >
-                Guardar contrasena
+                Guardar contraseña
               </LoadingButton>
             </div>
           </div>
@@ -217,7 +217,7 @@ export default function RestaurantChangePasswordPage() {
                   Seguridad del local
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Usa una contrasena de al menos 8 caracteres y evita repetir
+                  Usá una contraseña de al menos 8 caracteres y evita repetir
                   credenciales de otros servicios.
                 </p>
               </div>
@@ -234,7 +234,7 @@ export default function RestaurantChangePasswordPage() {
                   Datos del local
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Accede a la pantalla de datos para editar el nombre, teléfono
+                  Accedé a la pantalla de datos para editar el nombre, teléfono
                   o foto del local.
                 </p>
               </div>
@@ -303,7 +303,7 @@ function PasswordField({
           type="button"
           onClick={onToggleVisibility}
           disabled={disabled}
-          aria-label={visible ? "Ocultar contrasena" : "Mostrar contrasena"}
+          aria-label={visible ? "Ocultar contraseña" : "Mostrar contraseña"}
           className="absolute right-3 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-lg text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-slate-800 dark:hover:text-slate-200"
         >
           {visible ? (

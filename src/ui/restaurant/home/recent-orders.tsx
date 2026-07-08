@@ -42,7 +42,7 @@ export default function RestaurantRecentOrders({
             Pedidos recientes
           </h2>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-            Pedidos del dia que requieren seguimiento operativo.
+            Pedidos del día que requieren seguimiento operativo.
           </p>
         </div>
         <Link

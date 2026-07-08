@@ -294,7 +294,7 @@ function CategoryRows({
       <div className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-800">
         {selectedCategories.length === 0 && !isAddingCategoryRow ? (
           <p className="px-4 py-4 text-sm font-medium text-slate-400 dark:text-slate-500">
-            No hay categorÃ­as asociadas.
+            No hay categorías asociadas.
           </p>
         ) : null}
 
@@ -344,7 +344,7 @@ function CategoryRows({
                 type="button"
                 onClick={onCancel}
                 disabled={disabled}
-                aria-label="Cancelar categorÃ­a"
+                aria-label="Cancelar categoría"
                 className="flex h-10 w-10 cursor-pointer items-center justify-center rounded-xl bg-red-50 text-red-500 transition hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-60 dark:bg-red-500/10 dark:text-red-400 dark:hover:bg-red-500/20"
               >
                 <XMarkIcon className="h-4 w-4" />
@@ -499,12 +499,12 @@ export default function RestaurantDishesPage() {
       categories.find((category) => !editCategoryIds.includes(category.id))?.id;
 
     if (!categoryId) {
-      setDetailError("No hay categorÃ­as disponibles para agregar.");
+      setDetailError("No hay categorías disponibles para agregar.");
       return;
     }
 
     if (editCategoryIds.includes(categoryId)) {
-      setDetailError("Esa categorÃ­a ya esta asociada al plato.");
+      setDetailError("Esa categoría ya está asociada al plato.");
       return;
     }
 
@@ -546,12 +546,12 @@ export default function RestaurantDishesPage() {
       categories.find((category) => !createCategoryIds.includes(category.id))?.id;
 
     if (!categoryId) {
-      setCreateError("No hay categorÃ­as disponibles para agregar.");
+      setCreateError("No hay categorías disponibles para agregar.");
       return;
     }
 
     if (createCategoryIds.includes(categoryId)) {
-      setCreateError("Esa categorÃ­a ya esta asociada al plato.");
+      setCreateError("Esa categoría ya está asociada al plato.");
       return;
     }
 
@@ -1057,10 +1057,10 @@ export default function RestaurantDishesPage() {
               >
                 <option value="name-asc">Nombre A-Z</option>
                 <option value="name-desc">Nombre Z-A</option>
-                <option value="created-desc">Mas nuevos</option>
-                <option value="created-asc">Mas antiguos</option>
-                <option value="price-desc">Mas caros</option>
-                <option value="price-asc">Mas baratos</option>
+                <option value="created-desc">Más nuevos</option>
+                <option value="created-asc">Más antiguos</option>
+                <option value="price-desc">Más caros</option>
+                <option value="price-asc">Más baratos</option>
               </select>
             </div>
           </div>
@@ -1074,7 +1074,7 @@ export default function RestaurantDishesPage() {
                       Filtros
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Ajusta el listado de platos visible.
+                      Ajustá el listado de platos visible.
                     </p>
                   </div>
                   <button
@@ -1110,7 +1110,7 @@ export default function RestaurantDishesPage() {
                     className="block"
                   >
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Creado despues de
+                      Creado después de
                     </span>
                     <input
                       id="dish-created-after-filter-mobile"
@@ -1212,7 +1212,7 @@ export default function RestaurantDishesPage() {
 
             <label htmlFor="dish-created-after-filter" className="block">
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Creado despues de
+                Creado después de
               </span>
               <input
                 id="dish-created-after-filter"
@@ -1296,10 +1296,10 @@ export default function RestaurantDishesPage() {
             >
               <option value="name-asc">Nombre A-Z</option>
               <option value="name-desc">Nombre Z-A</option>
-              <option value="created-desc">Mas nuevos</option>
-              <option value="created-asc">Mas antiguos</option>
-              <option value="price-desc">Mas caros</option>
-              <option value="price-asc">Mas baratos</option>
+              <option value="created-desc">Más nuevos</option>
+              <option value="created-asc">Más antiguos</option>
+              <option value="price-desc">Más caros</option>
+              <option value="price-asc">Más baratos</option>
             </select>
           </label>
         </div>
@@ -1314,7 +1314,7 @@ export default function RestaurantDishesPage() {
                 Listado de platos
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Selecciona un plato para ver sus datos, editarlo o eliminarlo.
+                Seleccioná un plato para ver sus datos, editarlo o eliminarlo.
               </p>
             </div>
             <button
@@ -1606,7 +1606,7 @@ export default function RestaurantDishesPage() {
                 Nuevo plato
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Completa los datos para dar de alta un nuevo plato.
+                Completá los datos para dar de alta un nuevo plato.
               </p>
             </div>
 
@@ -1733,7 +1733,7 @@ export default function RestaurantDishesPage() {
                   Detalle del plato
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Edita los datos o elimina el plato.
+                  Editá los datos o eliminá el plato.
                 </p>
               </div>
               <button
@@ -1838,7 +1838,7 @@ export default function RestaurantDishesPage() {
 
               <div>
                 <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                  Fecha de creacion
+                  Fecha de creación
                 </span>
                 <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 text-sm font-extrabold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
                   {formatDateTimeLabel(selectedDish.createdAt)}

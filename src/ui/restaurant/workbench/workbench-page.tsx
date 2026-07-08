@@ -236,7 +236,7 @@ function getOrderDescription(order: WorkbenchOrder) {
       .join(", ");
   }
 
-  return order.comment ?? order.instructions ?? "Pedido sin detalle de items";
+  return order.comment ?? order.instructions ?? "Pedido sin detalle de ítems";
 }
 
 function isBoardStatus(status: OrderStatus): status is BoardStatus {
@@ -616,10 +616,10 @@ export default function RestaurantWorkbenchPage() {
               }}
               className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="antiguedad-desc">Mas recientes</option>
-              <option value="antiguedad-asc">Mas antiguos</option>
-              <option value="items-desc">Mas items</option>
-              <option value="items-asc">Menos items</option>
+              <option value="antiguedad-desc">Más recientes</option>
+              <option value="antiguedad-asc">Más antiguos</option>
+              <option value="items-desc">Más ítems</option>
+              <option value="items-asc">Menos ítems</option>
             </select>
           </div>
         </div>
@@ -641,7 +641,7 @@ export default function RestaurantWorkbenchPage() {
 
             <label className="block">
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Creado despues de
+                Creado después de
               </span>
               <input
                 type="time"
@@ -700,10 +700,10 @@ export default function RestaurantWorkbenchPage() {
               }}
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="antiguedad-desc">Mas recientes</option>
-              <option value="antiguedad-asc">Mas antiguos</option>
-              <option value="items-desc">Mas items</option>
-              <option value="items-asc">Menos items</option>
+              <option value="antiguedad-desc">Más recientes</option>
+              <option value="antiguedad-asc">Más antiguos</option>
+              <option value="items-desc">Más ítems</option>
+              <option value="items-asc">Menos ítems</option>
             </select>
           </label>
         </div>
@@ -748,7 +748,7 @@ export default function RestaurantWorkbenchPage() {
 
                 <label className="block">
                   <span className="mb-2 block text-xs font-extrabold text-slate-600 dark:text-slate-300">
-                    Creado despues de
+                    Creado después de
                   </span>
                   <input
                     type="time"
@@ -813,7 +813,7 @@ export default function RestaurantWorkbenchPage() {
       <div className="min-h-[420px] pb-4">
         {!isLoading && !error && orders.length === 0 ? (
           <p className="mb-4 rounded-xl border border-dashed border-slate-200 bg-white px-4 py-8 text-center text-sm font-bold text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-500">
-            No hay pedidos en las ultimas 24 horas.
+            No hay pedidos en las últimas 24 horas.
           </p>
         ) : null}
 
@@ -1093,7 +1093,7 @@ function OrderInfoModal({
         setRatingError(
           error instanceof Error
             ? error.message
-            : "No se pudo cargar la calificacion del cliente.",
+            : "No se pudo cargar la calificación del cliente.",
         );
       } finally {
         if (isActive) setIsRatingLoading(false);
@@ -1132,7 +1132,7 @@ function OrderInfoModal({
       setRatingError(
         error instanceof Error
           ? error.message
-          : "No se pudo registrar la calificacion.",
+          : "No se pudo registrar la calificación.",
       );
     } finally {
       setIsRatingSubmitting(false);
@@ -1172,7 +1172,7 @@ function OrderInfoModal({
               <DetailItem label="Correo">{order.customerEmail}</DetailItem>
             ) : null}
             {order.customerPhone ? (
-              <DetailItem label="Telefono">{order.customerPhone}</DetailItem>
+              <DetailItem label="Teléfono">{order.customerPhone}</DetailItem>
             ) : null}
             {order.customerDocument ? (
               <DetailItem label="Documento">{order.customerDocument}</DetailItem>
@@ -1181,7 +1181,7 @@ function OrderInfoModal({
             <DetailItem label="Total">{formatPrice(order.total)}</DetailItem>
             <DetailItem label="Creado">{formatDate(order.createdAt)}</DetailItem>
             {order.address ? (
-              <DetailItem label="Direccion">{order.address}</DetailItem>
+              <DetailItem label="Dirección">{order.address}</DetailItem>
             ) : null}
             {order.estimatedTime ? (
               <DetailItem label="Tiempo estimado">
@@ -1246,10 +1246,10 @@ function OrderInfoModal({
                 </h3>
                 <p className="mt-1 text-xs font-semibold text-slate-400 dark:text-slate-500">
                   {isRatingLoading
-                    ? "Cargando calificacion guardada..."
+                    ? "Cargando calificación guardada..."
                     : canRateCustomer || isRatingReadOnly
-                      ? "Registra si la experiencia con este cliente fue positiva."
-                      : "Disponible cuando el pedido este finalizado."}
+                      ? "Registrá si la experiencia con este cliente fue positiva."
+                      : "Disponible cuando el pedido esté finalizado."}
                 </p>
               </div>
               {isRatingReadOnly ? (
@@ -1272,7 +1272,7 @@ function OrderInfoModal({
 
             {isRatingLoading ? (
               <p className="rounded-xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-500 dark:bg-slate-950 dark:text-slate-400">
-                Buscando calificacion registrada...
+                Buscando calificación registrada...
               </p>
             ) : isRatingReadOnly ? (
               <div className="rounded-xl border border-gray-200 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-950">
@@ -1321,7 +1321,7 @@ function OrderInfoModal({
                 <textarea
                   value={ratingComment}
                   onChange={(event) => setRatingComment(event.target.value)}
-                  placeholder="Agrega un comentario interno sobre el cliente."
+                  placeholder="Agregá un comentario interno sobre el cliente."
                   rows={3}
                   className="w-full resize-none rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
@@ -1338,7 +1338,7 @@ function OrderInfoModal({
                     disabled={selectedRating == null || isRatingSubmitting}
                     className="h-10 rounded-xl bg-orange-600 px-4 text-sm font-black text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-50"
                   >
-                    {isRatingSubmitting ? "Guardando..." : "Guardar calificacion"}
+                    {isRatingSubmitting ? "Guardando..." : "Guardar calificación"}
                   </button>
                 </div>
               </form>

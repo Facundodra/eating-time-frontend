@@ -157,7 +157,7 @@ export default function RestaurantClaimDetailPage({
     const session = await getCurrentSession();
 
     if (!session) {
-      throw new Error("No se encontro una sesion activa.");
+      throw new Error("No se encontró una sesión activa.");
     }
 
     const nextRestaurantId = String(session.idTipoUsuario);
@@ -247,20 +247,20 @@ export default function RestaurantClaimDetailPage({
 
   async function confirmDecision() {
     if (!selectedDecisionAction) {
-      setFormError("Selecciona una accion para resolver el reclamo.");
+      setFormError("Seleccioná una acción para resolver el reclamo.");
       return;
     }
 
     if (selectedDecisionAction === "voucher" && voucherAmount.trim()) {
       const parsedVoucherAmount = Number(voucherAmount);
       if (!Number.isFinite(parsedVoucherAmount)) {
-        setFormError("Ingresa un monto valido para el voucher.");
+        setFormError("Ingresá un monto válido para el voucher.");
         return;
       }
     }
 
     if (selectedDecisionAction === "rejection" && !editResponse.trim()) {
-      setFormError("Ingresa una nota para rechazar el reclamo.");
+      setFormError("Ingresá una nota para rechazar el reclamo.");
       return;
     }
 
@@ -305,7 +305,7 @@ export default function RestaurantClaimDetailPage({
                   Reclamo
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Cargando informacion del reclamo.
+                  Cargando información del reclamo.
                 </p>
               </div>
               <div className="p-10">
@@ -319,7 +319,7 @@ export default function RestaurantClaimDetailPage({
                   Pedido asociado
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Cargando informacion del pedido.
+                  Cargando información del pedido.
                 </p>
               </div>
               <div className="p-10">
@@ -363,7 +363,7 @@ export default function RestaurantClaimDetailPage({
               <div className="space-y-5 p-5">
                 {claim.resolutionAction ? (
                   <div className="w-fit rounded-full bg-orange-50 px-3 py-1 text-xs font-extrabold text-orange-600 dark:bg-orange-500/10 dark:text-orange-400">
-                    Decision: {resolutionLabels[claim.resolutionAction]}
+                    Decisión: {resolutionLabels[claim.resolutionAction]}
                     {claim.voucherAmount
                       ? ` - ${formatPrice(claim.voucherAmount)}`
                       : ""}
@@ -374,11 +374,11 @@ export default function RestaurantClaimDetailPage({
                   <InfoField label="Cliente" value={claim.customerName} />
                   <InfoField label="Correo" value={claim.customerEmail} />
                   <InfoField
-                    label="Creacion"
+                    label="Creación"
                     value={formatDateTimeLabel(claim.createdAt)}
                   />
                   <InfoField
-                    label="Ultima actualizacion"
+                    label="Última actualización"
                     value={formatDateTimeLabel(claim.updatedAt)}
                   />
                 </div>
@@ -400,7 +400,7 @@ export default function RestaurantClaimDetailPage({
                   Pedido asociado
                 </h2>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Informacion necesaria para evaluar el reclamo.
+                  Información necesaria para evaluar el reclamo.
                 </p>
               </div>
 
@@ -433,7 +433,7 @@ export default function RestaurantClaimDetailPage({
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
                 {isClaimClosed
                   ? "El reclamo ya fue cerrado y no admite nuevas acciones."
-                  : "Registra la decision tomada sobre este caso."}
+                  : "Registrá la decisión tomada sobre este caso."}
               </p>
             </div>
 
@@ -515,7 +515,7 @@ export default function RestaurantClaimDetailPage({
                   onChange={(event) => setEditResponse(event.target.value)}
                   rows={6}
                   disabled={isClaimClosed}
-                  placeholder="Registra la accion tomada sobre el reclamo."
+                  placeholder="Registrá la acción tomada sobre el reclamo."
                   className="w-full resize-none rounded-xl border border-gray-200 bg-slate-50 px-4 py-3 text-sm font-extrabold text-slate-800 outline-none transition disabled:opacity-100 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
                 />
               </label>
@@ -532,7 +532,7 @@ export default function RestaurantClaimDetailPage({
                         {voucher?.code ? (
                           <div className="flex justify-between gap-4">
                             <span className="font-medium text-slate-500 dark:text-slate-400">
-                              Codigo
+                              Código
                             </span>
                             <span className="font-extrabold text-slate-900 dark:text-white">
                               {voucher.code}
@@ -589,7 +589,7 @@ export default function RestaurantClaimDetailPage({
                     ? "Guardando..."
                     : selectedDecisionAction
                       ? `Confirmar ${decisionLabels[selectedDecisionAction]}`
-                      : "Confirmar accion"}
+                      : "Confirmar acción"}
                 </button>
                 {hasChanges ? (
                   <button

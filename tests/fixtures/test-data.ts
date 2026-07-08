@@ -1,5 +1,24 @@
+import { TEST_PASSWORD } from "./users";
+
+const usedEmailNumbers = new Set<string>();
+
 function uniqueSuffix() {
   return `${Date.now()}${Math.floor(Math.random() * 1000)}`;
+}
+
+function randomFourDigitNumber() {
+  let number = "";
+
+  do {
+    number = String(Math.floor(1000 + Math.random() * 9000));
+  } while (usedEmailNumbers.has(number));
+
+  usedEmailNumbers.add(number);
+  return number;
+}
+
+function makeRandomEmail(prefix: "local" | "usuario") {
+  return `${prefix}${randomFourDigitNumber()}@mail.com`;
 }
 
 function makeUruguayanDocument(seed: string) {
@@ -22,9 +41,9 @@ export function makeClientRegistrationData() {
 
   return {
     document: makeUruguayanDocument(suffix),
-    email: `e2e.client.${suffix}@gmail.com`,
+    email: makeRandomEmail("usuario"),
     name: `Cliente E2E ${suffix.slice(-5)}`,
-    password: "12345678",
+    password: TEST_PASSWORD,
     phone: `09${numericSuffix}`,
   };
 }
@@ -48,7 +67,7 @@ export function makeRestaurantRequestData() {
   return {
     address: `Av Test ${suffix.slice(-4)}`,
     description: "Local de prueba generado para validar el formulario de solicitud.",
-    email: `e2e.local.${suffix}@gmail.com`,
+    email: makeRandomEmail("local"),
     name: `Local E2E ${suffix.slice(-5)}`,
     phone: `09${suffix.slice(-7).padStart(7, "0")}`,
   };

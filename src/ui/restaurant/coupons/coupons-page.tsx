@@ -327,7 +327,7 @@ async function loadRestaurantCoupons(): Promise<RestaurantCouponsResponse> {
   const session = await getCurrentSession();
 
   if (!session) {
-    throw new Error("No se encontro una sesion activa.");
+    throw new Error("No se encontró una sesión activa.");
   }
 
   return getRestaurantCoupons(String(session.idTipoUsuario));
@@ -467,7 +467,7 @@ export default function RestaurantCouponsPage() {
     preferredSelectedCouponId = "",
   ) {
     if (!restaurantId) {
-      throw new Error("No se encontro el local para recargar cupones.");
+      throw new Error("No se encontró el local para recargar cupones.");
     }
 
     const freshData = await getRestaurantCoupons(restaurantId);
@@ -770,12 +770,12 @@ export default function RestaurantCouponsPage() {
     );
 
     if (!dish) {
-      setFormError("Selecciona un plato valido.");
+      setFormError("Seleccioná un plato válido.");
       return;
     }
 
     if (createCoupon.dishes.some((selectedDish) => selectedDish.id === dish.id)) {
-      setFormError("Ese plato ya esta asociado al cupon.");
+      setFormError("Ese plato ya está asociado al cupón.");
       return;
     }
 
@@ -791,7 +791,7 @@ export default function RestaurantCouponsPage() {
 
   function addDishToSelectedCoupon() {
     if (!editableSelectedCoupon) {
-      setFormError("Selecciona un cupon para agregar platos.");
+      setFormError("Seleccioná un cupón para agregar platos.");
       return;
     }
 
@@ -800,12 +800,12 @@ export default function RestaurantCouponsPage() {
     );
 
     if (!dish) {
-      setFormError("Selecciona un plato valido.");
+      setFormError("Seleccioná un plato válido.");
       return;
     }
 
     if (editDishes.some((selectedDish) => selectedDish.id === dish.id)) {
-      setFormError("Ese plato ya esta asociado al cupon.");
+      setFormError("Ese plato ya está asociado al cupón.");
       return;
     }
 
@@ -887,7 +887,7 @@ export default function RestaurantCouponsPage() {
       setFormError(
         error instanceof Error
           ? error.message
-          : "No se pudo cambiar el estado del cupon. Intentalo nuevamente.",
+          : "No se pudo cambiar el estado del cupón. Intentalo nuevamente.",
       );
     } finally {
       setIsSavingChanges(false);
@@ -895,8 +895,8 @@ export default function RestaurantCouponsPage() {
   }
 
   function validateCouponForm(coupon: RestaurantCoupon) {
-    if (!coupon.code.trim()) return "El codigo es obligatorio.";
-    if (!coupon.description.trim()) return "La descripcion es obligatoria.";
+    if (!coupon.code.trim()) return "El código es obligatorio.";
+    if (!coupon.description.trim()) return "La descripción es obligatoria.";
     if (
       !Number.isFinite(coupon.percentage) ||
       coupon.percentage < 1 ||
@@ -908,7 +908,7 @@ export default function RestaurantCouponsPage() {
       return "La fecha de vencimiento es obligatoria.";
     }
     if (coupon.dishes.length === 0) {
-      return "El cupon debe tener al menos un plato asociado.";
+      return "El cupón debe tener al menos un plato asociado.";
     }
 
     return null;
@@ -933,7 +933,7 @@ export default function RestaurantCouponsPage() {
       setFormError(
         error instanceof Error
           ? error.message
-          : "No se pudo crear el cupon. Intentalo nuevamente.",
+          : "No se pudo crear el cupón. Intentalo nuevamente.",
       );
     } finally {
       setIsAddingDish(false);
@@ -943,7 +943,7 @@ export default function RestaurantCouponsPage() {
 
   async function handleSaveChanges() {
     if (!editableSelectedCoupon) {
-      setFormError("Selecciona un cupon para guardar cambios.");
+      setFormError("Seleccioná un cupón para guardar cambios.");
       return;
     }
 
@@ -975,7 +975,7 @@ export default function RestaurantCouponsPage() {
 
   async function handleDeleteCoupon() {
     if (!selectedCoupon) {
-      setFormError("Selecciona un cupon para eliminar.");
+      setFormError("Seleccioná un cupón para eliminar.");
       return;
     }
 
@@ -997,7 +997,7 @@ export default function RestaurantCouponsPage() {
       setFormError(
         error instanceof Error
           ? error.message
-          : "No se pudo eliminar el cupon. Intentalo nuevamente.",
+          : "No se pudo eliminar el cupón. Intentalo nuevamente.",
       );
     } finally {
       setIsDeletingCoupon(false);
@@ -1057,11 +1057,11 @@ export default function RestaurantCouponsPage() {
                 }
                 className="h-11 w-[125px] rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
               >
-                <option value="code-asc">Codigo A-Z</option>
-                <option value="code-desc">Codigo Z-A</option>
-                <option value="created-desc">Mas nuevos</option>
-                <option value="created-asc">Mas antiguos</option>
-                <option value="percentage-desc">Mas descuento</option>
+                <option value="code-asc">Código A-Z</option>
+                <option value="code-desc">Código Z-A</option>
+                <option value="created-desc">Más nuevos</option>
+                <option value="created-asc">Más antiguos</option>
+                <option value="percentage-desc">Más descuento</option>
                 <option value="percentage-asc">Menos descuento</option>
               </select>
             </div>
@@ -1076,7 +1076,7 @@ export default function RestaurantCouponsPage() {
                       Filtros
                     </h3>
                     <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                      Ajusta el listado de cupones visible.
+                      Ajustá el listado de cupones visible.
                     </p>
                   </div>
                   <button
@@ -1092,7 +1092,7 @@ export default function RestaurantCouponsPage() {
                 <div className="grid gap-4 px-5 py-5">
                   <label htmlFor="coupon-search-filter-mobile" className="block">
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Codigo o plato
+                      Código o plato
                     </span>
                     <input
                       id="coupon-search-filter-mobile"
@@ -1102,14 +1102,14 @@ export default function RestaurantCouponsPage() {
                       onChange={(event) =>
                         handleSearchFilterChange(event.target.value)
                       }
-                      placeholder="Buscar cupon"
+                      placeholder="Buscar cupón"
                       className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
                     />
                   </label>
 
                   <label htmlFor="coupon-created-after-filter-mobile" className="block">
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Creado despues de
+                      Creado después de
                     </span>
                     <input
                       id="coupon-created-after-filter-mobile"
@@ -1193,7 +1193,7 @@ export default function RestaurantCouponsPage() {
           <div className="grid gap-4 xl:grid-cols-[240px_190px_190px_150px_auto] xl:items-end">
             <label htmlFor="coupon-search-filter" className="block">
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Codigo o plato
+                Código o plato
               </span>
               <input
                 id="coupon-search-filter"
@@ -1203,14 +1203,14 @@ export default function RestaurantCouponsPage() {
                 onChange={(event) =>
                   handleSearchFilterChange(event.target.value)
                 }
-                placeholder="Buscar cupon"
+                placeholder="Buscar cupón"
                 className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition placeholder:text-slate-400 disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:placeholder:text-slate-500 dark:focus:ring-orange-500/20"
               />
             </label>
 
             <label htmlFor="coupon-created-after-filter" className="block">
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Creado despues de
+                Creado después de
               </span>
               <input
                 id="coupon-created-after-filter"
@@ -1292,11 +1292,11 @@ export default function RestaurantCouponsPage() {
               }
               className="h-11 w-full rounded-xl border border-gray-200 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition disabled:cursor-not-allowed disabled:opacity-60 focus:border-orange-500 focus:ring-4 focus:ring-orange-100 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-orange-500/20"
             >
-              <option value="code-asc">Codigo A-Z</option>
-              <option value="code-desc">Codigo Z-A</option>
-              <option value="created-desc">Mas nuevos</option>
-              <option value="created-asc">Mas antiguos</option>
-              <option value="percentage-desc">Mas descuento</option>
+              <option value="code-asc">Código A-Z</option>
+              <option value="code-desc">Código Z-A</option>
+              <option value="created-desc">Más nuevos</option>
+              <option value="created-asc">Más antiguos</option>
+              <option value="percentage-desc">Más descuento</option>
               <option value="percentage-asc">Menos descuento</option>
             </select>
           </label>
@@ -1311,7 +1311,7 @@ export default function RestaurantCouponsPage() {
                 Listado de cupones
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Selecciona un cupon para ver sus datos o darlo de baja.
+                Seleccioná un cupón para ver sus datos o darlo de baja.
               </p>
             </div>
             <button
@@ -1321,7 +1321,7 @@ export default function RestaurantCouponsPage() {
               className="flex h-11 w-fit cursor-pointer items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 text-sm font-extrabold text-white transition hover:bg-orange-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               <PlusIcon className="h-5 w-5" />
-              Nuevo cupon
+              Nuevo cupón
             </button>
           </div>
 
@@ -1378,7 +1378,7 @@ export default function RestaurantCouponsPage() {
                             selectCoupon(coupon.id);
                             setMobileEditingCouponId(coupon.id);
                           }}
-                          aria-label="Editar cupon"
+                          aria-label="Editar cupón"
                           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white text-slate-500 shadow-sm ring-1 ring-gray-100 transition hover:text-orange-600 xl:hidden dark:bg-slate-950 dark:text-slate-300 dark:ring-slate-800 dark:hover:text-orange-400"
                         >
                           <PencilIcon className="h-4 w-4" />
@@ -1390,7 +1390,7 @@ export default function RestaurantCouponsPage() {
                             void handleDeleteCouponById(coupon.id);
                           }}
                           disabled={isDeletingCoupon}
-                          aria-label="Eliminar cupon"
+                          aria-label="Eliminar cupón"
                           className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-xl bg-white text-red-500 shadow-sm ring-1 ring-gray-100 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60 xl:hidden dark:bg-slate-950 dark:text-red-400 dark:ring-slate-800 dark:hover:bg-red-500/10"
                         >
                           <TrashIcon className="h-4 w-4" />
@@ -1458,10 +1458,10 @@ export default function RestaurantCouponsPage() {
           <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:order-2 xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
-                Detalle del cupon
+                Detalle del cupón
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                Los datos del cupon se cargan en segundo plano.
+                Los datos del cupón se cargan en segundo plano.
               </p>
             </div>
             <div className="p-5 py-10">
@@ -1474,7 +1474,7 @@ export default function RestaurantCouponsPage() {
           <section className="hidden overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm xl:order-2 xl:block dark:border-slate-800 dark:bg-slate-900">
             <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
               <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
-                Detalle del cupon
+                Detalle del cupón
               </h2>
               <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
                 No se pudieron cargar los datos para editar.
@@ -1605,12 +1605,12 @@ function CouponFormPanel({
         <div className="flex items-center justify-between gap-4 border-b border-gray-200 px-5 py-5 dark:border-slate-800">
           <div>
             <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
-              {isCreate ? "Nuevo cupon" : "Detalle del cupon"}
+              {isCreate ? "Nuevo cupón" : "Detalle del cupón"}
             </h2>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
               {isCreate
-                ? "Completa los datos para dar de alta un nuevo cupon."
-                : "Edita los datos o da de baja el cupon."}
+                ? "Completá los datos para dar de alta un nuevo cupón."
+                : "Editá los datos o da de baja el cupón."}
             </p>
           </div>
           {!isCreate && onDelete ? (
@@ -1631,7 +1631,7 @@ function CouponFormPanel({
         <div className="grid gap-4 md:grid-cols-2">
           <label className="block">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Codigo
+              Código
             </span>
             <input
               value={coupon.code}
@@ -1662,7 +1662,7 @@ function CouponFormPanel({
 
         <label className="block">
           <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-            Descripcion
+            Descripción
           </span>
           <textarea
             value={coupon.description}
@@ -1676,7 +1676,7 @@ function CouponFormPanel({
           {!isCreate && !isInline ? (
             <div>
               <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                Fecha de creacion
+                Fecha de creación
               </span>
               <div className="flex h-11 w-full items-center rounded-xl border border-gray-200 bg-slate-50 px-4 text-sm font-extrabold text-slate-800 dark:border-slate-800 dark:bg-slate-950 dark:text-slate-100">
                 {formatDateTimeLabel(coupon.createdAt)}
@@ -1774,7 +1774,7 @@ function CouponFormPanel({
               ? "Creando..."
               : "Guardando..."
             : isCreate
-              ? "Crear cupon"
+              ? "Crear cupón"
               : "Guardar cambios"}
         </button>
       </div>

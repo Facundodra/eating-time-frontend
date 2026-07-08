@@ -164,7 +164,7 @@ export default function RestaurantMyDataPage() {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setFileError("La imagen no puede superar los 5MB.");
+      setFileError("La imagen no puede superar los 5 MB.");
       return;
     }
 
@@ -220,7 +220,7 @@ export default function RestaurantMyDataPage() {
     }
 
     if (file.size > MAX_FILE_SIZE) {
-      setErrorMessage("Las portadas no pueden superar los 5MB.");
+      setErrorMessage("Las portadas no pueden superar los 5 MB.");
       if (variant === "mobile" && mobileCoverInputRef.current) {
         mobileCoverInputRef.current.value = "";
       }
@@ -275,14 +275,13 @@ export default function RestaurantMyDataPage() {
       const nextPhone = phone.trim();
       let didSaveCoverPhotos = false;
       let didSaveProfileData = false;
-      const tasks: Promise<void>[] = [];
 
       if (
         nextName !== initialFormData.name ||
         nextPhone !== initialFormData.phone ||
         profilePhoto !== null
       ) {
-        tasks.push(editUserData(nextName, nextPhone, profilePhoto));
+        await editUserData(nextName, nextPhone, profilePhoto);
         didSaveProfileData = true;
       }
 
@@ -291,16 +290,12 @@ export default function RestaurantMyDataPage() {
       }
 
       if ((mobileCoverPhoto || desktopCoverPhoto) && restaurantId) {
-        tasks.push(
-          setRestaurantCoverPhotos(restaurantId, {
-            desktopFile: desktopCoverPhoto,
-            mobileFile: mobileCoverPhoto,
-          }),
-        );
+        await setRestaurantCoverPhotos(restaurantId, {
+          desktopFile: desktopCoverPhoto,
+          mobileFile: mobileCoverPhoto,
+        });
         didSaveCoverPhotos = true;
       }
-
-      await Promise.all(tasks);
 
       const updatedSession = await getCurrentSession();
       const nextPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
@@ -353,7 +348,7 @@ export default function RestaurantMyDataPage() {
         >
           <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Actualiza la informacion visible del local, su foto de perfil y la
+              Actualizá la información visible del local, su foto de perfil y la
               portada.
             </p>
           </div>
@@ -417,7 +412,7 @@ export default function RestaurantMyDataPage() {
                         Fotos del local
                       </h2>
                       <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
-                        Administra la foto de perfil y las portadas móvil y de
+                        Administrá la foto de perfil y las portadas móvil y de
                         escritorio del local.
                       </p>
                     </div>
@@ -464,13 +459,13 @@ export default function RestaurantMyDataPage() {
                               Subir foto de perfil
                             </span>
                             <span className="text-xs">
-                              Selecciona una imagen desde tu equipo
+                              Seleccioná una imagen desde tu equipo
                             </span>
                           </span>
                         )}
                       </label>
                       <p className="mt-2 text-xs font-semibold text-slate-500 dark:text-slate-400">
-                        Recomendado: imagen cuadrada. Máximo 5MB.
+                        Recomendado: imagen cuadrada. Máximo 5 MB.
                       </p>
                       {profilePhoto ? (
                         <button
@@ -490,7 +485,7 @@ export default function RestaurantMyDataPage() {
 
                     <div className="w-full xl:mx-auto xl:max-w-48">
                           <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                            Portada mobile
+                            Portada móvil
                           </span>
                           <label className="group relative mx-auto flex h-56 w-[10.5rem] max-w-full cursor-pointer items-center justify-center overflow-hidden rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 transition focus-within:ring-2 focus-within:ring-orange-500 focus-within:ring-offset-2 hover:border-orange-400 dark:border-slate-700 dark:bg-slate-950/40 dark:hover:border-orange-600 dark:focus-within:ring-offset-slate-900 sm:h-64 sm:w-48 xl:h-64 xl:w-full">
                             <input
@@ -528,10 +523,10 @@ export default function RestaurantMyDataPage() {
                               <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
                                 <ArrowUpTrayIcon className="h-7 w-7 text-orange-600 dark:text-orange-300" />
                                 <span className="text-sm font-black">
-                                  Subir portada mobile
+                                  Subir portada móvil
                                 </span>
                                 <span className="text-xs">
-                                  Selecciona una imagen desde tu equipo
+                                  Seleccioná una imagen desde tu equipo
                                 </span>
                               </span>
                             )}
@@ -590,10 +585,10 @@ export default function RestaurantMyDataPage() {
                               <span className="flex flex-col items-center gap-2 px-4 text-center text-slate-500 dark:text-slate-400">
                                 <ArrowUpTrayIcon className="h-7 w-7 text-orange-600 dark:text-orange-300" />
                                 <span className="text-sm font-black">
-                                  Subir portada desktop
+                                  Subir portada de escritorio
                                 </span>
                                 <span className="text-xs">
-                                  Selecciona una imagen desde tu equipo
+                                  Seleccioná una imagen desde tu equipo
                                 </span>
                               </span>
                             )}
@@ -688,7 +683,7 @@ export default function RestaurantMyDataPage() {
                   Seguridad
                 </h3>
                 <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-                  Cambia la contraseña de acceso al panel del local.
+                  Cambiá la contraseña de acceso al panel del local.
                 </p>
               </div>
             </div>
