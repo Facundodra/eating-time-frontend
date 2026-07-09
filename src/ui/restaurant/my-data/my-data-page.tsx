@@ -23,6 +23,10 @@ import {
 } from "react";
 
 import {
+  cacheBustImageUrl,
+  notifyProfilePhotoUpdated,
+} from "@/lib/shared/image-cache";
+import {
   setRestaurantCoverPhotos,
 } from "@/services/restaurant/photo-service";
 import { editUserData, getCurrentSession } from "@/services/shared/auth-service";
@@ -275,6 +279,8 @@ export default function RestaurantMyDataPage() {
       const nextPhone = phone.trim();
       let didSaveCoverPhotos = false;
       let didSaveProfileData = false;
+      const didUpdateProfilePhoto = profilePhoto !== null;
+      const profilePhotoVersion = Date.now();
       const tasks: Promise<void>[] = [];
 
       if (
@@ -304,6 +310,9 @@ export default function RestaurantMyDataPage() {
 
       const updatedSession = await getCurrentSession();
       const nextPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
+      const visibleNextPhotoUrl = didUpdateProfilePhoto
+        ? cacheBustImageUrl(nextPhotoUrl, profilePhotoVersion)
+        : nextPhotoUrl;
       const nextMobileCoverUrl =
         updatedSession?.urlPortadaMobile ?? currentMobileCoverUrl;
       const nextDesktopCoverUrl =
@@ -320,8 +329,12 @@ export default function RestaurantMyDataPage() {
         ? "Los datos del local se actualizaron correctamente."
         : "No hubo cambios para guardar.";
 
+      if (didUpdateProfilePhoto) {
+        notifyProfilePhotoUpdated(profilePhotoVersion);
+      }
+
       setSuccessMessage(nextSuccessMessage);
-      setCurrentPhotoUrl(nextPhotoUrl);
+      setCurrentPhotoUrl(visibleNextPhotoUrl);
       setCurrentMobileCoverUrl(nextMobileCoverUrl);
       setCurrentDesktopCoverUrl(nextDesktopCoverUrl);
       setEmail(updatedSession?.correo ?? updatedSession?.email ?? email);

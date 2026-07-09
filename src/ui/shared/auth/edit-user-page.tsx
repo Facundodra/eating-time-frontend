@@ -21,6 +21,10 @@ import {
   useState,
 } from "react";
 
+import {
+  cacheBustImageUrl,
+  notifyProfilePhotoUpdated,
+} from "@/lib/shared/image-cache";
 import { editUserData, getCurrentSession } from "@/services/shared/auth-service";
 import LoadingButton from "@/ui/shared/buttons/loading-button";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
@@ -165,17 +169,26 @@ export default function EditUserPage({ backHref, showPhoto = true }: Props) {
     setIsSubmitting(true);
 
     try {
+      const didUpdatePhoto = showPhoto && profilePic !== null;
       await editUserData(name, phone, showPhoto ? profilePic : null);
       const updatedSession = await getCurrentSession();
       const updatedPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
+      const profilePhotoVersion = Date.now();
+      const nextPhotoUrl = didUpdatePhoto
+        ? cacheBustImageUrl(updatedPhotoUrl, profilePhotoVersion)
+        : updatedPhotoUrl;
+
+      if (didUpdatePhoto) {
+        notifyProfilePhotoUpdated(profilePhotoVersion);
+      }
 
       router.refresh();
       setProfilePic(null);
-      setCurrentPhotoUrl(updatedPhotoUrl);
+      setCurrentPhotoUrl(nextPhotoUrl);
       setInitialFormData({
         name,
         phone,
-        photoUrl: updatedPhotoUrl,
+        photoUrl: nextPhotoUrl,
       });
       setSuccessMessage("Tus datos se actualizaron correctamente.");
     } catch (error) {

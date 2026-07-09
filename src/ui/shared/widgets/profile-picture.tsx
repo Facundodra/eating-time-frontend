@@ -1,5 +1,13 @@
+"use client";
+
 import { UserIcon } from "@heroicons/react/24/solid";
 import { clsx } from "clsx";
+import { useEffect, useMemo, useState } from "react";
+
+import {
+  cacheBustImageUrl,
+  PROFILE_PHOTO_UPDATED_EVENT,
+} from "@/lib/shared/image-cache";
 
 export default function ProfilePicture({
   alt = "Foto de perfil",
@@ -10,6 +18,34 @@ export default function ProfilePicture({
   className?: string;
   imageUrl?: string | null;
 }) {
+  const [cacheVersion, setCacheVersion] = useState(0);
+  const displayImageUrl = useMemo(
+    () =>
+      cacheVersion > 0
+        ? cacheBustImageUrl(imageUrl, cacheVersion)
+        : imageUrl,
+    [cacheVersion, imageUrl],
+  );
+
+  useEffect(() => {
+    function handleProfilePhotoUpdated(event: Event) {
+      const detail = (event as CustomEvent<{ version?: number }>).detail;
+      setCacheVersion(detail?.version ?? Date.now());
+    }
+
+    window.addEventListener(
+      PROFILE_PHOTO_UPDATED_EVENT,
+      handleProfilePhotoUpdated,
+    );
+
+    return () => {
+      window.removeEventListener(
+        PROFILE_PHOTO_UPDATED_EVENT,
+        handleProfilePhotoUpdated,
+      );
+    };
+  }, []);
+
   return (
     <span
       aria-label={alt}
@@ -18,9 +54,9 @@ export default function ProfilePicture({
         className,
       )}
     >
-      {imageUrl ? (
+      {displayImageUrl ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={imageUrl} alt={alt} className="h-full w-full object-cover" />
+        <img src={displayImageUrl} alt={alt} className="h-full w-full object-cover" />
       ) : (
         <UserIcon className="h-[58%] w-[58%]" />
       )}
