@@ -473,7 +473,7 @@ export default function RestaurantSchedulesPage() {
                     </>
                   ) : (
                     <p className="text-sm font-extrabold text-red-500 xl:col-span-3">
-                      Sin atencion configurada
+                      Sin atención configurada
                     </p>
                   )}
                 </div>

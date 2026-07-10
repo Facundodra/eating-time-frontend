@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import {
   cacheBustImageUrl,
+  getFirstImageUrl,
   PROFILE_PHOTO_UPDATED_EVENT,
 } from "@/lib/shared/image-cache";
 
@@ -16,15 +17,19 @@ export default function ProfilePicture({
 }: {
   alt?: string;
   className?: string;
-  imageUrl?: string | null;
+  imageUrl?: unknown;
 }) {
   const [cacheVersion, setCacheVersion] = useState(0);
+  const normalizedImageUrl = useMemo(
+    () => getFirstImageUrl(imageUrl),
+    [imageUrl],
+  );
   const displayImageUrl = useMemo(
     () =>
       cacheVersion > 0
-        ? cacheBustImageUrl(imageUrl, cacheVersion)
-        : imageUrl,
-    [cacheVersion, imageUrl],
+        ? cacheBustImageUrl(normalizedImageUrl, cacheVersion)
+        : normalizedImageUrl,
+    [cacheVersion, normalizedImageUrl],
   );
 
   useEffect(() => {

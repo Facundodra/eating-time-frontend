@@ -688,7 +688,7 @@ export default function RestaurantDiscountsPage() {
     }
 
     if (editDishes.some((selectedDish) => selectedDish.id === dish.id)) {
-      setFormError("Ese plato ya esta asociado al descuento.");
+      setFormError("Ese plato ya está asociado al descuento.");
       return;
     }
 
@@ -713,7 +713,7 @@ export default function RestaurantDiscountsPage() {
     }
 
     if (createDiscount.dishes.some((selectedDish) => selectedDish.id === dish.id)) {
-      setFormError("Ese plato ya esta asociado al descuento.");
+      setFormError("Ese plato ya está asociado al descuento.");
       return;
     }
 

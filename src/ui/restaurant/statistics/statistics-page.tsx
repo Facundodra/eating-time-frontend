@@ -185,7 +185,7 @@ export default function RestaurantStatisticsPage() {
 
                   <label htmlFor="statistics-order-status-date-mobile" className="block">
                     <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-                      Fecha pedidos del dia
+                      Fecha de pedidos del día
                     </span>
                     <input
                       id="statistics-order-status-date-mobile"
@@ -293,7 +293,7 @@ export default function RestaurantStatisticsPage() {
 
           <label className="block">
             <span className="mb-2 block text-sm font-extrabold text-slate-700 dark:text-slate-200">
-              Fecha pedidos del día
+              Fecha de pedidos del día
             </span>
             <input
               type="date"

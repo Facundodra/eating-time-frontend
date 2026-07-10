@@ -23,6 +23,7 @@ import {
 
 import {
   cacheBustImageUrl,
+  getFirstImageUrl,
   notifyProfilePhotoUpdated,
 } from "@/lib/shared/image-cache";
 import { editUserData, getCurrentSession } from "@/services/shared/auth-service";
@@ -83,7 +84,7 @@ export default function EditUserPage({ backHref, showPhoto = true }: Props) {
 
         const sessionName = session.nombre ?? "";
         const sessionPhone = session.telefono ?? "";
-        const sessionPhotoUrl = session.urlFoto ?? null;
+        const sessionPhotoUrl = getFirstImageUrl(session.urlFoto);
 
         setName(sessionName);
         setPhone(sessionPhone);
@@ -172,7 +173,8 @@ export default function EditUserPage({ backHref, showPhoto = true }: Props) {
       const didUpdatePhoto = showPhoto && profilePic !== null;
       await editUserData(name, phone, showPhoto ? profilePic : null);
       const updatedSession = await getCurrentSession();
-      const updatedPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
+      const updatedPhotoUrl =
+        getFirstImageUrl(updatedSession?.urlFoto) ?? currentPhotoUrl;
       const profilePhotoVersion = Date.now();
       const nextPhotoUrl = didUpdatePhoto
         ? cacheBustImageUrl(updatedPhotoUrl, profilePhotoVersion)

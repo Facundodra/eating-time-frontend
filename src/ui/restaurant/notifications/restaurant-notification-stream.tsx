@@ -92,7 +92,7 @@ export default function RestaurantNotificationStream({
       try {
         addToast(JSON.parse(messageEvent.data) as RestaurantSsePayload);
       } catch {
-        console.warn("[SSE] No se pudo leer la notificacion del local.");
+        console.warn("[SSE] No se pudo leer la notificación del local.");
       }
     });
 
@@ -131,7 +131,7 @@ export default function RestaurantNotificationStream({
               type="button"
               onClick={() => dismissToast(toast.id)}
               className="rounded-full px-2 text-lg leading-6 opacity-70 transition hover:bg-black/5 hover:opacity-100 dark:hover:bg-white/10"
-              aria-label="Cerrar notificacion"
+              aria-label="Cerrar notificación"
             >
               x
             </button>
