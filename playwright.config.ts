@@ -1,11 +1,14 @@
 import { defineConfig, devices } from "@playwright/test";
 
 const externalBaseUrl = process.env.PLAYWRIGHT_BASE_URL;
-const baseURL = externalBaseUrl ?? "http://localhost:3000";
+const baseURL = externalBaseUrl ?? "https://eating-time-frontend-kappa.vercel.app/";
+const firefoxActionTimeout = 45_000;
+const firefoxNavigationTimeout = 90_000;
+const firefoxTimeout = 120_000;
 
 export default defineConfig({
   testDir: "./tests",
-  testMatch: ["**/*.spec.ts", "**/*.spec.ts.ts"],
+  testMatch: ["**/*.spec.ts"],
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
@@ -34,6 +37,19 @@ export default defineConfig({
     {
       name: "chromium",
       use: { ...devices["Desktop Chrome"] },
+    },
+    {
+      name: "firefox",
+      timeout: firefoxTimeout,
+      use: {
+        ...devices["Desktop Firefox"],
+        actionTimeout: firefoxActionTimeout,
+        navigationTimeout: firefoxNavigationTimeout,
+      },
+    },
+    {
+      name: "webkit",
+      use: { ...devices["Desktop Safari"] },
     },
   ],
 });
