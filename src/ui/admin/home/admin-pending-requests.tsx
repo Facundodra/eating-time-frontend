@@ -6,6 +6,7 @@ import {
   getRequestStatusLabel,
   getRequestStatusStyle,
 } from "../requests/requests-status";
+import { formatRequestDate } from "../requests/request-date";
 import { useRequests } from "../requests/use-requests";
 import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
@@ -75,7 +76,7 @@ export default function AdminPendingRequests() {
                   </td>
 
                   <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                    {request.date}
+                    {formatRequestDate(request.date)}
                   </td>
 
                   <td className="px-5 py-4">
