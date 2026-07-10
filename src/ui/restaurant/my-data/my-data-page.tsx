@@ -24,6 +24,7 @@ import {
 
 import {
   cacheBustImageUrl,
+  getFirstImageUrl,
   notifyProfilePhotoUpdated,
 } from "@/lib/shared/image-cache";
 import {
@@ -118,13 +119,14 @@ export default function RestaurantMyDataPage() {
     setName(sessionName);
     setEmail(session.correo ?? session.email ?? "");
     setPhone(sessionPhone);
-    setCurrentPhotoUrl(session.urlFoto ?? null);
-    setCurrentMobileCoverUrl(session.urlPortadaMobile ?? "");
+    setCurrentPhotoUrl(getFirstImageUrl(session.urlFoto));
+    setCurrentMobileCoverUrl(getFirstImageUrl(session.urlPortadaMobile) ?? "");
     setCurrentDesktopCoverUrl(
-      session.urlPortadaDesktop ??
-        session.urlPortada ??
-        session.urlFotoPortada ??
-        "",
+      getFirstImageUrl(
+        session.urlPortadaDesktop,
+        session.urlPortada,
+        session.urlFotoPortada,
+      ) ?? "",
     );
     setRestaurantId(session.idTipoUsuario ?? null);
     setInitialFormData({
@@ -309,16 +311,20 @@ export default function RestaurantMyDataPage() {
       await Promise.all(tasks);
 
       const updatedSession = await getCurrentSession();
-      const nextPhotoUrl = updatedSession?.urlFoto ?? currentPhotoUrl;
+      const nextPhotoUrl =
+        getFirstImageUrl(updatedSession?.urlFoto) ?? currentPhotoUrl;
       const visibleNextPhotoUrl = didUpdateProfilePhoto
         ? cacheBustImageUrl(nextPhotoUrl, profilePhotoVersion)
         : nextPhotoUrl;
       const nextMobileCoverUrl =
-        updatedSession?.urlPortadaMobile ?? currentMobileCoverUrl;
+        getFirstImageUrl(updatedSession?.urlPortadaMobile) ??
+        currentMobileCoverUrl;
       const nextDesktopCoverUrl =
-        updatedSession?.urlPortadaDesktop ??
-        updatedSession?.urlPortada ??
-        updatedSession?.urlFotoPortada ??
+        getFirstImageUrl(
+          updatedSession?.urlPortadaDesktop,
+          updatedSession?.urlPortada,
+          updatedSession?.urlFotoPortada,
+        ) ??
         currentDesktopCoverUrl;
 
       const nextSuccessMessage = didSaveCoverPhotos
@@ -366,7 +372,7 @@ export default function RestaurantMyDataPage() {
         >
           <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              Actualiza la informacion visible del local, su foto de perfil y la
+              Actualiza la información visible del local, su foto de perfil y la
               portada.
             </p>
           </div>

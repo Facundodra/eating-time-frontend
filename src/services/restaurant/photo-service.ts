@@ -7,36 +7,59 @@ function getApiErrorMessage(error: unknown, fallback: string) {
   if (!axios.isAxiosError(error)) return fallback;
 
   const data = error.response?.data;
+  if (typeof data === "string") return data;
+
   return data?.error ?? data?.message ?? fallback;
+}
+
+async function patchRestaurantCoverPhoto(
+  restaurantId: number,
+  field: "fotoPortadaDesktop" | "fotoPortadaMobile",
+  file: File,
+): Promise<void> {
+  const body = new FormData();
+  body.append(field, file, file.name);
+
+  await api.patch(
+    `/api/local/${encodeURIComponent(restaurantId)}/portadas`,
+    body,
+  );
 }
 
 export async function setRestaurantCoverPhotos(
   restaurantId: number,
   input: RestaurantCoverPhotosInput,
 ): Promise<void> {
-  const body = new FormData();
+  const uploads: Array<() => Promise<void>> = [];
 
   if (input.mobileFile) {
-    body.append(
-      "fotoPortadaMobile",
-      input.mobileFile,
-      input.mobileFile.name,
+    const mobileFile = input.mobileFile;
+
+    uploads.push(
+      () => patchRestaurantCoverPhoto(
+        restaurantId,
+        "fotoPortadaMobile",
+        mobileFile,
+      ),
     );
   }
 
   if (input.desktopFile) {
-    body.append(
-      "fotoPortadaDesktop",
-      input.desktopFile,
-      input.desktopFile.name,
+    const desktopFile = input.desktopFile;
+
+    uploads.push(
+      () => patchRestaurantCoverPhoto(
+        restaurantId,
+        "fotoPortadaDesktop",
+        desktopFile,
+      ),
     );
   }
 
   try {
-    await api.patch(
-      `/api/local/${encodeURIComponent(restaurantId)}/portadas`,
-      body,
-    );
+    for (const upload of uploads) {
+      await upload();
+    }
   } catch (error) {
     throw new Error(
       getApiErrorMessage(error, "No se pudieron actualizar las fotos de portada."),

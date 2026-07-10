@@ -1,3 +1,5 @@
+import type { ImageUrlValue } from "../image-cache";
+
 export type BackendUserRole = "ADMIN" | "LOCAL" | "CLIENTE";
 
 export type LoginCredentials = {
@@ -15,11 +17,11 @@ export type LoginWebResponse = {
   correo?: string | null;
   email?: string | null;
   telefono?: string | null;
-  urlFoto?: string | null;
-  urlPortada?: string | null;
-  urlFotoPortada?: string | null;
-  urlPortadaMobile?: string | null;
-  urlPortadaDesktop?: string | null;
+  urlFoto?: ImageUrlValue;
+  urlPortada?: ImageUrlValue;
+  urlFotoPortada?: ImageUrlValue;
+  urlPortadaMobile?: ImageUrlValue;
+  urlPortadaDesktop?: ImageUrlValue;
 };
 
 export type RegisterCredentials = {

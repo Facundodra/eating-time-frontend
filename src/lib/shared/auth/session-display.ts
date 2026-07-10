@@ -1,4 +1,5 @@
 import type { LoginWebResponse } from "./types";
+import { getFirstImageUrl } from "../image-cache";
 
 const roleLabels: Record<LoginWebResponse["tipoUsuario"], string> = {
   ADMIN: "Administrador",
@@ -13,7 +14,7 @@ export function getSessionDisplayData(session: LoginWebResponse) {
 
   return {
     email,
-    imageUrl: session.urlFoto,
+    imageUrl: getFirstImageUrl(session.urlFoto),
     name,
     profileAlt: `Foto de perfil de ${name}`,
   };

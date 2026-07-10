@@ -133,7 +133,7 @@ async function loadRestaurantSchedule(): Promise<RestaurantSchedule> {
 }
 
 export default function RestaurantSchedulesPage() {
-  // La pagina se renderiza inmediatamente y los datos del backend se cargan en
+  // La página se renderiza inmediatamente y los datos del backend se cargan en
   // segundo plano. Cada panel decide si muestra loader, error o controles reales.
   const {
     data: loadedSchedule,
@@ -198,7 +198,7 @@ export default function RestaurantSchedulesPage() {
     };
   }
 
-  // Este switch puede crear el horario si todavia no existe, por eso usa el mismo
+  // Este switch puede crear el horario si todavía no existe, por eso usa el mismo
   // payload completo aunque solo cambie "siempre abierto".
   async function handleAlwaysOpenChange() {
     if (!loadedSchedule) {
@@ -230,7 +230,7 @@ export default function RestaurantSchedulesPage() {
   }
 
   // La pausa manual se guarda en el endpoint de estado de servicio, separado de
-  // la definicion semanal de horarios.
+  // la definición semanal de horarios.
   async function handleServiceStatusChange() {
     if (!loadedSchedule) {
       return;
@@ -257,7 +257,7 @@ export default function RestaurantSchedulesPage() {
     }
   }
 
-  // Persiste la definicion semanal completa que el usuario edito en pantalla.
+  // Persiste la definición semanal completa que el usuario editó en pantalla.
   async function handleSubmit() {
     if (!loadedSchedule) {
       return;
@@ -284,7 +284,7 @@ export default function RestaurantSchedulesPage() {
     }
   }
 
-  // Descarta cambios locales volviendo a consultar backend, sin recargar la pagina.
+  // Descarta cambios locales volviendo a consultar backend, sin recargar la página.
   async function handleCancelChanges() {
     if (!loadedSchedule) {
       return;
@@ -314,7 +314,7 @@ export default function RestaurantSchedulesPage() {
   }
 
   // Ambos paneles dependen de la misma carga inicial, pero renderizan su propio
-  // loader/error para que la pagina real ya este visible mientras llegan los datos.
+  // loader/error para que la página real ya esté visible mientras llegan los datos.
   const isDataReady = Boolean(loadedSchedule) && !isLoading && !loadError;
   const loadErrorMessage =
     loadError?.message ?? "No se pudieron cargar los horarios.";
@@ -333,7 +333,7 @@ export default function RestaurantSchedulesPage() {
             Estado de servicio
           </h2>
           <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-            La pausa manual prevalece sobre el horario automatico.
+            La pausa manual prevalece sobre el horario automático.
           </p>
         </div>
 
@@ -407,10 +407,10 @@ export default function RestaurantSchedulesPage() {
         >
           <div className="border-b border-gray-200 px-5 py-5 dark:border-slate-800">
             <h2 className="text-lg font-extrabold text-slate-950 dark:text-white">
-              Definicion de horarios
+              Definición de horarios
             </h2>
             <p className="mt-1 text-sm font-medium text-slate-500 dark:text-slate-400">
-              Configura la hora de inicio y fin de servicio para cada dia.
+              Configura la hora de inicio y fin de servicio para cada día.
             </p>
           </div>
 
@@ -473,7 +473,7 @@ export default function RestaurantSchedulesPage() {
                     </>
                   ) : (
                     <p className="text-sm font-extrabold text-red-500 xl:col-span-3">
-                      Sin atencion configurada
+                      Sin atención configurada
                     </p>
                   )}
                 </div>
