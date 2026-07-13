@@ -49,15 +49,16 @@ export function makeClientRegistrationData() {
 }
 
 export function makeDeliveryPointData() {
-  const suffix = uniqueSuffix().slice(-5);
-  const numericSuffix = suffix.replace(/\D/g, "").padStart(5, "0");
+  const suffix = uniqueSuffix();
+  const numericSuffix = suffix.replace(/\D/g, "").slice(-8).padStart(8, "0");
+  const shortSuffix = numericSuffix.slice(-5);
 
   return {
     apartment: numericSuffix.slice(-3),
     city: "Montevideo",
-    indications: `Punto creado por Playwright ${suffix}`,
-    number: `1${numericSuffix.slice(-3)}`,
-    street: "Av. Italia",
+    indications: `Punto creado por Playwright ${shortSuffix}`,
+    number: `9${numericSuffix.slice(-6)}`,
+    street: `Calle E2E ${shortSuffix}`,
   };
 }
 

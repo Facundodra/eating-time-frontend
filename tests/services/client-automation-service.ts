@@ -5,10 +5,7 @@ import type {
   DeliveryPointData,
 } from "../fixtures/test-data";
 import { expectResultsOrEmpty, isVisible } from "../helpers/assertions";
-import {
-  openFirstRestaurantFromList,
-  restaurantCards,
-} from "../helpers/navigation";
+import { restaurantCards } from "../helpers/navigation";
 
 const restaurantEmptyText = /No hay locales|No se encontraron/i;
 const dishEmptyText =
@@ -114,7 +111,19 @@ export class ClientAutomationService {
   async openFirstRestaurantForOrder() {
     await this.openRestaurantSearch();
 
-    return openFirstRestaurantFromList(this.page);
+    const firstRestaurant = restaurantCards(this.page).first();
+    if (!(await isVisible(firstRestaurant, 8_000))) {
+      await expect(this.page.getByText(restaurantEmptyText).first()).toBeVisible({
+        timeout: 5_000,
+      });
+      return false;
+    }
+
+    await firstRestaurant.click();
+    await expect(this.page).toHaveURL(/\/client\/restaurant\/\d+/, {
+      timeout: 10_000,
+    });
+    return true;
   }
 
   async assertRestaurantListOrReturn() {
@@ -127,8 +136,10 @@ export class ClientAutomationService {
     ).toBeVisible({ timeout: 20_000 });
 
     const addButton = this.page.getByRole("button", { name: /Agregar/i }).first();
-    if (!(await isVisible(addButton, 20_000))) {
-      await expect(this.page.getByText(dishEmptyText).first()).toBeVisible();
+    if (!(await isVisible(addButton, 8_000))) {
+      await expect(this.page.getByText(dishEmptyText).first()).toBeVisible({
+        timeout: 5_000,
+      });
       return false;
     }
 
@@ -144,24 +155,24 @@ export class ClientAutomationService {
   }
 
   async openCheckoutIfCartHasItems() {
-    if (await isVisible(this.page.getByText(/Tu carrito est/i).first(), 5_000)) {
+    if (await isVisible(this.page.getByText(/Tu carrito est/i).first(), 3_000)) {
       return false;
     }
 
     await this.page.getByRole("button", { name: /Realizar pedido/i }).click();
     await expect(
       this.page.getByText(/Direccion de entrega|Direcci/i).first(),
-    ).toBeVisible({ timeout: 20_000 });
+    ).toBeVisible({ timeout: 10_000 });
 
     return true;
   }
 
   async emptyCartIfPossible() {
     const emptyCartButton = this.page.getByRole("button", { name: /Vaciar carrito/i });
-    if (await isVisible(emptyCartButton, 5_000)) {
+    if (await isVisible(emptyCartButton, 3_000)) {
       await emptyCartButton.click();
       await expect(this.page.getByText(/Tu carrito est/i)).toBeVisible({
-        timeout: 20_000,
+        timeout: 10_000,
       });
     }
   }

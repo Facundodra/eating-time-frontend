@@ -13,6 +13,8 @@ type LoginResult = "success" | "error" | "timeout";
 
 let runtimeClientUser: { email: string; password: string } | null = null;
 const usesExplicitClientCredentials = Boolean(process.env.E2E_CLIENT_EMAIL);
+const loginErrorText =
+  /credencial|incorrect|inv.lid|no fue posible|no se pudo|no ten.s permiso|revisa los datos/i;
 
 function pathRegex(path: string) {
   return new RegExp(`${path.replaceAll("/", "\\/")}(?:$|[/?#])`);
@@ -36,7 +38,15 @@ export class AuthAutomationService {
       ? runtimeClientUser
       : testUsers[role];
 
-    const result = await this.attemptLogin(role, user.email, user.password);
+    const canUseRuntimeClient = role === "client" && !usesExplicitClientCredentials;
+    const firstLoginTimeout =
+      canUseRuntimeClient && !runtimeClientUser ? 12_000 : 30_000;
+    const result = await this.attemptLogin(
+      role,
+      user.email,
+      user.password,
+      firstLoginTimeout,
+    );
     if (result === "success") {
       return;
     }
@@ -56,6 +66,7 @@ export class AuthAutomationService {
       "client",
       runtimeClientUser.email,
       runtimeClientUser.password,
+      20_000,
     );
 
     if (fallbackResult !== "success") {
@@ -88,7 +99,7 @@ export class AuthAutomationService {
       .then(() => "success" as const)
       .catch(() => "timeout" as const);
     const error = this.page
-      .getByText(/credenciales incorrectas|no se pudo|no tenes permiso|revisa los datos/i)
+      .getByText(loginErrorText)
       .first()
       .waitFor({ state: "visible", timeout })
       .then(() => "error" as const)
@@ -101,11 +112,12 @@ export class AuthAutomationService {
     role: TestUserRole,
     email: string,
     password: string,
+    timeout = 30_000,
   ) {
     await this.page.context().clearCookies();
     await this.fillLoginForm(email, password);
 
-    return this.waitForLoginResult(role);
+    return this.waitForLoginResult(role, timeout);
   }
 
   private async registerRuntimeClient() {

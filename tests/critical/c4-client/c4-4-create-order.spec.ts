@@ -12,7 +12,6 @@ test.describe("C.4.4 - Realizacion de un pedido", () => {
 
       const hasRestaurant = await client.openFirstRestaurantForOrder();
       if (!hasRestaurant) {
-        await client.assertRestaurantListOrReturn();
         return;
       }
 
