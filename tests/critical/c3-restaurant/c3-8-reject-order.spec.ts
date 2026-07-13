@@ -8,10 +8,12 @@ test.describe("C.3.8 - Rechazo de un pedido", () => {
     test("abre el modal de rechazo cuando hay pedidos pendientes", async ({ page }) => {
       await loginAs(page, "restaurant");
       await page.goto("/restaurant/workbench");
+      await expect(page.getByRole("heading", { name: /Pendiente confirm/i })).toBeVisible({
+        timeout: 20_000,
+      });
 
       const rejectButton = page.getByLabel(/Mover pedido a rechazado/i).first();
-      if (!(await isVisible(rejectButton, 20_000))) {
-        await expect(page.getByRole("heading", { name: /Pendiente confirm/i })).toBeVisible();
+      if (!(await isVisible(rejectButton, 5_000))) {
         return;
       }
 
