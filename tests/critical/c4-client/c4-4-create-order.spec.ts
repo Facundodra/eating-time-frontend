@@ -3,6 +3,12 @@ import { test } from "@playwright/test";
 import { loginAs } from "../../helpers/auth";
 import { ClientAutomationService } from "../../services/client-automation-service";
 
+test.afterEach(async ({ context }, testInfo) => {
+  if (testInfo.project.name === "firefox") {
+    await context.close().catch(() => null);
+  }
+});
+
 test.describe("C.4.4 - Realizacion de un pedido", () => {
   test.describe("Flujo principal", () => {
     test("permite armar carrito y abrir checkout sin confirmar pago", async ({ page }) => {
