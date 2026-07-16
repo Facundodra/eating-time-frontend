@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 
+import { formatRequestDate } from "../requests/request-formatters";
 import {
   getRequestStatusLabel,
   getRequestStatusStyle,
@@ -75,7 +76,7 @@ export default function AdminPendingRequests() {
                   </td>
 
                   <td className="px-5 py-4 text-slate-500 dark:text-slate-400">
-                    {request.date}
+                    {formatRequestDate(request.date) || "-"}
                   </td>
 
                   <td className="px-5 py-4">

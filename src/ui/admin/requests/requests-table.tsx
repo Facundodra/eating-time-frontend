@@ -3,6 +3,7 @@
 import Link from "next/link";
 
 import type { RestaurantRequest } from "./requests-data";
+import { formatRequestDate } from "./request-formatters";
 import {
   getRequestStatusLabel,
   getRequestStatusStyle,
@@ -39,7 +40,9 @@ export default function RequestsTable({ requests }: RequestsTableProps) {
                 {request.phone || <span className="text-slate-400">-</span>}
               </MobileRequestField>
               <MobileRequestField label="Fecha">
-                {request.date || <span className="text-slate-400">-</span>}
+                {formatRequestDate(request.date) || (
+                  <span className="text-slate-400">-</span>
+                )}
               </MobileRequestField>
             </dl>
 
@@ -85,7 +88,7 @@ export default function RequestsTable({ requests }: RequestsTableProps) {
                 </td>
 
                 <td className="px-5 py-4 text-slate-700 dark:text-slate-300">
-                  {request.date}
+                  {formatRequestDate(request.date) || "-"}
                 </td>
 
                 <td className="px-5 py-4">

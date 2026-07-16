@@ -12,6 +12,7 @@ import LoadingIndicator from "@/ui/shared/feedback/loading-indicator";
 import PanelError from "@/ui/shared/feedback/panel-error";
 
 import type { RestaurantRequest } from "./requests-data";
+import { formatRequestDate } from "./request-formatters";
 import {
   getRequestStatusLabel,
   getRequestStatusStyle,
@@ -224,7 +225,10 @@ export default function RequestDetailPage({ id }: Props) {
               <InfoItem label="Nombre del local" value={request.restaurant} />
               <InfoItem label="Email" value={request.email} />
               <InfoItem label="Teléfono" value={request.phone} />
-              <InfoItem label="Fecha de solicitud" value={request.date} />
+              <InfoItem
+                label="Fecha de solicitud"
+                value={formatRequestDate(request.date) || "-"}
+              />
               <InfoItem label="Dirección" value={request.address} />
               <InfoItem label="Tipo de comida" value={request.foodType} />
             </div>
